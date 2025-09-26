@@ -12,6 +12,7 @@ let download_url="your download domain here";
 let upload_url="your upload domain here"
 let admin_url="your admin domain here"
 const isTestMode =true;
+const HistoryRecordPerPage=10;
 // 如果不是测试模式，则使用生产环境的base_url
 if (isTestMode) {
     base_url = "http://localhost:8080/api";
@@ -34,5 +35,6 @@ module.exports = {
     Code_Status_Run_Timeout,  
     Code_Status_Wait_Timeout ,
     Code_Status_Success,
+    HistoryRecordPerPage,
 };
     

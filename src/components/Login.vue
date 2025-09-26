@@ -164,7 +164,6 @@ export default {
         });
 
         const data = await response.json();
-        console.log(data);
         if (!response.ok ||!data.status) {
           throw new Error(data.msg || '登录失败，请检查学号和密码');
         }

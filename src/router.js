@@ -6,8 +6,9 @@ import Home from './components/Home.vue'
 import PasswordForget from './components/PasswordForget.vue'
 import StudentHome from './components/StudentHome.vue'
 import History from './components/History.vue'
+import AssessmentSubmission from './components/AssessmentSubmission.vue'
+import SystemBoard from './components/SystemBoard.vue'
 // 可以先导入一个空组件作为其他页面的占位
-const EmptyComponent = { template: '<div>该功能正在开发中...</div>' }
 
 const routes = [
   {
@@ -33,8 +34,8 @@ const routes = [
     children: [
       { path: 'student-home', component: StudentHome }, // 个人中心
       { path: 'history', component: History }, // 历史记录
-      { path: 'assessment', component: EmptyComponent }, // 学生考核
-      { path: 'settings', component: EmptyComponent } // 系统设置
+      { path: 'assessment', component: AssessmentSubmission }, // 学生考核
+      { path: 'settings', component: SystemBoard } // 系统设置
     ]
   }
 ]

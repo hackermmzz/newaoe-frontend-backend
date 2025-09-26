@@ -90,7 +90,6 @@ export default {
             }
         );
         const data = await response.json();
-        console.log('获取用户信息响应：', data);
         if (!response.ok || !data.status) {
           throw new Error(data.msg||'获取用户信息失败');
         }

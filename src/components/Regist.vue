@@ -328,11 +328,10 @@ export default {
         });
 
         const data = await response.json();
-        console.log(data);
         if (!response.ok || !data.status) {
           throw new Error(data.message || '验证码发送失败');
         }
-
+        
         // 倒计时逻辑不变
         countdown.value = 60;
         countdownTimer = setInterval(() => {

@@ -96,7 +96,7 @@
     <!-- 主要内容区域 - 历史记录列表 -->
     <main class="flex-grow container mx-auto px-4 py-8">
       <!-- 空状态显示 -->
-      <div v-if="historyList.length === 0 && !isLoading" class="text-center py-16">
+      <div v-if="historyList.length === 0 && !isLoading && totalRecord === 0" class="text-center py-16">
         <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
           <i class="fa fa-history text-2xl text-gray-400"></i>
         </div>
@@ -113,13 +113,16 @@
       <!-- 加载状态 -->
       <div v-if="isLoading" class="text-center py-16">
         <div class="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-        <p class="mt-4 text-gray-600">加载历史记录中...</p>
+        <p class="mt-4 text-gray-600">加载第 {{ currentPage }} 页记录中...</p>
       </div>
       
       <!-- 历史记录列表（核心） -->
-      <div v-if="historyList.length > 0 && !isLoading">
+      <div v-if="totalRecord > 0 && !isLoading">
+        <!-- 搜索+分页控制区 -->
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-          <h2 class="text-xl font-semibold text-gray-800">提交记录 ({{ historyList.length }})</h2>
+          <h2 class="text-xl font-semibold text-gray-800">提交记录 ({{ totalRecord }} 条)</h2>
+          
+          <!-- 搜索框 -->
           <div class="relative w-full md:w-64">
             <input
               v-model="searchQuery"
@@ -131,16 +134,65 @@
           </div>
         </div>
         
+        <!-- 分页控件（核心新增） -->
+        <div class="flex items-center justify-between mb-6 gap-4 flex-wrap">
+          <div class="text-sm text-gray-600">
+            每页显示 {{ pageSize }} 条，共 {{ totalPages }} 页
+          </div>
+          <div class="flex items-center gap-2">
+            <!-- 上一页 -->
+            <button 
+              @click="handlePrevPage"
+              :disabled="currentPage === 1"
+              class="px-3 py-1.5 border border-gray-300 rounded-md text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <i class="fa fa-chevron-left mr-1 text-xs"></i>上一页
+            </button>
+            
+            <!-- 页码显示 -->
+            <span class="text-sm text-gray-700 px-2">
+              第 {{ currentPage }} / {{ totalPages }} 页
+            </span>
+            
+            <!-- 下一页 -->
+            <button 
+              @click="handleNextPage"
+              :disabled="currentPage === totalPages"
+              class="px-3 py-1.5 border border-gray-300 rounded-md text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              下一页<i class="fa fa-chevron-right ml-1 text-xs"></i>
+            </button>
+            
+            <!-- 页码跳转 -->
+            <div class="flex items-center gap-1">
+              <input
+                v-model.number="targetPage"
+                type="number"
+                :min="1"
+                :max="totalPages"
+                class="w-16 px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder="页码"
+              >
+              <button 
+                @click="handlePageJump"
+                class="px-2 py-1.5 border border-gray-300 rounded-md text-sm hover:bg-gray-50 transition-colors"
+              >
+                跳转
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 记录列表 -->
         <div class="space-y-4">
-          <!-- 循环渲染记录 -->
           <div 
             v-for="(item, index) in filteredHistory" 
-            :key="index"  
+            :key="item.indices || index"  
             class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
           >
             <!-- 记录编号与状态 -->
             <div class="p-4 border-b border-gray-100 flex justify-between items-center">
-              <h3 class="font-medium text-gray-900">提交 #{{ index + 1 }}</h3>
+              <h3 class="font-medium text-gray-900">提交 #{{ (currentPage - 1) * pageSize + index + 1 }}</h3>
               <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
                 已提交
               </span>
@@ -164,26 +216,21 @@
               </div>
             </div>
             
-            <!-- 描述与运行状态（核心修改：运行状态默认一行，点击展开全部） -->
+            <!-- 描述与运行状态 -->
             <div class="p-4">
-              <!-- 描述（可选字段） -->
               <div v-if="item.description" class="mb-3 text-sm text-gray-700">
                 <strong>描述:</strong> {{ item.description }}
               </div>
               
-              <!-- 运行状态区域：默认一行显示，点击展开全部 -->
               <div class="mb-4">
-                <!-- 顶部：运行状态标签 + 展开/收起按钮 -->
                 <div class="flex flex-wrap items-center justify-between gap-2">
-                  <!-- 运行状态标签：默认一行，超出省略 -->
                   <div class="flex items-center text-sm text-gray-600 bg-gray-50 px-3 py-1.5 rounded w-full">
                     <i class="fa fa-file-code-o mr-2 text-blue-500 shrink-0"></i>
                     <span class="run-status-text" :class="{ 'expanded': expandedItems[index] }">
-                      运行状态: {{ item.status || "未运行" }}
+                      运行状态: {{ item.status.data || "未运行" }}
                     </span>
                   </div>
                   
-                  <!-- 展开/收起按钮 -->
                   <button 
                     @click="toggleExpand(index)"
                     class="text-sm text-blue-600 hover:text-blue-800 transition-colors flex items-center"
@@ -194,7 +241,6 @@
                 </div>
               </div>
               
-              <!-- 下载按钮 -->
               <div class="mt-2 flex gap-2">
                 <button 
                   @click="downloadFile(item.header)"
@@ -234,11 +280,18 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import config from '../config.js';
 import { ElMessage } from 'element-plus';
 
-// 状态管理
+// ======================== 核心新增：分页状态管理 ========================
+const currentPage = ref(1); // 当前页码（默认第1页）
+const totalRecord = ref(0); // 总记录数（接口返回的 totalrecord）
+const pageSize = ref(config.HistoryRecordPerPage || 10); // 每页条数（优先从config取，默认10）
+const totalPages = ref(0); // 总页数（计算得出：totalRecord / pageSize 向上取整）
+const targetPage = ref(1); // 跳转目标页码（绑定输入框）
+
+// ======================== 原有状态保留 ========================
 const showUploadForm = ref(false);
 const headerFile = ref(null);
 const sourceFile = ref(null);
@@ -247,22 +300,21 @@ const isSubmitting = ref(false);
 const isLoading = ref(true);
 const historyList = ref([]);
 const searchQuery = ref('');
-// 控制每条记录的运行状态展开/收起（核心状态）
 const expandedItems = ref({});
 
-/**
- * 时间格式转换：UTC转CTS（UTC+8）
- */
+// ======================== 核心修改：同步页码输入框与当前页 ========================
+watch(currentPage, (newPage) => {
+  targetPage.value = newPage; // 切换页码时，输入框自动同步当前页
+});
+
+// ======================== 时间格式转换（不变） ========================
 const convertUtcToCts = (utcTime) => {
   if (!utcTime) return '未知时间';
   
   const utcDate = new Date(utcTime);
   if (isNaN(utcDate.getTime())) return '无效时间';
   
-  // 计算CTS时间（UTC+8）
   const ctsTime = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000);
-  
-  // 格式化输出：YYYY-MM-DD HH:MM:SS
   const year = ctsTime.getUTCFullYear();
   const month = String(ctsTime.getUTCMonth() + 1).padStart(2, '0');
   const day = String(ctsTime.getUTCDate()).padStart(2, '0');
@@ -273,68 +325,74 @@ const convertUtcToCts = (utcTime) => {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 };
 
-/**
- * 获取历史记录：仅依赖接口，无模拟数据
- */
-const GetHistory = async () => {
+// ======================== 核心修改：分页获取历史记录 ========================
+const GetHistory = async (page = 1, pageSize = config.HistoryRecordPerPage) => {
+  isLoading.value = true;
   try {
-    const response = await fetch(`${config.base_url}/home/gethistory`, {
+    // 1. 拼接分页参数到请求URL（page：当前页，pageSize：每页条数）
+    let beg=(page-1)*pageSize
+    let end=beg+pageSize-1
+    const requestUrl = new URL(`${config.base_url}/home/gethistory`);
+    requestUrl.searchParams.append('range', `${beg}:${end}`);
+
+    const response = await fetch(requestUrl.toString(), {
       method: 'GET',
       credentials: 'include',
     });
 
     let resData = await response.json();
-    console.log(resData)
+
     if (!response.ok || !resData.status) {
       throw new Error(resData.msg || `HTTP错误: ${response.status}`);
     }
 
-    // 处理非数组返回
-    if (!Array.isArray(resData.data)) {
-      resData.data = [];
-    }
+    // 2. 从接口获取总记录数（关键：resData.totalrecord）
+    totalRecord.value = resData.data.totalrecord || 0;
+    // 3. 计算总页数（向上取整，避免小数页）
+    totalPages.value = Math.ceil(totalRecord.value / pageSize);
+    // 4. 同步当前页码
+    currentPage.value = page;
 
-    // 按提交时间倒序排序（最新在前）
-    resData.data = resData.data.sort((a, b) => {
+    // 5. 处理当前页数据（保留原有排序和字段校验）
+    let records = Array.isArray(resData.data.record) ? resData.data.record : [];
+    // 按提交时间倒序（最新在前）
+    records = records.sort((a, b) => {
       const timeA = new Date(a.submittime).getTime();
       const timeB = new Date(b.submittime).getTime();
       return timeB - timeA;
     });
-
-    // 校验必要字段（仅保留原字段，无额外新增）
+    // 校验必要字段（移除无效记录）
     const requiredFields = ['header', 'source', 'description', 'submittime', 'headersize', 'sourcesize', 'status', 'indices'];
-    resData.data.forEach((item, index) => {
+    records = records.filter(item => {
       const missingFields = requiredFields.filter(field => !(field in item));
       if (missingFields.length > 0) {
-        throw new Error(`第${index+1}条记录缺少字段：${missingFields.join(', ')}`);
+        console.warn(`过滤无效记录（缺少字段）:`, missingFields);
+        return false;
       }
+      return true;
     });
-
-    return resData.data;
+    //
+    ElMessage.success(`成功加载 ${records.length} 条记录`);
+    return records;
 
   } catch (error) {
-    console.error('获取历史记录失败:', error);
-    return []; // 接口失败时返回空数组（无模拟数据）
+    console.error('分页获取历史记录失败:', error);
+    totalRecord.value = 0;
+    totalPages.value = 0;
+    return [];
+  } finally {
+    isLoading.value = false; // 结束加载状态
   }
 };
 
-/**
- * 从文件链接提取文件名
- */
+// ======================== 原有工具方法（不变） ========================
 const getFileNameFromUrl = (url) => {
   if (!url) return '未知文件名';
-  
-  // 处理带参数的链接（如 ?name=xxx.cpp）
   const urlWithoutParams = url.split('?')[0];
-  // 从最后一个 '/' 后截取文件名
   const fileName = urlWithoutParams.split('/').pop();
-  
   return fileName.includes('.') ? fileName : '未命名文件';
 };
 
-/**
- * 文件下载功能
- */
 const downloadFile = (fileUrl) => {
   if (!fileUrl) {
     ElMessage.warning('文件链接无效，无法下载');
@@ -352,18 +410,15 @@ const downloadFile = (fileUrl) => {
     a.click();
     document.body.removeChild(a);
 
-    //
-    let filename=""
-    for(let i=fileName.length-1;i>=0;i-=1){
-      if(fileName[i]!='\\' &&fileName[i]!='/')
-      {
-        filename=fileName[i]+filename
-      }
-      else{
-        break
+    let pureFileName = "";
+    for(let i = fileName.length - 1; i >= 0; i--) {
+      if(fileName[i] !== '\\' && fileName[i] !== '/') {
+        pureFileName = fileName[i] + pureFileName;
+      } else {
+        break;
       }
     }
-    ElMessage.success(`开始下载：${filename}`);
+    ElMessage.success(`开始下载：${pureFileName}`);
 
   } catch (error) {
     ElMessage.error(`下载失败：${error.message}`);
@@ -371,35 +426,23 @@ const downloadFile = (fileUrl) => {
   }
 };
 
-/**
- * 切换运行状态的展开/收起
- * @param {number} index - 记录索引
- */
 const toggleExpand = (index) => {
-  // 切换对应索引的展开状态（默认未展开）
   expandedItems.value[index] = !expandedItems.value[index];
 };
 
-/**
- * 运行代码：仅更新运行状态，无额外字段
- */
 const handleRun = async (item) => {
   try {
-    // 运行前更新状态（优化用户体验）
     item.status = '正在运行';
-    // 触发视图更新
     historyList.value = [...historyList.value];
     
     const resp = await fetch(`${config.admin_url}/coderun`, {
       method: 'POST',
       credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         source: item.source,
-        header:item.header,
-        description:item.description
+        header: item.header,
+        description: item.description
       })
     });
 
@@ -409,18 +452,17 @@ const handleRun = async (item) => {
     }
 
     ElMessage.success("运行成功");
-    // 运行成功后更新状态（仅保留原字段）
-    item.status = '正在运行';
-    GetHistory()
+    item.status = '运行成功';
+    // 重新获取当前页数据（保证状态同步）
+    await GetHistory(currentPage.value, pageSize.value);
+
   } catch (error) {
     ElMessage.error(error.message || '运行出错');
-    // 运行失败更新状态
     item.status = '运行失败';
 
   } finally {
-    // 最终触发视图更新
     historyList.value = [...historyList.value];
-    // 收起运行状态详情（避免失败后仍展开）
+    // 重置展开状态
     for (const key in expandedItems.value) {
       if (historyList.value[Number(key)] === item) {
         expandedItems.value[key] = false;
@@ -430,13 +472,9 @@ const handleRun = async (item) => {
   }
 };
 
-/**
- * 切换上传表单显示/隐藏
- */
 const toggleUploadForm = () => {
   showUploadForm.value = !showUploadForm.value;
   if (showUploadForm.value) {
-    // 重置表单状态
     headerFile.value = null;
     sourceFile.value = null;
     description.value = '';
@@ -444,14 +482,10 @@ const toggleUploadForm = () => {
   }
 };
 
-/**
- * 处理文件上传（格式校验）
- */
 const handleFileUpload = (event, type) => {
   const file = event.target.files[0];
   if (!file) return;
 
-  // 格式校验
   if (type === 'header' && !file.name.endsWith('.h')) {
     ElMessage.warning('请上传 .h 格式的头文件');
     event.target.value = '';
@@ -463,14 +497,10 @@ const handleFileUpload = (event, type) => {
     return;
   }
 
-  // 赋值对应文件
   if (type === 'header') headerFile.value = file;
   if (type === 'source') sourceFile.value = file;
 };
 
-/**
- * 生成描述文件（提交时附带）
- */
 const createDescFile = () => {
   const timestamp = new Date().getTime();
   const fileName = `description_${timestamp}.txt`;
@@ -478,9 +508,7 @@ const createDescFile = () => {
   return new File([descBlob], fileName, { type: 'text/plain' });
 };
 
-/**
- * 提交文件：提交后刷新历史记录
- */
+// ======================== 核心修改：提交后刷新当前页 ========================
 const submitFiles = async () => {
   if (!headerFile.value || !sourceFile.value) return;
   
@@ -503,12 +531,10 @@ const submitFiles = async () => {
     }
 
     ElMessage.success('文件提交成功！');
-    // 重新获取历史记录
-    const newHistory = await GetHistory();
+    // 提交后重新获取当前页数据（保证新记录显示）
+    const newHistory = await GetHistory(currentPage.value, pageSize.value);
     historyList.value = newHistory;
-    // 重置展开状态
     expandedItems.value = {};
-    // 关闭上传表单
     toggleUploadForm();
 
   } catch (error) {
@@ -518,9 +544,7 @@ const submitFiles = async () => {
   }
 };
 
-/**
- * 搜索过滤：支持文件名、描述、时间、运行状态
- */
+// ======================== 搜索过滤（基于当前页数据） ========================
 const filteredHistory = computed(() => {
   if (!searchQuery.value.trim()) return historyList.value;
   
@@ -530,28 +554,54 @@ const filteredHistory = computed(() => {
     const sourceName = getFileNameFromUrl(item.source).toLowerCase();
     const descMatch = item.description ? item.description.toLowerCase().includes(query) : false;
     const dateMatch = item.submittime.toLowerCase().includes(query);
-    const statusMatch = (item.status || '').toLowerCase().includes(query);
+    const statusMatch = (item.status.data || '').toLowerCase().includes(query);
     
     return headerName.includes(query) || sourceName.includes(query) || descMatch || dateMatch || statusMatch;
   });
 });
 
-/**
- * 组件挂载：加载历史记录
- */
+// ======================== 核心新增：分页控制方法 ========================
+// 上一页
+const handlePrevPage = async () => {
+  if (currentPage.value > 1) {
+    const prevPage = currentPage.value - 1;
+    const records = await GetHistory(prevPage, pageSize.value);
+    historyList.value = records;
+    expandedItems.value = {}; // 切换页重置展开状态
+  }
+};
+
+// 下一页
+const handleNextPage = async () => {
+  if (currentPage.value < totalPages.value) {
+    const nextPage = currentPage.value + 1;
+    const records = await GetHistory(nextPage, pageSize.value);
+    historyList.value = records;
+    expandedItems.value = {}; // 切换页重置展开状态
+  }
+};
+
+// 页码跳转
+const handlePageJump = async () => {
+  // 校验目标页合法性（必须是数字、在1~总页数之间、不等于当前页）
+  const target = Number(targetPage.value);
+  if (isNaN(target) || target < 1 || target > totalPages.value || target === currentPage.value) {
+    ElMessage.warning('请输入合法的页码');
+    return;
+  }
+  const records = await GetHistory(target, pageSize.value);
+  historyList.value = records;
+  expandedItems.value = {}; // 切换页重置展开状态
+};
+
+// ======================== 组件挂载：加载第1页数据 ========================
 onMounted(async () => {
-  isLoading.value = true;
   try {
-    const initialHistory = await GetHistory();
+    const initialHistory = await GetHistory(1, pageSize.value);
     historyList.value = initialHistory;
-    if (historyList.value.length > 0) {
-      ElMessage.success(`成功加载 ${historyList.value.length} 条历史记录`);
-    }
   } catch (error) {
     ElMessage.error('加载历史记录失败');
     historyList.value = [];
-  } finally {
-    isLoading.value = false;
   }
 });
 </script>
@@ -584,6 +634,10 @@ label.border-dashed:hover {
     grid-template-columns: 1fr;
     gap: 1rem !important;
   }
+  .flex-wrap {
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
 }
 
 /* 运行状态文本样式：默认一行，展开后多行 */
@@ -596,9 +650,8 @@ label.border-dashed:hover {
   transition: max-height 0.3s ease, white-space 0.3s ease;
 }
 .run-status-text.expanded {
-  max-height: none; /* 足够显示多行（可根据需求调整） */
+  max-height: 10em; /* 最多显示10行，可根据需求调整 */
   white-space: pre-wrap;
   text-overflow: unset;
 }
-
 </style>
