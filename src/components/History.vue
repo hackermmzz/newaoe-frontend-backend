@@ -435,7 +435,7 @@ const handleRun = async (item) => {
     item.status = '正在运行';
     historyList.value = [...historyList.value];
     
-    const resp = await fetch(`${config.admin_url}/coderun`, {
+    const resp = await fetch(`${config.code_url}/CodeReRun`, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },

@@ -10,7 +10,7 @@ const Code_Status_Success      = 6 //运行成功
 let base_url = "your domain here"; // 默认值
 let download_url="your download domain here";
 let upload_url="your upload domain here"
-let admin_url="your admin domain here"
+let code_url="your admin domain here"
 const isTestMode =true;
 const HistoryRecordPerPage=10;
 // 如果不是测试模式，则使用生产环境的base_url
@@ -22,13 +22,13 @@ if (isTestMode) {
 }
 download_url=base_url+"/download";
 upload_url=base_url+"/upload"
-admin_url=base_url+"/admin"
+code_url=base_url+"/code"
 // 导出配置
 module.exports = {
     base_url,
     download_url,
     upload_url,
-    admin_url,
+    code_url: code_url,
     Code_Status_IDLE  ,      
     Code_Status_Wait     ,    
     Code_Status_Running     ,
