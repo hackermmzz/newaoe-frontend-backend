@@ -5,7 +5,7 @@ import time
 import threading
 #服务器网址
 base_ip="http://localhost:8080"
-base_url=f"{base_ip}/api/admin"
+base_url=f"{base_ip}/api/code"
 CodeGetURL=f"{base_url}/CodeGet"
 CodeStatusPostURL=f"{base_url}/CodeRunStatusPost"
 #定义api_key

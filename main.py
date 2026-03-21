@@ -17,8 +17,6 @@ def TaskProcess():
     if res0["status"]==False:
         if 'id' in res0:
             Log(f"{res0['id']}/{res0['indices']}/解析错误，原因:{res0['msg']}，休眠{JudgeSleepTimeWhenGetCodeFailed}秒后重试")
-        else:
-            Log(f"无法获取代码，原因:{res0['msg']}，休眠{JudgeSleepTimeWhenGetCodeFailed}秒后重试")
         time.sleep(JudgeSleepTimeWhenGetCodeFailed)#休眠一段时间
         return
     else:
