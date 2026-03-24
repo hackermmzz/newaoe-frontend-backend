@@ -23,7 +23,7 @@ def TaskProcess():
         Log(f"{res0['id']}/{res0['indices']}/成功获取代码!")
         PostRunStatus(id=res0["id"],indices=res0["indices"],status=PostRunStatusEnum.Code_Status_ServerGet,data="成功获取代码").Response()
     #创建运行目录和编译目录
-    rundir=f"{RunDir}/{res0["id"]}_{res0["indices"]}"
+    rundir=f'{RunDir}/{res0["id"]}_{res0["indices"]}'
     buildDir=f"{rundir}/build"
     os.makedirs(rundir,exist_ok=True)
     os.makedirs(buildDir,exist_ok=True)

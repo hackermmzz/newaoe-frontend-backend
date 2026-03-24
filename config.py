@@ -9,7 +9,7 @@ base_url=f"{base_ip}/api/code"
 CodeGetURL=f"{base_url}/CodeGet"
 CodeStatusPostURL=f"{base_url}/CodeRunStatusPost"
 #定义api_key
-api_key="mmzz"
+api_key="newaoe"
 #定义请求头
 header={
     "api":api_key
@@ -17,11 +17,11 @@ header={
 #AOE项目目录
 new_aoe_folder=f"{os.getcwd()}/new-aoe"
 #AOE镜像名称
-new_aoe_docker_img="newaoe.img:latest"
+new_aoe_docker_img="hackermmzz/newaoe-backend"
 #编译的输出日志
 CompileLogFileName="CompileLog.txt"
 #编译是否开启多线程编译模式
-CompileUseMultiThread=True
+CompileUseMultiThread=False
 #每个可执行程序的运行根目录
 RunDir=f"{os.getcwd()}/RunDir"
 #运行时日志文件
