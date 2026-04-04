@@ -108,7 +108,7 @@
 
           <!-- 密码输入 + 强度检测 -->
           <div class="relative group">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-all duration-300 group-focus-within:text-blue-500">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-a    ll duration-300 group-focus-within:text-blue-500">
               <i class="fa fa-lock text-gray-400"></i>
             </div>
             <label for="password" class="block text-sm font-medium text-gray-700 mb-1">设置密码</label>
