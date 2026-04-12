@@ -62,6 +62,7 @@
 import { ref, onMounted, reactive } from 'vue';
 import config from '../config'; // 引入配置文件
 import { ElMessage } from 'element-plus';
+import axios from 'axios'
 export default {
   name: 'StudentHome',
   
@@ -94,12 +95,23 @@ export default {
           throw new Error(data.msg||'获取用户信息失败');
         }
         // 更新用户信息
-        if (data.data.avatar) userInfo.avatar =config.download_url+"/"+data.data.avatar+'?t='+Date.now();
+        if (data.data.avatar) {
+          //拿到链接
+          const response = await fetch(
+            `${config.download_url}/${data.data.avatar}`, 
+            {
+              method: 'GET',
+              credentials: 'include' // 如果需要携带cookie
+            }
+          );
+          const res=await response.json()
+          userInfo.avatar=res.data.url;
+        }
         if (data.data.id) userInfo.studentId= data.data.id;
         if (data.data.email) userInfo.email = data.data.email;
         if(data.data.regist_date) userInfo.registDate = data.data.regist_date;
       } catch (error) {
-        console.error('获取用户信息出错:', error);
+        ElMessage.error(error.message)
         // 可以在这里添加错误提示给用户
       }
     };
@@ -119,17 +131,11 @@ export default {
         reader.onload = async () => {
             // 保存之前的
             try {
-            
-            // 创建FormData用于文件上传
-            const formData = new FormData();
-            // 附加文件，参数名需与后端接口保持一致
-            formData.append('file', file);
             // 显示上传中状态
             ElMessage.success('正在上传头像，请稍候...');
-            // 发送上传请求
+            // 发送上传请求获取上传链接
             const response = await fetch(`${config.upload_url}/avatar`, {
                 method: 'POST',
-                body: formData,
                 // 上传文件时不要手动设置Content-Type，浏览器会自动处理
                 credentials: 'include' // 若需要携带cookie（如身份验证）
             });
@@ -139,7 +145,29 @@ export default {
             if (!response.ok || !result.status) {
                 throw new Error(result.msg || '上传失败，请重试');
             }
-            // 上传成功
+            // 上传到指定链接
+            const uploadUrl=result.data.urls[0];
+            const resp=await axios.put(uploadUrl,file,{
+              headers:{
+                'Content-Type':file.type
+              }
+            })
+            if (!resp.status){
+              throw new Error('上传失败，请重试',resp.status);
+            }
+            //告诉服务器上传成功了
+            const resp0=await fetch(`${config.uploadConfirm_url}/avatar`,{
+              method: 'POST',
+              credentials: 'include',
+              body:JSON.stringify({
+                urls:[uploadUrl]
+              })
+            });
+            const resp00=await resp0.json()
+            if (!resp0.ok || !resp00.status){
+              throw new Error(resp00.msg || '上传失败，请重试');
+            }
+            //
             ElMessage.success('头像上传成功！');
 
             } catch (error) {
@@ -167,19 +195,32 @@ export default {
       submitting.value = true;
       
       try {
-        const response = await fetch(`${config.base_url}/home/feedback`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ 
-            content: feedbackContent.value 
-        }),
-            credentials: 'include' // 如果需要携带cookie
-        });
-        if (!response.ok || !response.status) {
-          throw new Error('网络错误，提交失败');
+        //首先获取上传链接
+        const respForUploadUrl=await fetch(`${config.base_url}/home/feedback`,{
+          method:'POST',
+          credentials:'include'
+        })
+        const resp0=await respForUploadUrl.json()
+        if (!respForUploadUrl.ok || !resp0.status){
+           throw new Error('网络错误，提交失败' | resp0.msg);
         }
+        //获取链接并且上传
+        const uploadUrl=resp0.data.urls[0]
+        const text=JSON.stringify({
+          "date":Date(),
+          "id":userInfo.studentId,
+          "content":feedbackContent.value
+        })
+        const respForSucess=await axios.put(uploadUrl,text,{
+           headers:{
+            'Content-Type': 'application/json'
+           },
+           responseType:"text"
+        })
+        if (!respForSucess.status){
+           throw new Error('网络错误，提交失败');
+        }
+        //
         alert('反馈提交成功！感谢您的支持～');
         feedbackContent.value = '';
       } catch (error) {

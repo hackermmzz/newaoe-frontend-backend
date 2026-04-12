@@ -126,6 +126,7 @@
 <script>
 import { ElMessage } from 'element-plus';
 import config from '../config.js';
+import axios from 'axios';
 export default {
   name: 'AssessmentSubmission',
   data() {
@@ -242,32 +243,53 @@ export default {
     // 网络接口：提交考核内容
     async submitAssessment() {
       try {
-        // 创建FormData对象用于文件上传
-        const formData = new FormData();
-        formData.append('header', this.headerFile);
-        formData.append('source', this.sourceFile);
-        formData.append('teacher', this.selectedTeacher);
-        
-        const response = await fetch(`${config.base_url}/upload/AssessmentSubmissionUpload`, {
+        //拿到url链接
+        const urlResponse = await fetch(`${config.upload_url}/Assessment`, {
           method: 'POST',
           credentials: 'include',
-          body: formData
         });
-        
-        const data = await response.json();
-
-        if (!response.ok || !data.status) {
-          ElMessage.error(data.msg || "提交失败，请稍后重试");
-          return;
+        const urlData = await urlResponse.json();
+        if ( !urlResponse.ok || !urlData.status) {
+         throw new Error(urlData.msg || "提交失败，请稍后重试"  );
+        }
+        //根据上传链接上传
+        const urls=urlData.data.urls;
+        const headerUrl=urls[0]
+        const sourceUrl=urls[1]
+        const headerResp=axios.put(headerUrl,this.headerFile,{
+          headers:{
+            'Content-Type':this.headerFile.type
+          }
+        })
+        const sourceResp=axios.put(sourceUrl,this.headerFile,{
+          headers:{
+            'Content-Type':this.sourceFile.type
+          }
+        })
+        const [r0,r1]=await Promise.all([headerResp,sourceResp])
+        if (!r0.status || !r1.status ){
+          throw new Error('文件提交失败，请重试');
         }
 
+        //上传成功，告诉后端我上传好了
+        const confirmResp = await fetch(`${config.uploadConfirm_url}/Assessment`, {
+          method: 'POST',
+          credentials: 'include',
+          body:JSON.stringify({
+            "urls":[headerUrl,sourceUrl],
+            "teacher":this.selectedTeacher
+          }),
+        });
+        const confirmData=await confirmResp.json()
+        if(!confirmResp.ok||!confirmData.status){
+          throw new Error(confirmData.msg || '文件提交失败，请重试' );
+        }
         // 提交成功提示+重置表单
         ElMessage.success("提交成功！可在截止日期前重新提交更新内容");
         this.resetForm();
 
       } catch (error) {
-        console.error('提交考核失败:', error);
-        ElMessage.error('提交考核失败，请检查网络后重试');
+        ElMessage.error(error.message || '提交考核失败，请检查网络后重试');
       }
     },
     

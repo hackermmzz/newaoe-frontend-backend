@@ -283,6 +283,7 @@
 import { ref, onMounted, computed, watch } from 'vue';
 import config from '../config.js';
 import { ElMessage } from 'element-plus';
+import axios from 'axios';
 
 // ======================== 核心新增：分页状态管理 ========================
 const currentPage = ref(1); // 当前页码（默认第1页）
@@ -341,7 +342,6 @@ const GetHistory = async (page = 1, pageSize = config.HistoryRecordPerPage) => {
     });
 
     let resData = await response.json();
-
     if (!response.ok || !resData.status) {
       throw new Error(resData.msg || `HTTP错误: ${response.status}`);
     }
@@ -376,7 +376,7 @@ const GetHistory = async (page = 1, pageSize = config.HistoryRecordPerPage) => {
     return records;
 
   } catch (error) {
-    console.error('分页获取历史记录失败:', error);
+    ElMessage.error(error.message||'分页获取历史记录失败');
     totalRecord.value = 0;
     totalPages.value = 0;
     return [];
@@ -393,36 +393,51 @@ const getFileNameFromUrl = (url) => {
   return fileName.includes('.') ? fileName : '未命名文件';
 };
 
-const downloadFile = (fileUrl) => {
+ const downloadFile = async (fileUrl) => {
   if (!fileUrl) {
     ElMessage.warning('文件链接无效，无法下载');
     return;
   }
-  fileUrl = `${config.download_url}/${fileUrl}`;
-  try {
-    const fileName = getFileNameFromUrl(fileUrl);
-    const a = document.createElement('a');
-    a.href = fileUrl;
-    a.download = fileName;
-    a.style.display = 'none';
-    
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
 
-    let pureFileName = "";
-    for(let i = fileName.length - 1; i >= 0; i--) {
-      if(fileName[i] !== '\\' && fileName[i] !== '/') {
-        pureFileName = fileName[i] + pureFileName;
-      } else {
-        break;
-      }
+  const apiUrl = `${config.download_url}/${fileUrl}?download=true`;
+
+  try {
+    // 1. 获取真实的下载链接
+    const UrlGetResp = await fetch(apiUrl, {
+      method: 'GET',
+      credentials: 'include'
+    });
+
+    if (!UrlGetResp.ok) {
+      ElMessage.error("获取下载链接失败");
+      return;
     }
-    ElMessage.success(`开始下载：${pureFileName}`);
+
+    const data = await UrlGetResp.json();
+    if (!data?.data?.url) {
+      ElMessage.error("下载链接无效：" + (data.msg || "未知错误"));
+      return;
+    }
+
+    const realUrl = data.data.url;
+    const fileName = getFileNameFromUrl(realUrl);
+
+    // ==========================================
+    // ✅ 核心：触发浏览器自带下载 + 右上角进度条
+    // ==========================================
+    const link = document.createElement('a');
+    link.href = realUrl;
+    link.download = fileName;  // 强制下载，不预览
+    link.target = '_self';     // 不打开新窗口
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    ElMessage.success(`开始下载：${fileName}`);
 
   } catch (error) {
-    ElMessage.error(`下载失败：${error.message}`);
-    console.error('下载出错:', error);
+    console.error('下载失败：', error);
+    ElMessage.error('下载失败，请重试');
   }
 };
 
@@ -432,7 +447,6 @@ const toggleExpand = (index) => {
 
 const handleRun = async (item) => {
   try {
-    item.status = '正在运行';
     historyList.value = [...historyList.value];
     
     const resp = await fetch(`${config.code_url}/CodeReRun`, {
@@ -452,13 +466,11 @@ const handleRun = async (item) => {
     }
 
     ElMessage.success("运行成功");
-    item.status = '运行成功';
     // 重新获取当前页数据（保证状态同步）
-    await GetHistory(currentPage.value, pageSize.value);
-
+    const newRecords=await GetHistory(currentPage.value, pageSize.value);
+    historyList.value=newRecords
   } catch (error) {
     ElMessage.error(error.message || '运行出错');
-    item.status = '运行失败';
 
   } finally {
     historyList.value = [...historyList.value];
@@ -501,35 +513,59 @@ const handleFileUpload = (event, type) => {
   if (type === 'source') sourceFile.value = file;
 };
 
-const createDescFile = () => {
-  const timestamp = new Date().getTime();
-  const fileName = `description_${timestamp}.txt`;
-  const descBlob = new Blob([description.value], { type: 'text/plain' });
-  return new File([descBlob], fileName, { type: 'text/plain' });
-};
-
 // ======================== 核心修改：提交后刷新当前页 ========================
 const submitFiles = async () => {
   if (!headerFile.value || !sourceFile.value) return;
   
   isSubmitting.value = true;
   try {
-    const formData = new FormData();
-    formData.append('file', headerFile.value);
-    formData.append('file', sourceFile.value);
-    formData.append('file', createDescFile());
-    
-    const response = await fetch(`${config.upload_url}/code`, {
+    //获取三个上传链接
+    const uploadURLGet=await fetch(`${config.upload_url}/code`, {
       method: 'POST',
-      credentials: 'include',
-      body: formData,
+      credentials: 'include'
     });
-
-    const resData = await response.json();
-    if (!response.ok || !resData.status) {
+    const resData = await uploadURLGet.json();
+    if (!uploadURLGet.ok || !resData.status) {
       throw new Error(resData.msg || '文件提交失败');
     }
-
+    //获取url
+    const urls=resData.data.urls;
+    const headerURL=urls[0]
+    const sourceURL=urls[1]
+    const descURL=urls[2]
+    //上传三个文件
+    const p1=axios.put(headerURL,headerFile.value,{
+      headers:{
+        'Content-Type':headerFile.value.type
+      }
+    })
+    const p2=axios.put(sourceURL,sourceFile.value,{
+      headers:{
+        'Content-Type':sourceFile.value.type
+      }
+    })
+    const p3=axios.put(descURL,description.value,{
+      headers:{
+        'Content-Type':'text/plain'
+      }
+    })
+    const [r0,r1,r2]=await Promise.all([p1,p2,p3])
+    if (!r0.status || !r1.status || !r2.status){
+       throw new Error('文件提交失败，请重试');
+    }
+    //告诉服务器上传成功了
+    const tellServer=await fetch(`${config.uploadConfirm_url}/code`,{
+      method:'POST',
+      credentials:'include',
+      body:JSON.stringify({
+        urls:urls
+      })
+    })
+    const dt=await tellServer.json()
+    if (!tellServer.ok || !dt.status){
+       throw new Error ('文件提交失败，请重试' | dt.msg);
+    }
+    //
     ElMessage.success('文件提交成功！');
     // 提交后重新获取当前页数据（保证新记录显示）
     const newHistory = await GetHistory(currentPage.value, pageSize.value);
@@ -600,7 +636,7 @@ onMounted(async () => {
     const initialHistory = await GetHistory(1, pageSize.value);
     historyList.value = initialHistory;
   } catch (error) {
-    ElMessage.error('加载历史记录失败');
+    ElMessage.error(error.message || '加载历史记录失败 ');
     historyList.value = [];
   }
 });
