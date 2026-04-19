@@ -8,20 +8,42 @@ import time
 from config import *
 import atexit
 import psutil
-#################################################编译结果回复
+import grpc
 
+##################################################创建一个全局的channel
+channel = grpc.insecure_channel(
+    "localhost:50051",
+    # 关键参数：自动重连配置（断了自动重试）
+    options=[
+        ('grpc.max_receive_message_length', 1024 * 1024 * 100),  # 100MB
+        ('grpc.max_send_message_length', 1024 * 1024 * 100),
+        ('grpc.keepalive_time_ms', 10000),    # 每10秒发心跳
+        ('grpc.keepalive_timeout_ms', 5000),   # 心跳超时5秒
+        ('grpc.keepalive_permit_without_calls', True),  # 无请求也保活
+        ('grpc.http2.max_pings_without_data', 0),
+    ]
+)
 #################################################任务流程
 def TaskProcess():
+    #获取服务
+    server=protoc_pb2_grpc.CodeStub(channel)
     #首先获取代码
-    res0=GetOneStudentCode()
-    if res0["status"]==False:
-        if 'id' in res0:
-            Log(f"{res0['id']}/{res0['indices']}/解析错误，原因:{res0['msg']}，休眠{JudgeSleepTimeWhenGetCodeFailed}秒后重试")
+    res0=GetOneStudentCode(server)
+    if not res0["ok"]:
+        Log(res0["msg"])
         time.sleep(JudgeSleepTimeWhenGetCodeFailed)#休眠一段时间
         return
-    else:
-        Log(f"{res0['id']}/{res0['indices']}/成功获取代码!")
-        PostRunStatus(id=res0["id"],indices=res0["indices"],status=PostRunStatusEnum.Code_Status_ServerGet,data="成功获取代码").Response()
+    #告诉服务器处于编译状态
+    id=res0["id"]
+    indices=res0["indices"]
+    Log(f"{id}/{indices}/成功获取代码!")
+    PostRunStatus(server=server,data=protoc_pb2.CodeStatusUpdateRequest(
+        auth=GRPCAuth,
+        indices=indices,
+        id=id,
+        status=PostRunStatusEnum.Code_Status_Compile.value,
+        data=""
+        )).Response()
     #创建运行目录和编译目录
     rundir=f'{RunDir}/{res0["id"]}_{res0["indices"]}'
     buildDir=f"{rundir}/build"
@@ -36,12 +58,25 @@ def TaskProcess():
     logfile=f"{buildDir}/{CompileLogFileName}"
     res1=CodeCompile(buildDir,logfile)
     if res1[0]==False:
-        Log(f"{res0['id']}/{res0['indices']}/编译失败!")
-        PostRunStatus(id=res0["id"],indices=res0["indices"],status=PostRunStatusEnum.Code_Status_Compile_Error,data=res1[1]).Response()
+        Log(f"{id}/{indices}/编译失败!")
+        PostRunStatus(server=server,data=protoc_pb2.CodeStatusUpdateRequest(
+            auth=GRPCAuth,
+            indices=indices,
+            id=id,
+            status=PostRunStatusEnum.Code_Status_Compile_Error.value,
+            data=res1[1]
+            )).Response()
         return
     else:
-        Log(f"{res0['id']}/{res0['indices']}/编译成功!")
-        PostRunStatus(id=res0["id"],indices=res0["indices"],status=PostRunStatusEnum.Code_Status_Compile_Success,data="编译成功").Response()
+        Log(f"{id}/{indices}/编译成功!")
+        PostRunStatus(server=server,
+                      data=protoc_pb2.CodeStatusUpdateRequest(
+                        auth=GRPCAuth,
+                        indices=indices,
+                        id=id,
+                        status=PostRunStatusEnum.Code_Status_Compile_Success.value,
+                        data=""  
+            )).Response()
     #将可执行文件移动到运行目录
     shutil.move(f"{buildDir}/newAOE",f"{rundir}/newAOE")
     #创建运行日志文件和运行实时结果文件
@@ -51,7 +86,7 @@ def TaskProcess():
         pass
     #运行代码
     Log(f"{res0['id']}/{res0['indices']}/开始运行!")
-    CodeRun(res0["id"],res0["indices"],rundir,f"{rundir}/{RunLogFileName}",f"{rundir}/{RunResultFileName}")
+    CodeRun(res0["id"],res0["indices"],rundir,f"{rundir}/{RunLogFileName}",f"{rundir}/{RunResultFileName}",server)
     Log(f"{res0['id']}/{res0['indices']}/运行结束!")
 #################################################任务逻辑
 def Task():

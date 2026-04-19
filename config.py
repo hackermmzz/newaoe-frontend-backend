@@ -3,13 +3,19 @@ from enum import Enum
 import requests
 import time
 import threading
+import protoc_pb2
+import protoc_pb2_grpc
 #服务器网址
-base_ip="http://localhost:8080"
-base_url=f"{base_ip}/api/code"
+GRPCHost="localhost:50051"
+Cookie='''nxd_tooken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbF9iaW5kIjoiMjA0OTk4MzQ3NEBxcS5jb20iLCJleHBpcmVfdGltZSI6IjIxMjYtMDMtMThUMTM6NDQ6NDAuNDAxMzI4MjM3WiIsImlkIjoiOTIzMTA2ODQwNDI5IiwiaXAiOiIxMjcuMC4wLjEiLCJsb2dpbl90aW1lIjoiMjAyNi0wNC0xMVQxMzo0NDo0MC40MDEzMjk2MDhaIiwicmFuZG9tIjoiSXVtdms3WFdJTmZqczBCQ09yeDBJaWhvckFrMDA0MGciLCJyZWdpc3RfZGF0ZSI6IjIwMjYtMDQtMTFUMjE6MzY6MjMrMDg6MDAiLCJ3bGhfdG9feW91Ijoi5Li65LuA5LmI5LiN546p5Y6f56WePyEifQ.MBW4WjnyuSu5-wu2FNWPRxjXA5xaU4uUbx--b9JLgX0'''
+GRPCAuth='''5rGq56uL5rSq5piv5YWo5LiW55WM5pyA5biF55qE55S355Sf'''
+
+BaseHost="http://localhost:8080"
+base_url=f"{BaseHost}/api/code"
 CodeGetURL=f"{base_url}/CodeGet"
 CodeStatusPostURL=f"{base_url}/CodeRunStatusPost"
 #定义api_key
-api_key="newaoe"
+api_key="new-aoe"
 #定义请求头
 header={
     "api":api_key
@@ -17,7 +23,7 @@ header={
 #AOE项目目录
 new_aoe_folder=f"{os.getcwd()}/new-aoe"
 #AOE镜像名称
-new_aoe_docker_img="hackermmzz/newaoe-backend"
+new_aoe_docker_img="hackermmzz/qt-env"
 #编译的输出日志
 CompileLogFileName="CompileLog.txt"
 #编译是否开启多线程编译模式
@@ -54,36 +60,23 @@ def Log(msg):
 ###########################################################
 
 class PostRunStatusEnum(Enum):
-	Code_Status_Wait            = 1  #在等待队列里面
-	Code_Status_Running         = 2  #正在运行出结果
-	Code_Status_IDLE            = 3  #等待排队
-	Code_Status_Success         = 4  #运行胜利
-	Code_Status_Wait_Timeout    = 5  #等待超时/出错
-	Code_Status_ServerGet       = 6  #代码发送给了服务器
-	Code_Status_Compile         = 7  #编译中
-	Code_Status_Compile_Timeout = 8  #编译超时
-	Code_Status_Compile_Error   = 9  #编译错误
-	Code_Status_Compile_Success = 10 #编译成功
-	Code_Stastus_Fail           = 11 #游戏失败
-	Code_Status_Crash           = 12 #游戏崩溃
+    Code_Status_Wait            = 1 #在等待队列里面
+    Code_Status_Compile         = 2 #编译中
+    Code_Status_Compile_Error   = 3 #编译错误
+    Code_Status_Compile_Success = 4 #编译成功
+    Code_Status_Running         = 5 #正在运行出结果
+    Code_Status_Success         = 6 #运行胜利
+    Code_Status_Crash           = 7 #游戏崩溃
+    Code_Status_Fail            = 8 #游戏失败
 
 class PostRunStatus():
-    def __init__(self,id:str,indices:int,status:PostRunStatusEnum,data):
-        self.id=id
-        self.indices=indices
-        self.status=status
+    def __init__(self,server:protoc_pb2_grpc.CodeStub,data:protoc_pb2.CodeStatusUpdateRequest):
         self.data=data
-    
+        self.server=server
     def Response(self)->bool:
-        js={
-            "id":self.id,
-            "indices":self.indices,
-            "status":self.status.value,
-            "data":self.data
-        }
         try:
-            resp=requests.post(url=CodeStatusPostURL,headers=header,json=js)
-            if resp.status_code!=200:
+            resp=self.server.CodeStatusUpdate(self.data)
+            if resp==None:
                 Log(f"{self.id}/{self.indices}/后端异常!")
         except Exception as e:
             Log(f"{self.id}/{self.indices}/状态上传出现异常:{e}")
