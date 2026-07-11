@@ -52,6 +52,13 @@ CodeRunStatusUploadInterval=1
 LogLock=threading.Lock()
 #日志文件
 LogFile=open(f"{os.getcwd()}/JudgeLog.txt","w")
+#本地测试
+DebugLocal=True
+#是否单线程测试
+IsSingleThreadTest=False
+#测试得轮数
+Epochs=3
+
 ###########################################################
 def Log(msg):
     with LogLock:
@@ -74,6 +81,8 @@ class PostRunStatus():
         self.data=data
         self.server=server
     def Response(self)->bool:
+        if DebugLocal:
+            return
         try:
             resp=self.server.CodeStatusUpdate(self.data)
             if resp==None:
