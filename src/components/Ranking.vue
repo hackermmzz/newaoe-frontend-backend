@@ -307,19 +307,6 @@ export default {
         );
       }
 
-      /*
-       * 注意：
-       *
-       * 你原来的代码这里检查的是：
-       *
-       * item.success
-       *
-       * 但后端实际返回的是：
-       *
-       * item.win
-       *
-       * 所以必须改成 win。
-       */
       if (typeof item.win !== 'boolean') {
         throw new Error(
           '排行榜记录 win 格式不正确'
@@ -414,13 +401,10 @@ export default {
           (page - 1) * pageSize;
 
         const end =
-          beg + pageSize;
+          beg + pageSize - 1;
 
         const requestUrl =
-          new URL(
-            config.ranking_url +
-            '/fetchrank'
-          );
+          new URL(config.ranking_url);
 
         requestUrl.searchParams.set(
           'range',
@@ -459,8 +443,9 @@ export default {
          *   "data": [...]
          * }
          */
+        // fetch 的 JSON 可能直接是数组，也兼容 { data: [...] } 包装形式。
         const nextData =
-          result?.data;
+          Array.isArray(result) ? result : result?.data;
 
         console.log(
           '排行榜接口返回：',
@@ -499,16 +484,8 @@ export default {
         currentPage.value =
           page;
 
-        /*
-         * 如果这一页不足 pageSize，
-         * 基本可以确定没有下一页了。
-         *
-         * 例如 pageSize = 10，
-         * 当前只返回 6 条，
-         * 下一页肯定为空。
-         */
-        hasNextPage.value =
-          nextData.length === pageSize;
+        // 是否存在下一页由下一次请求的空数组决定，不能根据本页条数推断。
+        hasNextPage.value = true;
 
         /*
          * 翻页后关闭之前展开的 msg。
