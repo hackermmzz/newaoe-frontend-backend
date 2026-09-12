@@ -60,6 +60,12 @@ func AddCodeFile(task dao.CodeRunInfo) bool {
 
 // 判断是否达到提交/运行限制
 func LimitCodeUploadOrRun(id string) bool {
+	//超级用户不管
+	for _, superuser := range config.Conf.Other.SuperUser {
+		if superuser == id {
+			return false
+		}
+	}
 	//
 	key := fmt.Sprintf("CommonUploadOrRunTimes_%v", id)
 	time, exist := dao.RedisGet(context.Background(), key)
