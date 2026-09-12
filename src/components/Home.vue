@@ -68,6 +68,11 @@ export default {
           path: '/home/assessment'
         },
         { 
+          name: '排行榜',
+          description: '查看对战胜负、分数及运行记录排名',
+          path: '/home/ranking'
+        },
+        {
           name: '系统设置', 
           description: '配置系统参数、权限及模块开关',
           path: '/home/settings'
