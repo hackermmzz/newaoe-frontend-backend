@@ -15,7 +15,7 @@ import Util
 channel=None
 if not DebugLocal:
     channel = grpc.insecure_channel(
-        "localhost:50051",
+        GRPCHost,
         # 关键参数：自动重连配置（断了自动重试）
         options=[
             ('grpc.max_receive_message_length', 1024 * 1024 * 100),  # 100MB
@@ -135,24 +135,62 @@ def Task():
             print(f"出现异常:{e}")
 ##################################################静态编译
 def PreCompile():
-    #
     docker_cmd = [
         "docker", "run",
-        "--rm", # 运行完自动删除容器
-        "-v", f"{new_aoe_folder}:/app",  # 挂载当前项目目录到容器 /app
-        "-w", "/app",  # 工作目录
+        "--rm",
+        "-v", f"{new_aoe_folder}:/app",
+        "-w", "/app",
         new_aoe_docker_img,
-        # 编译命令（把所有输出打出来）
-        "bash","-c",
-        ''' export PATH+=":/opt/qt5.9.2/bin/" && qmake && make -j$(nproc) && rm UsrAI.o newAOE '''
+
+        "bash", "-c",
+        r'''
+        # 给所有 .h / .cpp 文件建立“首字母大小写相反”的软链接
+        find . -type f \( -name "*.h" -o -name "*.cpp" \) -print0 |
+        while IFS= read -r -d '' file; do
+            dir=$(dirname "$file")
+            name=$(basename "$file")
+
+            first="${name:0:1}"
+            rest="${name:1}"
+
+            # 首字母小写 -> 大写
+            if [[ "$first" =~ [a-z] ]]; then
+                new_first=$(echo "$first" | tr '[:lower:]' '[:upper:]')
+
+            # 首字母大写 -> 小写
+            elif [[ "$first" =~ [A-Z] ]]; then
+                new_first=$(echo "$first" | tr '[:upper:]' '[:lower:]')
+
+            else
+                continue
+            fi
+
+            link_name="${new_first}${rest}"
+            link_path="$dir/$link_name"
+
+            # 如果目标名字不存在，才创建软链接
+            if [ ! -e "$link_path" ] && [ ! -L "$link_path" ]; then
+                echo "创建软链接: $link_path -> $name"
+                ln -s "$name" "$link_path"
+            fi
+        done
+
+        export PATH="$PATH:/opt/qt5.9.2/bin/"
+
+        qmake &&
+        make -j$(nproc) &&
+        rm -f UsrAI.o newAOE
+        '''
     ]
+
     result = subprocess.run(
-            docker_cmd,
-            stdout=subprocess.PIPE,     # 输出捕获到变量
-            stderr=LogFile,                   # 报错也写文件
-            text=True,
-            check=False
-        )
+        docker_cmd,
+        stdout=subprocess.PIPE,
+        stderr=LogFile,
+        text=True,
+        check=False
+    )
+
     if result.returncode != 0:
         Log(f"预编译失败，错误信息:{result.stdout}")
         exit(1)

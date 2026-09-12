@@ -6,11 +6,12 @@ import threading
 import protoc_pb2
 import protoc_pb2_grpc
 #服务器网址
-GRPCHost="localhost:50051"
+BaseIP="114.66.62.156"
+GRPCHost=f"{BaseIP}:50051"
 Cookie='''nxd_tooken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbF9iaW5kIjoiMjA0OTk4MzQ3NEBxcS5jb20iLCJleHBpcmVfdGltZSI6IjIxMjYtMDMtMThUMTM6NDQ6NDAuNDAxMzI4MjM3WiIsImlkIjoiOTIzMTA2ODQwNDI5IiwiaXAiOiIxMjcuMC4wLjEiLCJsb2dpbl90aW1lIjoiMjAyNi0wNC0xMVQxMzo0NDo0MC40MDEzMjk2MDhaIiwicmFuZG9tIjoiSXVtdms3WFdJTmZqczBCQ09yeDBJaWhvckFrMDA0MGciLCJyZWdpc3RfZGF0ZSI6IjIwMjYtMDQtMTFUMjE6MzY6MjMrMDg6MDAiLCJ3bGhfdG9feW91Ijoi5Li65LuA5LmI5LiN546p5Y6f56WePyEifQ.MBW4WjnyuSu5-wu2FNWPRxjXA5xaU4uUbx--b9JLgX0'''
 GRPCAuth='''5rGq56uL5rSq5piv5YWo5LiW55WM5pyA5biF55qE55S355Sf'''
 
-BaseHost="http://localhost:8080"
+BaseHost=f"http://{BaseIP}:8080"
 base_url=f"{BaseHost}/api/code"
 CodeGetURL=f"{base_url}/CodeGet"
 CodeStatusPostURL=f"{base_url}/CodeRunStatusPost"
@@ -53,7 +54,7 @@ LogLock=threading.Lock()
 #日志文件
 LogFile=open(f"{os.getcwd()}/JudgeLog.txt","w")
 #本地测试
-DebugLocal=True
+DebugLocal=False
 #是否单线程测试
 IsSingleThreadTest=False
 #测试得轮数
