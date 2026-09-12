@@ -274,7 +274,7 @@ func updateRank(session *xorm.Session, dt []dao.CodeRunInfo) {
 		}
 		finaldata, ok := datajs["data"]
 		if !ok {
-			util.Debug("The data in datajs is an error!", err.Error(), status)
+			util.Debug("The data in datajs is an error!", err, status)
 			continue
 		}
 		finaldata = util.GetBracesContent(finaldata.(string))
