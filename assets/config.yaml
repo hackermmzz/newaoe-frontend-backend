@@ -26,8 +26,8 @@ grpc:
 email:
   senderEmail: "2049983474@qq.com"  # 发件人邮箱账号
   senderAuthCode: "ygkhcbiizdvzcbce" # 邮箱授权码（非登录密码）
-  emailServe: "smtp.qq.com"         # 邮箱SMTP服务器地址
-  emailServePort: 465               # 邮箱服务器SSL端口
+  emailServe: "postfix"         # 邮箱SMTP服务器地址
+  emailServePort: 587               # 邮箱服务器SSL端口
   emailMQTopic: "EmailSend"        # 邮箱发送topic
   emailMQGroupCount: 3             # 邮箱发送消费者组数量
 # 服务器基础配置

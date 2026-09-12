@@ -2,3 +2,5 @@
 minio/*
 # 忽略 mysql 目录下的所有内容，但保留目录
 mysql/*
+#忽略编译结果
+newaoe
