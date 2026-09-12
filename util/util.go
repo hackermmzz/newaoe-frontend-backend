@@ -262,3 +262,28 @@ func SplitBucketAndFilePath(bucket string, path string) string {
 	}
 	return parts[1]
 }
+
+// 获取字符串中第一个 { 到对应 } 之间的内容(包括{})
+func GetBracesContent(s string) string {
+	stack := make([]int, 0)
+	start := -1
+	for i, ch := range s {
+		if ch == '{' {
+			if len(stack) == 0 {
+				start = i
+			}
+			stack = append(stack, i)
+		} else if ch == '}' {
+			if len(stack) == 0 {
+				continue
+			}
+			// 出栈
+			stack = stack[:len(stack)-1]
+			// 栈空，说明最外层 {} 已经完整配对
+			if len(stack) == 0 && start != -1 {
+				return s[start : i+1]
+			}
+		}
+	}
+	return ""
+}

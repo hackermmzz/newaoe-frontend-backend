@@ -249,6 +249,7 @@ func updateRank(session *xorm.Session, dt []dao.CodeRunInfo) {
 	var rankinfo dao.RankInfo
 	for i := range dt {
 		ind := dt[i].Indices
+		status := dt[i].Status
 		key := fmt.Sprintf("CodeRunInfoForRank:%v", ind)
 		//获取当前状态
 		data, exist := dao.RedisGet(context.Background(), key)
@@ -265,10 +266,22 @@ func updateRank(session *xorm.Session, dt []dao.CodeRunInfo) {
 			continue
 		}
 		//序列化数据
-		var msgInfo CodeRunMsg
-		err = json.Unmarshal([]byte(info.Status), &msgInfo)
+		datajs := make(map[string]interface{})
+		err = json.Unmarshal([]byte(status), &datajs)
 		if err != nil {
-			util.Debug("updateRank: json.Unmarshal failed:" + err.Error())
+			util.Debug("updateRank: json.Unmarshal datajs failed:" + err.Error())
+			continue
+		}
+		finaldata, ok := datajs["data"]
+		if !ok {
+			util.Debug("The data in datajs is an error!", err.Error(), status)
+			continue
+		}
+		finaldata = util.GetBracesContent(finaldata.(string))
+		var msgInfo CodeRunMsg
+		err = json.Unmarshal([]byte(finaldata.(string)), &msgInfo)
+		if err != nil || finaldata == "" {
+			util.Debug("updateRank: json.Unmarshal failed:"+err.Error(), status)
 			continue
 		}
 		//
@@ -294,7 +307,7 @@ func updateRank(session *xorm.Session, dt []dao.CodeRunInfo) {
 		finalRankInfo = append(finalRankInfo, value)
 	}
 	//提交更新
-	if !dao.RankBatchUpdateOrInsertIfBetter(session, RankInfoArr) {
+	if !dao.RankBatchUpdateOrInsertIfBetter(session, finalRankInfo) {
 		util.Debug("updateRank fail!")
 	}
 }
