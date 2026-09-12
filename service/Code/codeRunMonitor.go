@@ -3,6 +3,7 @@ package Code
 import (
 	"context"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"newaoe/config"
 	"newaoe/dao"
@@ -14,6 +15,7 @@ import (
 	"github.com/apache/rocketmq-client-go/v2"
 	"github.com/apache/rocketmq-client-go/v2/consumer"
 	"github.com/apache/rocketmq-client-go/v2/primitive"
+	"xorm.io/xorm"
 )
 
 var (
@@ -218,10 +220,68 @@ func batchUpdateCodeRunStatus(indices []int) {
 		util.Debug("batchUpdateCodeRunStatus: drop temp table failed:" + err.Error())
 		return
 	}
+	//更新排行榜
+	updateRank(session, dataArr)
 	//提交事务
 	err = session.Commit()
 	if err != nil {
 		util.Debug("batchUpdateCodeRunStatus: commit transaction failed:" + err.Error())
 		return
+	}
+
+}
+
+func updateRank(session *xorm.Session, dt []dao.CodeRunInfo) {
+	//
+	type CodeRunMsg struct {
+		Score int  `json:"score"`
+		Frame int  `json:"frame"`
+		Win   bool `json:"win"`
+	}
+	//
+	if len(dt) == 0 {
+		return
+	}
+	//
+	RankInfoArr := make([]dao.RankInfo, 0)
+	var err error
+	var info dao.CodeRunInfo
+	var rankinfo dao.RankInfo
+	for i := range dt {
+		ind := dt[i].Indices
+		key := fmt.Sprintf("CodeRunInfoForRank:%v", ind)
+		//获取当前状态
+		data, exist := dao.RedisGet(context.Background(), key)
+		if !exist {
+			//从数据库读取
+			info = *dao.CodeRunGetByIndices(ind)
+			//写入redis
+			data, err = json.Marshal(info)
+			dao.RedisSet(context.Background(), key, string(data), time.Duration(30)*time.Minute)
+		}
+		err = json.Unmarshal(data, &info)
+		if err != nil {
+			util.Debug("updateRank: json.Unmarshal failed:" + err.Error())
+			continue
+		}
+		//序列化数据
+		var msgInfo CodeRunMsg
+		err = json.Unmarshal([]byte(info.Status), &msgInfo)
+		if err != nil {
+			util.Debug("updateRank: json.Unmarshal failed:" + err.Error())
+			continue
+		}
+		//
+		rankinfo.ID = info.ID
+		rankinfo.SubmitTime = info.SubmitTime
+		rankinfo.Msg = info.Status
+		rankinfo.Score = msgInfo.Score
+		rankinfo.Frame = msgInfo.Frame
+		rankinfo.Win = msgInfo.Win
+		RankInfoArr = append(RankInfoArr, rankinfo)
+	}
+	//提交更新
+	if !dao.RankBatchUpdateOrInsert(session, RankInfoArr) {
+		util.Debug("updateRank fail!")
 	}
 }

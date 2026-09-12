@@ -6,6 +6,7 @@ import (
 	"newaoe/service/Code"
 	"newaoe/service/Download"
 	"newaoe/service/Home"
+	rank "newaoe/service/Rank"
 	"newaoe/service/Server/Filter"
 	"newaoe/service/Upload"
 	"newaoe/service/User"
@@ -26,6 +27,12 @@ func routeConfig() {
 		home_group.Use(Filter.FilterCookieCheck())
 		{
 			routeConfig_Home(home_group)
+		}
+		//排行榜路由
+		rank_group := api_gorup.Group("/rank")
+		rank_group.Use(Filter.FilterCookieCheck())
+		{
+			routeConfig_Rank(rank_group)
 		}
 		//下载路由组
 		download_group := api_gorup.Group("/download")
@@ -52,6 +59,11 @@ func routeConfig() {
 		}
 	}
 }
+
+func routeConfig_Rank(rank_group *gin.RouterGroup) {
+	rank_group.GET("/fetchrank", rank.FetchRank)
+}
+
 func routeConfig_UploadConfirm(uploadconFirm_group *gin.RouterGroup) {
 	uploadconFirm_group.POST("/:category", Upload.FileUploadConfirm) //告诉后端上传好了
 }
