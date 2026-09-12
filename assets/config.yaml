@@ -1,0 +1,98 @@
+# ==============================================
+# 系统全局配置文件 config.yaml
+# 所有字段严格对应 Go Config 结构体
+# ==============================================
+# 数据库配置
+mysql:
+  username: "root"                  # 数据库登录用户名
+  password: "newaoe"           # 数据库登录密码
+  host: "mysql:3306"               # 数据库连接地址
+  dbname: "newaoe"                  # 要连接的数据库名称
+  dbMaxIdleConns: 10                 # 数据库连接池最大空闲连接数
+  dbMaxOpenConns: 50                 # 数据库连接池最大打开连接数
+  dbConnMaxLifetime: 1800           # 数据库连接最大生命周期（秒）
+  dbConnMaxIdleTime: 600            # 数据库连接最大空闲时间（秒）
+# redis配置
+redis:
+  password: "newaoe"          #密码
+  host: "114.66.62.156:6379"  #"redis:6379"         #地址
+# rocketMQ配置
+rocketMQ:
+  host: "114.66.62.156:9876"#"114.66.62.156:9876"
+#grpc配置
+grpc:
+  port: 50051 #端口
+# 邮箱服务配置
+email:
+  senderEmail: "2049983474@qq.com"  # 发件人邮箱账号
+  senderAuthCode: "ygkhcbiizdvzcbce" # 邮箱授权码（非登录密码）
+  emailServe: "smtp.qq.com"         # 邮箱SMTP服务器地址
+  emailServePort: 465               # 邮箱服务器SSL端口
+  emailMQTopic: "EmailSend"        # 邮箱发送topic
+  emailMQGroupCount: 3             # 邮箱发送消费者组数量
+# 服务器基础配置
+server:
+  serveMode: "debug"                # 服务器运行模式 debug/release
+  serverDomain: "http://localhost:8080/" # 服务器访问域名
+  serverListenPort: 8080 #80              # 服务监听端口
+  maxFilsSizeUserUpload: 20971520     # 用户上传文件最大限制 20MB = 20*1024*1024
+  jwtSecretKeyFile: "assets/jwt_secret.key" # 存储JWT密钥的文件路径
+  trustedProxy:
+    - "frontend"                      #受信任的可以访问后端的地址
+
+# 代码运行核心配置
+code:
+  codeSubmitInterval: 180           # 代码提交间隔时间 单位：秒
+  codeRunQueueMaxSize: 800         #代码待运行队列最大大小
+  codeRunStatusTopic: "CodeRun"    #代码运行状态topic
+  codeRunStatusGroupCount: 3      #消费者组数量
+  codeRunStatusUpdateQueueMaxSize: 800    #代码运行状态更新队列最大大小
+  codeRunStatusUpdateQueueSizeThreshold: 500    #队列触发更新大小阈值
+  codeRunStatusUpdateInterval: 5    #队列更新间隔 单位：秒
+  codeWaitForRunRedisQueueTopic: "CodeWaitForRun"    #代码待运行topic
+# 注册验证码配置
+registverifycode:
+  expireTime: 300                   # 验证码过期时间 单位：秒（5分钟）
+  resendTime: 60                    # 验证码重发间隔 单位：秒（1分钟）
+  length: 5                         # 验证码长度
+
+# 忘记密码验证码配置
+passwordforgetverifycode:
+  expireTime: 300                   # 验证码过期时间 单位：秒（5分钟）
+  resendTime: 60                    # 验证码重发间隔 单位：秒（1分钟）
+  length: 5                         # 验证码长度
+
+# 用户相关配置
+user:
+  userAvatarFolder: "avatar"        # 用户头像存储目录(相对于privateBaseFolder)
+  userCodeFolder: "code"            # 用户代码存储目录(相对与privateBaseFolder)
+
+# Cookie 配置
+cookie:
+  expireTime: 18000                 # Cookie过期时间 单位：秒（5小时）
+  tokenName: "nxd_tooken"           # Token名称（用于定位SessionID）
+
+# OSS配置
+oss:
+  host: "114.66.62.156:9000"        # OSS服务地址
+  accessKey: "newaoe"              # OSS访问密钥
+  secretKey: "newaoe-newaoe"              # OSS秘密密钥
+  bucketName: "newaoe"              # OSS桶名称
+  PublicBaseFolder: "public"        # 公共数据存储目录
+  PrivateBaseFolder: "private"      # 私有用户数据目录
+  maxRetry: 3                       #最大尝试次数
+# CDN配置
+cdn:
+  host: "114.66.62.156:9090"    #CDN服务真实地址
+#杂项
+other:
+  assessmentCodeUploadCategory: "Assessment"  #考核代码上传的分类名称
+  assessmentCodeFileNameMask: "Assessment"   #用于区分普通代码文件和考核代码文件的mask
+  avatarUploadUrlExpireTime: 180        #头像上传链接过期时间
+  codeCommonUploadUrlExpireTime:  180     #普通代码文件上传链接过期时间
+  assessmentCodeUploadUrlExpireTime:  180   #考核代码文件上传链接过期时间
+  privateFileDownloadUrlExpireTime: 600   #私有文件下载链接过期时间
+  publicFileDownloadUrlExpireTime: 600  #公有文件下载链接过期时间
+  superUser: ["923106840429","BJS9006210"]  #超级用户，通常为管理员（wlh和娄震）
+  superUserPassword: "newaoe"  #超级用户密码
+  superUserEmail: "2049983474@qq.com"  #超级用户邮箱

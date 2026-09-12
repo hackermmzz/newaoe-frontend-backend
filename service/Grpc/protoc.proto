@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+//import "google/protobuf/any.proto";
+option go_package = "./grpc_api";
+
+//////////////////////////////////////////////////////// 定义服务
+/////Judge通信
+service Code {
+    //获取一份待批改的代码
+    rpc GetCode (CodeRequest) returns (CodeReply);
+    rpc CodeStatusUpdate (CodeStatusUpdateRequest) returns (Empty);
+}
+
+///////////////////////////////////////////////////////// 请求消息
+message CodeRequest {
+  string auth = 1 ; //需要鉴权
+}
+
+message CodeStatusUpdateRequest{
+    string auth =1;
+    int64 indices =2;   //代码编号
+    string id =3;       //学号
+    int32 status =4;    //当前代码的处理状态(比如编译成功、编译失败、运行成功....)
+    string data=5; //返回的数据
+}
+////////////////////////////////////////////////////////// 响应消息
+message Empty{
+
+}
+
+message CodeReply{
+    string headerUrl =1;   //头文件下载路径
+    string sourceUrl =2;   //源文件下载路径
+    string id =3;           //学生id
+    int64 indices =4;      //代码编号
+    bool ok =5;             //是否成功获取到源码
+    string msg =6;          //消息
+}

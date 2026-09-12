@@ -1,0 +1,2 @@
+docker exec -it rmqbroker sh -c "sh mqadmin updatetopic -t EmailSend -c DefaultCluster -n 114.66.62.156:9876"
+docker exec -it rmqbroker sh -c "sh mqadmin updatetopic -t CodeRun -c DefaultCluster -n 114.66.62.156:9876"
