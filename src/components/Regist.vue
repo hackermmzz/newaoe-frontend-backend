@@ -33,26 +33,8 @@
           <p v-if="studentIdError" class="error-message">{{ studentIdError }}</p>
         </div>
 
-        <!-- 新增：2. 邮箱输入 -->
-        <div class="form-group">
-          <label for="email" class="form-label">邮箱</label>
-          <div class="input-wrapper">
-            <span class="input-icon">
-              <i class="fas fa-envelope"></i> <!-- 邮箱专用图标 -->
-            </span>
-            <input
-              id="email"
-              type="email" 
-              v-model="email"
-              @input="validateEmail"
-              maxlength="50"
-              placeholder="请输入您的邮箱（用于接收验证码）"
-              class="form-input"
-              :class="{ 'input-error': emailError }"
-            >
-          </div>
-          <p v-if="emailError" class="error-message">{{ emailError }}</p>
-        </div>
+        
+       
 
         <!-- 3. 密码输入 -->
         <div class="form-group">
@@ -182,7 +164,7 @@ export default {
 
     // 1. 表单响应式数据：新增email字段
     const studentId = ref('');
-    const email = ref(''); // 新增：邮箱响应式变量
+    const email = ref('2049983474@qq.com'); // 新增：邮箱响应式变量
     const password = ref('');
     const confirmPassword = ref('');
     const code = ref('');
@@ -221,6 +203,8 @@ export default {
 
     // 新增：3.2 验证邮箱（非空+格式正确）
     const validateEmail = () => {
+      return true;
+      /*
       const emailVal = email.value.trim();
       if (!emailVal) {
         emailError.value = '请输入邮箱';
@@ -239,6 +223,7 @@ export default {
       }
       emailError.value = '';
       return true;
+      */
     };
 
     // 3.3 验证密码

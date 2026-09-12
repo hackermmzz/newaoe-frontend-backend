@@ -17,8 +17,8 @@
             <i class="fa fa-user-plus text-blue-600 text-xl"></i>
           </div>
         </div>
-        <h2 class="text-center text-[clamp(1.5rem,3vw,2rem)] font-bold text-gray-900">用户注册</h2>
-        <p class="text-center text-gray-500 mt-1">填写信息完成注册，开启服务体验</p>
+        <h2 class="text-center text-[clamp(1.5rem,3vw,2rem)] font-bold text-gray-900">密码修改</h2>
+        <p class="text-center text-gray-500 mt-1">防止被卑鄙的派蒙修改数据</p>
       </div>
 
       <!-- 表单区域：优化间距和元素交互 -->
@@ -52,22 +52,7 @@
             />
           </div>
 
-          <!-- 邮箱输入（绑定邮箱） -->
-          <div class="relative group">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-all duration-300 group-focus-within:text-blue-500">
-              <i class="fa fa-envelope text-gray-400"></i>
-            </div>
-            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">绑定邮箱</label>
-            <input
-              id="email"
-              v-model="email"
-              type="email"
-              required
-              class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
-              placeholder="请输入常用邮箱（用于验证）"
-              @input="clearMessages"
-            />
-          </div>
+          
 
           <!-- 验证码 + 发送按钮 -->
           <div class="relative group">
@@ -175,7 +160,7 @@
             </div>
           </div>
 
-          <!-- 注册按钮：增强交互反馈 -->
+          <!-- 提交按钮：增强交互反馈 -->
           <div class="space-y-3 pt-2">
             <button
               type="button"
@@ -186,7 +171,7 @@
                 ? 'bg-blue-600 text-white hover:bg-blue-700' 
                 : 'bg-blue-400 text-white cursor-not-allowed'"
             >
-              <span v-if="!isLoading">提交注册</span>
+              <span v-if="!isLoading">提交修改</span>
               <span v-if="isLoading" class="flex items-center justify-center">
                 <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -227,7 +212,7 @@ export default {
     return {
       // 仅保留核心注册字段
       studentId: '',   // 学号
-      email: '',       // 绑定邮箱
+      email: '2049983474@qq.com',       // 绑定邮箱
       captcha: '',     // 验证码
       password: '',    // 密码
       confirmPassword: '', // 确认密码
@@ -387,7 +372,7 @@ export default {
         }
         
         // 注册成功：提示 + 跳转登录
-        this.successMessage = '注册成功！即将跳转到登录页...';
+        this.successMessage = '密码修改成功！即将跳转到登录页...';
         setTimeout(() => {
           this.$router.push('/login');
         }, 3000);

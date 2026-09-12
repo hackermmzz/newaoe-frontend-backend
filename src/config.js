@@ -5,7 +5,7 @@ let download_url="your download domain here";
 let upload_url="your upload domain here"
 let code_url="your admin domain here"
 let uploadConfirm_url="your uploadConfirm_url domain here"
-const isTestMode =true;
+const isTestMode =false;
 const HistoryRecordPerPage=10;
 // 如果不是测试模式，则使用生产环境的base_url
 if (isTestMode) {
