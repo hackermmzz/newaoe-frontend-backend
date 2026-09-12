@@ -20,7 +20,7 @@ func FilterCodeRun() gin.HandlerFunc {
 		}
 		//
 		id := userInfo["id"]
-		ttl := 0 // data.CodeRunRecordTTL(id)
+		ttl := data.CodeRunRecordTTL(id)
 		if ttl > 0 {
 			util.ResponseNAK_MSG(ctx, fmt.Sprintf("%v同学,你提交的太快了!请在%d秒后再提交!", id, ttl), "")
 			ctx.Abort()
