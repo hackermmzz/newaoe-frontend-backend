@@ -17,6 +17,11 @@ func CodeReRun(ctx *gin.Context) {
 	}
 	//
 	id := userInfo["id"]
+	//判断是否达到限制频率
+	if LimitCodeUploadOrRun(id) {
+		util.ResponseNAK_MSG(ctx, "已经达到当天提交的限制", nil)
+		return
+	}
 	//获取对应的文件
 	type MSG struct {
 		Source      string `json:"source"`
