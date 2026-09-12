@@ -287,3 +287,16 @@ func GetBracesContent(s string) string {
 	}
 	return ""
 }
+
+func GetLeftTimeForOneDay() time.Duration {
+	now := time.Now()
+	// 明天 00:00:00
+	tomorrow := time.Date(
+		now.Year(),
+		now.Month(),
+		now.Day()+1,
+		0, 0, 0, 0,
+		now.Location(),
+	)
+	return tomorrow.Sub(now)
+}

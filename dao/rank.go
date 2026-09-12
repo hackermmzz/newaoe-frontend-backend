@@ -9,7 +9,7 @@ import (
 
 type RankInfo struct {
 	ID         string    `json:"id" xorm:"id pk"`              //用户学号
-	Win        bool      `json:"win" xorm:"win"`               //胜利或者失败
+	Win        bool      `json:"win" xorm:"win"`               //胜利或者失败(娄老师说只能是成功的才能进榜)
 	SubmitTime time.Time `json:"submittime" xorm:"submittime"` //提交日期
 	Score      int       `json:"score" xorm:"score"`           //分数
 	Frame      int       `json:"frame" xorm:"frame"`           //运行时间
@@ -25,7 +25,7 @@ func RankGetByRange(session *xorm.Session, beg int, end int) []RankInfo {
 	if beg < 0 || end <= beg {
 		return ranks
 	}
-	err := session.Desc("win").Desc("score").Asc("frame").Asc("id").Limit(end-beg, beg).Find(&ranks)
+	err := session.Desc("win").Asc("frame").Desc("score").Asc("id").Limit(end-beg, beg).Find(&ranks)
 	if err != nil {
 		util.Debug("RankGetByRange:", err)
 		return nil
@@ -188,13 +188,13 @@ func RankIsBetter(newRank *RankInfo, oldRank *RankInfo) bool {
 	if newRank.Win != oldRank.Win {
 		return newRank.Win
 	}
-	// win 相同，score 越大越好
-	if newRank.Score != oldRank.Score {
-		return newRank.Score > oldRank.Score
-	}
-	// score 相同，frame 越小越好
+	// win 相同，frame 越小越好
 	if newRank.Frame != oldRank.Frame {
 		return newRank.Frame < oldRank.Frame
+	}
+	// frame相同，score 越大越好
+	if newRank.Score != oldRank.Score {
+		return newRank.Score > oldRank.Score
 	}
 	// 完全一样，不更新
 	return false

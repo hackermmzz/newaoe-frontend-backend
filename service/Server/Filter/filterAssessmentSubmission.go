@@ -23,7 +23,7 @@ func FilterAssessmentSubmission() gin.HandlerFunc {
 		//判断是否到达可以提交评测的时间(默认不加以限制)
 
 		//判断是否已经提交过评测了
-		if dao.CodeAssessmentAddGetByID(id) != nil {
+		if dao.CodeAssessmentGetByID(id) != nil {
 			util.ResponseNAK_MSG(ctx, "你已经提交过评测了哦!", "")
 			ctx.Abort()
 			return

@@ -298,6 +298,11 @@ func updateRank(session *xorm.Session, dt []dao.CodeRunInfo) {
 	finalRankInfo := make([]dao.RankInfo, 0)
 	for i := range RankInfoArr {
 		info := RankInfoArr[i]
+		//失败不记录到榜单
+		if !info.Win {
+			continue
+		}
+		//
 		old, ok := distinctID[info.ID]
 		if !ok || dao.RankIsBetter(&info, &old) {
 			distinctID[info.ID] = info

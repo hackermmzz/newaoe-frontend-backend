@@ -32,7 +32,7 @@ func CodeAssessmentAdd(session *xorm.Session, data CodeAssessmentInfo) bool {
 	return true
 }
 
-func CodeAssessmentAddGetByID(id string) []CodeAssessmentInfo {
+func CodeAssessmentGetByID(id string) []CodeAssessmentInfo {
 	var ret []CodeAssessmentInfo
 	err := DB.Where("id = ?", id).Find(&ret)
 	if err != nil {

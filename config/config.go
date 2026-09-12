@@ -78,6 +78,8 @@ type CodeConfig struct {
 	CodeRunStatusUpdateQueueSizeThreshold int    `yaml:"codeRunStatusUpdateQueueSizeThreshold"` // 队列触发更新大小阈值
 	CodeRunStatusUpdateInterval           int    `yaml:"codeRunStatusUpdateInterval"`           // 队列更新间隔 单位：秒
 	CodeWaitForRunRedisQueueTopic         string `yaml:"codeWaitForRunRedisQueueTopic"`         //代码待运行topic
+	CodeSubmitTimesPerDay                 int    `yaml:"codeSubmitTimesPerDay"`                 //一天可以提交的次数
+	CodeAssessmentTimes                   int    `yaml:"codeAssessmentTimes"`                   //考核提交可以提交的次数
 }
 
 type RegistVerifyCodeConfig struct {
