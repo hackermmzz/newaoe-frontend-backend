@@ -280,8 +280,21 @@ func updateRank(session *xorm.Session, dt []dao.CodeRunInfo) {
 		rankinfo.Win = msgInfo.Win
 		RankInfoArr = append(RankInfoArr, rankinfo)
 	}
+	//去重
+	distinctID := make(map[string]dao.RankInfo)
+	finalRankInfo := make([]dao.RankInfo, 0)
+	for i := range RankInfoArr {
+		info := RankInfoArr[i]
+		old, ok := distinctID[info.ID]
+		if !ok || dao.RankIsBetter(&info, &old) {
+			distinctID[info.ID] = info
+		}
+	}
+	for _, value := range distinctID {
+		finalRankInfo = append(finalRankInfo, value)
+	}
 	//提交更新
-	if !dao.RankBatchUpdateOrInsert(session, RankInfoArr) {
+	if !dao.RankBatchUpdateOrInsertIfBetter(session, RankInfoArr) {
 		util.Debug("updateRank fail!")
 	}
 }

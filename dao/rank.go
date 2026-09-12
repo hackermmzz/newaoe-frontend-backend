@@ -104,6 +104,76 @@ func RankBatchUpdateOrInsert(session *xorm.Session, ranks []RankInfo) bool {
 	return true
 }
 
+func RankBatchUpdateOrInsertIfBetter(session *xorm.Session, ranks []RankInfo) bool {
+	if len(ranks) == 0 {
+		return true
+	}
+	// 1. 收集 ID
+	ids := make([]string, 0, len(ranks))
+
+	for _, rank := range ranks {
+		ids = append(ids, rank.ID)
+	}
+
+	// 2. 一次性查询数据库中已有的数据
+	var existRanks []RankInfo
+
+	err := session.In("id", ids).Find(&existRanks)
+	if err != nil {
+		util.Debug("RankBatchUpdateOrInsertIfBetter Find:", err)
+		return false
+	}
+
+	// 3. ID -> 旧 Rank
+	existMap := make(map[string]RankInfo, len(existRanks))
+
+	for _, rank := range existRanks {
+		existMap[rank.ID] = rank
+	}
+
+	insertRanks := make([]RankInfo, 0)
+	updateRanks := make([]RankInfo, 0)
+
+	// 4. 比较
+	for _, newRank := range ranks {
+		oldRank, ok := existMap[newRank.ID]
+
+		// 数据库不存在，直接插入
+		if !ok {
+			insertRanks = append(insertRanks, newRank)
+			continue
+		}
+
+		// 数据库存在，只有新成绩更好才更新
+		if RankIsBetter(&newRank, &oldRank) {
+			updateRanks = append(updateRanks, newRank)
+		}
+	}
+
+	// 5. 批量插入
+	if len(insertRanks) > 0 {
+		_, err = session.Insert(&insertRanks)
+
+		if err != nil {
+			util.Debug("RankBatchUpdateOrInsertIfBetter Insert:", err)
+			return false
+		}
+	}
+
+	// 6. 更新更好的成绩
+	for i := range updateRanks {
+		rank := &updateRanks[i]
+
+		_, err = session.ID(rank.ID).AllCols().Update(rank)
+
+		if err != nil {
+			util.Debug("RankBatchUpdateOrInsertIfBetter Update:", err)
+			return false
+		}
+	}
+	return true
+}
+
 func RankGetCount(session *xorm.Session) int {
 	count, err := session.Count(&RankInfo{})
 	if err != nil {
@@ -111,4 +181,21 @@ func RankGetCount(session *xorm.Session) int {
 		return 0
 	}
 	return int(count)
+}
+
+func RankIsBetter(newRank *RankInfo, oldRank *RankInfo) bool {
+	// win 优先：true > false
+	if newRank.Win != oldRank.Win {
+		return newRank.Win
+	}
+	// win 相同，score 越大越好
+	if newRank.Score != oldRank.Score {
+		return newRank.Score > oldRank.Score
+	}
+	// score 相同，frame 越小越好
+	if newRank.Frame != oldRank.Frame {
+		return newRank.Frame < oldRank.Frame
+	}
+	// 完全一样，不更新
+	return false
 }
