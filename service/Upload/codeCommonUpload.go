@@ -2,7 +2,6 @@ package Upload
 
 import (
 	"newaoe/config"
-	"newaoe/service/Code"
 	"newaoe/util"
 	"path"
 	"time"
@@ -13,11 +12,6 @@ import (
 func CodeUpload(ctx *gin.Context, userInfo map[string]string) {
 
 	id, _ := userInfo["id"]
-	//限制提交次数
-	if Code.LimitCodeUploadOrRun(id) {
-		util.ResponseNAK_MSG(ctx, "当天3次提交次数已消耗尽!", nil)
-		return
-	}
 	//
 	prefix := util.UTC_Time().Format("2006_01_02_150405000")
 	base_dir := path.Join(config.Conf.OSS.PrivateBaseFolder, id, config.Conf.User.UserCodeFolder, prefix)

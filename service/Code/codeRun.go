@@ -3,7 +3,6 @@ package Code
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"newaoe/config"
 	"newaoe/dao"
 	data "newaoe/service/Data"
@@ -56,31 +55,4 @@ func AddCodeFile(task dao.CodeRunInfo) bool {
 		return false
 	}
 	return dao.RedisListPush(context.Background(), config.Conf.Code.CodeWaitForRunRedisQueueTopic, string(data))
-}
-
-// 判断是否达到提交/运行限制
-func LimitCodeUploadOrRun(id string) bool {
-	//超级用户不管
-	for _, superuser := range config.Conf.Other.SuperUser {
-		if superuser == id {
-			return false
-		}
-	}
-	//
-	key := fmt.Sprintf("CommonUploadOrRunTimes_%v", id)
-	time, exist := dao.RedisGet(context.Background(), key)
-	curSubmitTime := 0
-	if exist {
-		err := json.Unmarshal(time, &curSubmitTime)
-		if err != nil {
-			util.Debug("LimitCodeUploadOrRun Unmarshal Error!", err)
-		}
-	}
-	//判断是否达到限制
-	if curSubmitTime >= config.Conf.Code.CodeSubmitTimesPerDay {
-		return true
-	}
-	//
-	dao.RedisSet(context.Background(), key, curSubmitTime+1, util.GetLeftTimeForOneDay())
-	return false
 }

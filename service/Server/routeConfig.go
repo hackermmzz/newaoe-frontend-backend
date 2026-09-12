@@ -68,7 +68,7 @@ func routeConfig_UploadConfirm(uploadconFirm_group *gin.RouterGroup) {
 	uploadconFirm_group.POST("/:category", Upload.FileUploadConfirm) //告诉后端上传好了
 }
 func routeConfig_Code(code_group *gin.RouterGroup) {
-	code_group.POST("/CodeReRun", Filter.FilterCookieCheck(), Filter.FilterCodeRun(), Code.CodeReRun) //这个要使用cookie检测中间件
+	code_group.POST("/CodeReRun", Filter.FilterCookieCheck(), Filter.FilterCodeRun(), Filter.FilterLimitCodeUploadOrRun(), Code.CodeReRun) //这个要使用cookie检测中间件
 	//
 	/*这里使用grpc代替之前的http
 	code_group.GET("/CodeGet", Filter.FilterCodeRunServerCheck(), Code.CodeGetService)                      //获取代码
@@ -79,7 +79,7 @@ func routeConfig_Code(code_group *gin.RouterGroup) {
 func routeConfig_Upload(upload_group *gin.RouterGroup) {
 	//普通文件的上传
 	upload_group.POST(fmt.Sprintf("/%v", config.Conf.User.UserCodeFolder),
-		Filter.FilterCodeRun(), Upload.FileUpload)
+		Filter.FilterCodeRun(), Filter.FilterLimitCodeUploadOrRun(), Upload.FileUpload)
 	//考核代码文件上传
 	upload_group.POST(fmt.Sprintf("/%v", config.Conf.Other.AssessmentCodeUploadCategory), Filter.FilterCodeRun(), Filter.FilterAssessmentSubmission(), Upload.FileUpload)
 	//头像提交
