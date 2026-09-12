@@ -326,7 +326,7 @@ export default {
           }
         }, 1000);
 
-        alert(`验证码已发送至您的邮箱：${email.value.trim()}，请查收`); // 提示用户邮箱
+        alert(`验证码已发送至您的邮箱：${studentId.value.trim()+"@njust.edu.cn"}，请查收`); // 提示用户邮箱
       } catch (err) {
         alert(err.message);
       } finally {
