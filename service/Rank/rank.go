@@ -41,7 +41,7 @@ func FetchRank(ctx *gin.Context) {
 		ids[i] = d.ID
 	}
 	avatars := dao.UserGetByIDs(ids)
-	if len(avatars) == 0 {
+	if len(avatars) != len(info) {
 		util.ResponseNAK_MSG(ctx, "服务器异常", "")
 		return
 	}
