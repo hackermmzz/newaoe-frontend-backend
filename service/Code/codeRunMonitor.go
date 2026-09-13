@@ -278,7 +278,7 @@ func updateRank(session *xorm.Session, dt []dao.CodeRunInfo) {
 			util.Debug("The status in datajs is an error!", err, status)
 			continue
 		}
-		if statusCode.(int) < Code_Status_Running {
+		if int(statusCode.(float64)) < Code_Status_Running {
 			continue
 		}
 		//反序列化运行数据
