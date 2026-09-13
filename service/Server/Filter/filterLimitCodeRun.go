@@ -36,7 +36,7 @@ func FilterLimitCodeUploadOrRun() gin.HandlerFunc {
 			err := json.Unmarshal(time, &curSubmitTime)
 			if err != nil {
 				util.Debug("LimitCodeUploadOrRun Unmarshal Error!", err)
-			}
+			}a
 		}
 		//判断是否达到限制
 		if curSubmitTime >= config.Conf.Code.CodeSubmitTimesPerDay {
