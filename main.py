@@ -193,7 +193,7 @@ def PreCompile():
     )
 
     if result.returncode != 0:
-        Log(f"预编译失败，错误信息:{result.stdout}")
+        print(f"预编译失败，错误信息:{result.stdout}")
         exit(1)
 ##################################################退出清理
 def CleanUp():
