@@ -17,6 +17,6 @@ jobs:
 
       - name: Sync to Gitee
         run: |
-          git remote add gitee https://crackermmzz:${{ secrets.GITEE_TOKEN }}@gitee.com/crackermmzz/new-aoe.git
+          git remote add gitee https://crackermmzz:${{ secrets.GITEE_TOKEN }}@gitee.com/crackermmzz/newaoe-frontend-backend.git
           git push gitee --all
           git push gitee --tags
