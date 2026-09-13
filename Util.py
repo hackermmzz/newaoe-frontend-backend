@@ -11,3 +11,4 @@ def read_any_text(path):
     return raw.decode(encoding, errors="replace")
 
         
+a
