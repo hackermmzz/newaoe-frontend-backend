@@ -184,7 +184,7 @@ func batchUpdateCodeRunStatus(indices []int) {
 	// 批量insert临时表
 	type TempCodeRunInfo struct {
 		Indices    int    `xorm:"indices"`
-		Status     string `xorm:"status"`
+		Status     string `xorm:"text status"`
 		NewVersion int64  `xorm:"new_version"`
 	}
 	tempDataArr := make([]TempCodeRunInfo, len(dataArr))
