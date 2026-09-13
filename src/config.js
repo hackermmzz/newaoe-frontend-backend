@@ -19,7 +19,7 @@ download_url=base_url+"/download";
 upload_url=base_url+"/upload"
 uploadConfirm_url=base_url+"/uploadconfirm"
 code_url=base_url+"/code"
-ranking_url=base_url+"/getrank"
+ranking_url=base_url+"/rank"
 // 导出配置
 module.exports = {
     ranking_url,

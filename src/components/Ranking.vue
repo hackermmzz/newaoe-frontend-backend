@@ -124,8 +124,8 @@
               <!-- 学生头像 -->
               <td class="px-5 py-4 whitespace-nowrap">
                 <img
-                  v-if="student.avatar"
-                  :src="student.avatar"
+                  v-if="student.avatarUrl"
+                  :src="student.avatarUrl"
                   :alt="`${student.id} 的头像`"
                   class="h-10 w-10 rounded-full object-cover border border-gray-200"
                 >
@@ -176,29 +176,12 @@
 
               <!-- 消息 -->
               <td class="px-5 py-4 text-gray-600">
-                <div class="description-text">
-                  {{
-                    expandedItems[index]
-                      ? student.msg
-                      : truncateDescription(student.msg)
-                  }}
-                </div>
-
-                <button
-                  v-if="student.msg.length > descriptionLimit"
-                  type="button"
-                  class="mt-2 text-blue-600 hover:text-blue-800"
-                  :aria-expanded="!!expandedItems[index]"
-                  @click="
-                    expandedItems[index] = !expandedItems[index]
-                  "
+                <div
+                  class="description-text"
+                  :title="student.msg || '—'"
                 >
-                  {{
-                    expandedItems[index]
-                      ? '收起'
-                      : '展开全部'
-                  }}
-                </button>
+                  {{ student.msg || '—' }}
+                </div>
               </td>
             </tr>
           </tbody>
@@ -250,6 +233,7 @@ import {
 } from 'vue';
 
 import config from '../config';
+import { ElMessage } from 'element-plus';
 
 export default {
   name: 'StudentRanking',
@@ -271,10 +255,6 @@ export default {
 
     const pageSize =
       config.RankingRecordPerPage || 10;
-
-    const descriptionLimit = 100;
-
-    const expandedItems = ref({});
 
     let controller = null;
 
@@ -304,7 +284,7 @@ export default {
      *
      * {
      *   id: "923106840404",
-     *   avatar: "https://example.com/avatar.png",
+     *   avatar: "public/avatar/default.png",
      *   win: true,
      *   score: 100,
      *   frame: 98,
@@ -312,6 +292,150 @@ export default {
      *   msg: "Accepted"
      * }
      */
+    const normalizeNestedStatusJson = value => {
+      if (typeof value === 'string') {
+        const jsonStart = value.indexOf('{');
+
+        if (jsonStart < 0) {
+          return value;
+        }
+
+        const prefix = value.slice(0, jsonStart);
+        const candidate = value.slice(jsonStart).trim();
+
+        try {
+          return `${prefix}${JSON.stringify(
+            normalizeNestedStatusJson(JSON.parse(candidate))
+          )}`;
+        } catch (error) {
+          return value;
+        }
+      }
+
+      if (Array.isArray(value)) {
+        return value.map(normalizeNestedStatusJson);
+      }
+
+      if (value && typeof value === 'object') {
+        return Object.fromEntries(
+          Object.entries(value).map(([key, nestedValue]) => [
+            key,
+            normalizeNestedStatusJson(nestedValue)
+          ])
+        );
+      }
+
+      return value;
+    };
+
+    const formatStatus = value => {
+      if (value === null || value === undefined) {
+        return '';
+      }
+
+      const formatParsedStatus = parsed => {
+        if (
+          parsed &&
+          typeof parsed === 'object' &&
+          Object.prototype.hasOwnProperty.call(parsed, 'data')
+        ) {
+          return formatStatus(parsed.data);
+        }
+
+        if (
+          parsed &&
+          typeof parsed === 'object' &&
+          (parsed.line !== undefined || parsed.error !== undefined)
+        ) {
+          const details = [];
+
+          if (parsed.line !== undefined) {
+            details.push(`第 ${parsed.line} 行`);
+          }
+
+          if (parsed.error !== undefined) {
+            details.push(String(parsed.error));
+          }
+
+          return `编译失败：${details.join('：')}`;
+        }
+
+        if (typeof parsed === 'string') {
+          return parsed;
+        }
+
+        try {
+          return JSON.stringify(
+            normalizeNestedStatusJson(parsed)
+          );
+        } catch (error) {
+          return String(parsed);
+        }
+      };
+
+      if (typeof value === 'string') {
+        const jsonStart = value.indexOf('{');
+
+        // status 没有 JSON 起始符时，保持原始文本。
+        if (jsonStart < 0) {
+          return value;
+        }
+
+        const prefix = value.slice(0, jsonStart);
+        const candidate = value.slice(jsonStart).trim();
+
+        try {
+          const parsed = JSON.parse(candidate);
+
+          return `${prefix}${formatParsedStatus(parsed)}`;
+        } catch (error) {
+          // status 中的 JSON 解析失败时，保持整个 status 原样。
+          return value;
+        }
+      }
+
+      return formatParsedStatus(value);
+    };
+
+    const normalizeMessage = value => {
+      if (value === null || value === undefined) {
+        return '';
+      }
+
+      const rawMessage = String(value);
+      let message;
+
+      // msg 本身由 json.Marshal(msgMp) 生成，只解析这一层。
+      try {
+        message = JSON.parse(rawMessage);
+      } catch (error) {
+        // 外层 msg 解析失败时，直接展示原始内容。
+        return rawMessage;
+      }
+
+      if (
+        !message ||
+        typeof message !== 'object' ||
+        Array.isArray(message) ||
+        !Object.prototype.hasOwnProperty.call(message, 'desc') ||
+        !Object.prototype.hasOwnProperty.call(message, 'status')
+      ) {
+        return rawMessage;
+      }
+
+      // desc 不做任何 JSON 解析或内容清洗。
+      const desc =
+        message.desc === null || message.desc === undefined
+          ? ''
+          : String(message.desc);
+
+      const status = formatStatus(message.status);
+
+      return [desc, status]
+        .filter(text => text !== '')
+        .join(' | ');
+    };
+
     const normalizeRecord = item => {
       if (!item || typeof item !== 'object') {
         throw new Error('排行榜记录格式不正确');
@@ -355,8 +479,106 @@ export default {
         frame: item.frame,
         submittime:
           item.submittime ?? '',
-        msg: String(item.msg ?? '')
+        msg: normalizeMessage(item.msg)
       };
+    };
+
+    /*
+     * avatar 是文件路径，需要通过下载接口换取可访问链接。
+     */
+    const fetchAvatarUrl = async (
+      avatar,
+      signal
+    ) => {
+      if (!avatar) {
+        return '';
+      }
+
+      const avatarPath = avatar.replace(/^\/+/, '');
+
+      try {
+        const response = await fetch(
+          `${config.download_url}/${avatarPath}`,
+          {
+            method: 'GET',
+            credentials: 'include',
+            signal
+          }
+        );
+
+        if (!response.ok) {
+          console.warn(
+            '[排行榜] 头像下载失败：',
+            {
+              avatar,
+              status: response.status
+            }
+          );
+
+          return '';
+        }
+
+        const result = await response.json();
+
+        console.log(
+          '[排行榜] 头像下载接口返回：',
+          {
+            avatar,
+            result
+          }
+        );
+
+        const avatarUrl =
+          typeof result?.data?.url === 'string'
+            ? result.data.url.trim()
+            : '';
+
+        if (!avatarUrl) {
+          console.warn(
+            '[排行榜] 头像下载响应中没有 data.url：',
+            {
+              avatar,
+              result
+            }
+          );
+        }
+
+        return avatarUrl;
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          throw error;
+        }
+
+        return '';
+      }
+    };
+
+    /*
+     * 并发获取本页头像链接；相同文件路径只请求一次。
+     */
+    const resolveAvatarUrls = async (
+      nextRecords,
+      signal
+    ) => {
+      const avatarRequests = new Map();
+
+      const getAvatarUrl = avatar => {
+        if (!avatarRequests.has(avatar)) {
+          avatarRequests.set(
+            avatar,
+            fetchAvatarUrl(avatar, signal)
+          );
+        }
+
+        return avatarRequests.get(avatar);
+      };
+
+      return Promise.all(
+        nextRecords.map(async record => ({
+          ...record,
+          avatarUrl: await getAvatarUrl(record.avatar)
+        }))
+      );
     };
 
     /*
@@ -424,7 +646,7 @@ export default {
           beg + pageSize - 1;
 
         const requestUrl =
-          new URL(config.ranking_url);
+          new URL(config.ranking_url+"/fetchrank");
 
         requestUrl.searchParams.set(
           'range',
@@ -442,15 +664,11 @@ export default {
               requestController.signal
           }
         );
-
-        if (!response.ok) {
-          throw new Error(
-            `加载失败（HTTP ${response.status}），请稍后重试`
-          );
+        let data=await response.json();
+          if (!response.ok || !data.status) {
+          throw new Error(data.msg || "运行失败");
         }
 
-        const result =
-          await response.json();
 
         if (disposed) {
           return;
@@ -464,12 +682,11 @@ export default {
          * }
          */
         // fetch 的 JSON 可能直接是数组，也兼容 { data: [...] } 包装形式。
-        const nextData =
-          Array.isArray(result) ? result : result?.data;
+        const nextData =data?.data || [];
 
         console.log(
-          '排行榜接口返回：',
-          result
+          '[排行榜] 主接口返回：',
+          data
         );
 
         if (!Array.isArray(nextData)) {
@@ -498,19 +715,24 @@ export default {
         const nextRecords =
           nextData.map(normalizeRecord);
 
+        const recordsWithAvatarUrls =
+          await resolveAvatarUrls(
+            nextRecords,
+            requestController.signal
+          );
+
+        if (disposed) {
+          return;
+        }
+
         records.value =
-          nextRecords;
+          recordsWithAvatarUrls;
 
         currentPage.value =
           page;
 
         // 是否存在下一页由下一次请求的空数组决定，不能根据本页条数推断。
         hasNextPage.value = true;
-
-        /*
-         * 翻页后关闭之前展开的 msg。
-         */
-        expandedItems.value = {};
 
         /*
          * 更新时间。
@@ -527,14 +749,18 @@ export default {
           return;
         }
 
+        ElMessage.error(
+          error?.message || '运行出错'
+        );
+
         if (
-          error.name === 'AbortError'
+          error?.name === 'AbortError'
         ) {
           errorMessage.value =
             '请求超时，请重新加载';
         } else {
           errorMessage.value =
-            error.message ||
+            error?.message ||
             '加载失败，请检查网络后重试';
         }
       } finally {
@@ -553,32 +779,6 @@ export default {
           isLoading.value = false;
         }
       }
-    };
-
-    /*
-     * msg 太长时进行截断。
-     */
-    const truncateDescription = text => {
-      const value =
-        String(text ?? '');
-
-      if (!value) {
-        return '—';
-      }
-
-      if (
-        value.length >
-        descriptionLimit
-      ) {
-        return (
-          value.slice(
-            0,
-            descriptionLimit
-          ) + '…'
-        );
-      }
-
-      return value;
     };
 
     /*
@@ -647,13 +847,7 @@ export default {
 
       pageSize,
 
-      descriptionLimit,
-
-      expandedItems,
-
       loadRanking,
-
-      truncateDescription,
 
       formatTime
     };
@@ -684,7 +878,8 @@ export default {
 .description-text {
   min-width: 12rem;
   max-width: 28rem;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>
