@@ -82,6 +82,10 @@
           <thead class="bg-gray-50 text-gray-500 whitespace-nowrap">
             <tr>
               <th scope="col" class="px-5 py-4 font-medium">
+                头像
+              </th>
+
+              <th scope="col" class="px-5 py-4 font-medium">
                 排名
               </th>
 
@@ -117,6 +121,20 @@
               :key="student.id"
               class="hover:bg-gray-50 transition-colors align-top"
             >
+              <!-- 学生头像 -->
+              <td class="px-5 py-4 whitespace-nowrap">
+                <img
+                  v-if="student.avatar"
+                  :src="student.avatar"
+                  :alt="`${student.id} 的头像`"
+                  class="h-10 w-10 rounded-full object-cover border border-gray-200"
+                >
+
+                <span v-else class="text-gray-400" aria-label="暂无头像">
+                  —
+                </span>
+              </td>
+
               <!-- 全局排名 -->
               <td class="px-5 py-4 font-semibold text-gray-700 whitespace-nowrap">
                 {{ (currentPage - 1) * pageSize + index + 1 }}
@@ -286,6 +304,7 @@ export default {
      *
      * {
      *   id: "923106840404",
+     *   avatar: "https://example.com/avatar.png",
      *   win: true,
      *   score: 100,
      *   frame: 98,
@@ -330,6 +349,7 @@ export default {
 
       return {
         id: item.id,
+        avatar: String(item.avatar ?? '').trim(),
         win: item.win,
         score: item.score,
         frame: item.frame,

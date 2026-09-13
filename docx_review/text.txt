@@ -1,0 +1,595 @@
+P0: 五级流水线实验报告
+P1: 课程名称：硬件课程设计(Ⅰ)
+P2: 姓名：汪立洪
+P3: 学号：923106840429
+P5: 设计目标
+P6: 1. 实现一个五级流水线的 MIPS CPU，支持表 2 所列指令集。
+P7: 2. 解决流水线数据冒险和控制冒险问题，保证程序正确执行。
+P8: 3. 使用 ROM 存放测试程序机器码，RAM 存放数据。
+P9: 4. 完成仿真验证。
+P10: 支持的指令: add/sub/and/or/xor/ sll/srl/sra/ lui/ addi/ andi/ori/xori/ lw/ sw/beq/bne/j/jal/jr。
+P12: 流水线原理
+P13: 五级流水线主要包括：取指（IF）、译码（ID）、执行（EX）、访存（MEM）和写回（WB）这五个阶段。每个阶段负责干一件事情：
+P14: IF:取出pc当前指向的指令
+P15: ID:把 IF 阶段取出来的指令进行解析，确定这条指令要做什么，并读取需要的寄存器数据。
+P16: EX:根据 ID 阶段解析出来的信息，真正执行指令需要的计算操作。
+P17: MEM:访问数据存储器，完成加载或存储操作。
+P18: WB:把计算结果或者从内存读取的数据，写回寄存器堆
+P19: 但是里面会有一些地方需要注意。具体来说，五级流水线可能会出现数据冒险的问题。这个问题可以通过数据前推和阻塞气泡来解决。为了解决这个问题，我在每个阶段之间插入一个中间阶段来保存上一阶段的临时数据。
+P20: 实现细节以及代码讲解
+P21: 整体结构
+P22: 模块名称汇总
+P23: 采用经典的五级流水线 MIPS 处理器结构，流水线阶段依次为：
+P24: IF → ID → EX → MEM → WB
+P25: 各阶段之间使用流水线寄存器传递数据和控制信号：
+P26: IF/ID → ID/EX → EX/MEM
+P27: 处理器支持基本的算术运算、逻辑运算、移位操作、访存指令、分支指令、跳转指令以及 jal 和 jr 等指令。同时，代码解决了load-use 冒险检测和数据前推的问题。
+P29: 2 五级流水线 CPU 实现细节与相关代码
+P30: 本设计采用 IF、ID、EX、MEM、WB 五级流水线结构，各阶段之间通过流水线寄存器传递数据和控制信号。顶层模块 mips_pipeline_top 主要负责连接各个子模块，具体运算由各流水线阶段完成。
+P31: 2.1 顶层连接模块
+P32: 顶层模块负责连接 PC、指令存储器、各级流水线寄存器、寄存器堆、ALU 以及冒险处理单元。下一条 PC 的选择逻辑如下：
+P33: assign next_pc =
+P34: id_jump
+P35: ? (is_jump_register ? id_rs_value : jump_addr)
+P36: : (branch_taken ? branch_addr : pc_next4);
+P37: 其中：
+P38: 普通指令执行时选择 PC + 4；
+P39: 分支指令成立时选择分支目标地址；
+P40: j 和 jal 指令选择跳转目标地址；
+P41: jr 指令选择寄存器中的跳转地址。
+P42: 顶层模块通过实例化各个阶段模块完成流水线数据通路的连接：
+P43: fetch_pc_stage      u_fetch_stage (...);
+P44: fetch_decode_reg    u_if_id_reg (...);
+P45: decode_stage        u_decode_stage (...);
+P46: load_use_hazard     u_hazard_ctrl (...);
+P47: decode_execute_reg  u_id_ex_reg (...);
+P48: execute_stage       u_execute_stage (...);
+P49: execute_memory_reg  u_ex_mem_reg (...);
+P50: memory_stage        u_memory_stage (...);
+P51: memory_writeback_reg u_mem_wb_reg (...);
+P53: 2.2 IF 取指阶段
+P54: fetch_pc_stage
+P55: 该模块保存当前 PC，并产生下一条顺序指令地址 PC + 4。当发生 load-use 冒险时，wpc 被置为 0，PC 保持不变。
+P56: always @(posedge clk or negedge clrn) begin
+P57: if (!clrn) begin
+P58: pc <= 32'h00000000;
+P59: end
+P60: else begin
+P61: pc <= pc_next;
+P62: end
+P63: end
+P64: always @(*) begin
+P65: pc_next = pc;
+P66: if (wpc) begin
+P67: pc_next = npc;
+P68: end
+P69: end
+P70: assign pc4 = pc + 32'd4;
+P71: instruction_rom
+P72: 指令存储器根据 PC 地址输出 32 位指令。由于指令按字对齐存储，因此使用 PC[7:2] 作为 ROM 地址。
+P73: assign douta = memory[addra];
+P74: ROM 中预先写入测试程序，用于验证算术、逻辑、移位、访存、分支和跳转等指令。
+P76: 2.3 IF/ID 流水线寄存器
+P77: pipeline_reg32
+P78: 这是一个带写使能的 32 位寄存器，可用于构成流水线寄存器。
+P79: always @(posedge clk or negedge clrn) begin
+P80: if (!clrn) begin
+P81: q <= 32'h00000000;
+P82: end
+P83: else if (en) begin
+P84: q <= d;
+P85: end
+P86: end
+P87: 当 en = 0 时，寄存器保持原值。
+P88: fetch_decode_reg
+P89: 该模块位于 IF 和 ID 阶段之间，保存：
+P90: 当前指令；
+P91: 当前指令对应的 PC + 4。
+P92: pipeline_reg32 u_pc4_pipeline_reg (
+P93: .clk (clk),
+P94: .clrn(clrn),
+P95: .en  (en),
+P96: .d   (pc4_in),
+P97: .q   (pc4_out)
+P98: );
+P99: pipeline_reg32 u_instruction_pipeline_reg (
+P100: .clk (clk),
+P101: .clrn(clrn),
+P102: .en  (en),
+P103: .d   (ins_in),
+P104: .q   (ins_out)
+P105: );
+P106: 发生 stall 时，en = 0，因此 IF/ID 寄存器保持不变。
+P108: 2.4 ID 译码阶段
+P109: decode_stage
+P110: ID 阶段主要完成指令字段提取、寄存器读取、立即数扩展、控制信号生成和分支判断。
+P111: 指令字段提取如下：
+P112: assign opcode = if_id_ins[31:26];
+P113: assign funct  = if_id_ins[5:0];
+P115: assign rs = if_id_ins[25:21];
+P116: assign rt = if_id_ins[20:16];
+P117: assign rd = if_id_ins[15:11];
+P118: 立即数扩展根据指令类型选择零扩展或符号扩展：
+P119: always @(*) begin
+P120: case (opcode)
+P121: 6'b001100,
+P122: 6'b001101,
+P123: 6'b001110,
+P124: 6'b001111: begin
+P125: extended_immediate = {
+P126: 16'h0000,
+P127: immediate16
+P128: };
+P129: end
+P130: default: begin
+P131: extended_immediate = {
+P132: {16{immediate16[15]}},
+P133: immediate16
+P134: };
+P135: end
+P136: endcase
+P137: end
+P138: 分支目标地址计算为：
+P139: assign branch_target =if_id_pc4 + {extended_immediate[29:0], 2'b00};
+P140: 寄存器堆读取结果还需要支持 MEM/WB 到 ID 阶段的前递（数据前推）：
+P141: assign rs_data =(mem_wb_regwrite &&(mem_wb_rd != 5'd0) &&(mem_wb_rd == rs))? wb_data: rs_raw_value;
+P142: 分支比较时，操作数按照 EX、EX/MEM、MEM/WB 的顺序进行前递，从而保证 beq 和 bne 能够使用最新数据。
+P144: 2.5 load-use 冒险检测
+P145: load_use_hazard
+P146: 该模块检测 ID/EX 阶段的 load 指令是否会与 ID 阶段指令产生数据相关。
+P147: assign source_dependency =
+P148: (id_ex_rt == id_rs) ||
+P149: (id_ex_rt == id_rt);
+P150: always @(*) begin
+P151: stall  = 1'b0;
+P152: bubble = 1'b0;
+P153: if (id_ex_memread && source_dependency) begin
+P154: stall  = 1'b1;
+P155: bubble = 1'b1;
+P156: end
+P157: end
+P158: 发生冒险时：
+P159: PC 停止更新；
+P160: IF/ID 寄存器停止更新；
+P161: ID/EX 寄存器清零；
+P162: 执行阶段插入一个 NOP。
+P164: 2.6 ID/EX 流水线寄存器
+P165: decode_execute_reg
+P166: 该模块保存 ID 阶段产生的操作数、立即数、寄存器编号和控制信号。控制优先级为：
+P167: if (!clrn) begin
+P168: // 异步复位
+P169: end
+P170: else if (bubble) begin
+P171: // 清空寄存器，插入 NOP
+P172: end
+P173: else if (stall) begin
+P174: // 保持原值
+P175: end
+P176: else begin
+P177: // 锁存 ID 阶段数据
+P178: end
+P179: 其中 bubble 的优先级高于 stall，保证检测到 load-use 冒险时能够正确插入气泡。
+P181: 2.7 EX 执行阶段
+P182: execute_stage
+P183: EX 阶段主要完成 ALU 运算、操作数选择、数据前递、目的寄存器选择以及 jal 返回地址生成。
+P184: ALU 操作数选择逻辑如下：
+P185: always @(*) begin
+P186: alu_operand_a = ex_rs_data;
+P187: alu_operand_b = ex_rt_data;
+P188: if (is_shift_instruction) begin
+P189: alu_operand_a = {
+P190: 27'h0000000,
+P191: ex_imm_out[10:6]
+P192: };
+P193: end
+P195: if (use_immediate_operand) begin
+P196: alu_operand_b = ex_imm_out;
+P197: end
+P199: if (!is_shift_instruction) begin
+P200: if (ex_mem_regwrite &&
+P201: (ex_mem_rd != 5'd0) &&
+P202: (ex_mem_rd == ex_rs)) begin
+P203: alu_operand_a = ex_mem_alu_result;
+P204: end
+P205: else if (mem_wb_regwrite &&
+P206: (mem_wb_rd != 5'd0) &&
+P207: (mem_wb_rd == ex_rs)) begin
+P208: alu_operand_a = mem_wb_wb_data;
+P209: end
+P210: end
+P211: end
+P212: 目的寄存器选择规则如下：
+P213: assign ex_dst_reg =
+P214: is_jump_link
+P215: ? 5'd31
+P216: : ((ex_aluop == 2'b10) ? ex_rd : ex_rt);
+P217: 其中：
+P218: R 型指令使用 rd；
+P219: I 型指令使用 rt；
+P220: jal 固定使用 $31。
+P221: jal 的写回值为：
+P222: assign link_address = ex_pc4 + 32'd4;
+P223: assign alu_result = is_jump_link ? link_address : alu_raw_result;
+P224: 因为 ex_pc4 已经是当前指令地址加 4，所以最终写回值为 PC + 8。
+P226: 2.8 EX/MEM 流水线寄存器
+P227: execute_memory_reg
+P228: 该模块负责将 EX 阶段的结果传递到 MEM 阶段。
+P229: always @(posedge clk or negedge clrn) begin
+P230: if (!clrn) begin
+P231: exm_alu_result  <= 32'h00000000;
+P232: exm_store_wdata <= 32'h00000000;
+P233: exm_rd          <= 5'd0;
+P234: exm_rt_num      <= 5'd0;
+P235: exm_memwrite    <= 1'b0;
+P236: exm_memread     <= 1'b0;
+P237: exm_memtoreg    <= 1'b0;
+P238: exm_regwrite    <= 1'b0;
+P239: end
+P240: else begin
+P241: exm_alu_result  <= alu_result;
+P242: exm_store_wdata <= store_rt_data;
+P243: exm_rd          <= rd;
+P244: exm_rt_num      <= ex_rt_num;
+P246: exm_memwrite    <= memwrite;
+P247: exm_memread     <= memread;
+P248: exm_memtoreg    <= memtoreg;
+P249: exm_regwrite    <= regwrite;
+P250: end
+P251: end
+P252: 该寄存器不需要 stall 或 bubble 控制，每个时钟周期都将 EX 阶段结果推进到 MEM 阶段。
+P254: 2.9 MEM 访存阶段
+P255: memory_stage
+P256: MEM 阶段负责数据存储器的读写，并将 EX/MEM 阶段的数据传递到 MEM/WB 阶段。
+P257: sw 指令的存储数据支持 MEM/WB 到 MEM 的前递：
+P258: always @(*) begin
+P259: store_data_final = 32'h00000000;
+P260: if (exm_memwrite) begin
+P261: store_data_final = exm_store_wdata;
+P262: if (mem_wb_regwrite &&
+P263: (mem_wb_rd != 5'd0) &&
+P264: (mem_wb_rd == exm_rt_num)) begin
+P265: store_data_final = mem_wb_wb_data;
+P266: end
+P267: end
+P268: end
+P269: 数据存储器写入和读取如下：
+P270: always @(posedge clk) begin
+P271: if (exm_memwrite) begin
+P272: data_memory[data_address] <= store_data_final;
+P273: end
+P274: end
+P275: assign mem_read_data = data_memory[data_address];
+P276: 其中：
+P277: 写操作在时钟上升沿进行；
+P278: 读操作为组合读；
+P279: data_address = exm_alu_result[7:2]。
+P281: 2.10 MEM/WB 流水线寄存器
+P282: memory_writeback_reg:负责将数据写回寄存器堆
+P283: always @(posedge clk or negedge clrn) begin
+P284: if (!clrn) begin
+P285: wb_alu_result <= 32'h00000000;
+P286: wb_read_data  <= 32'h00000000;
+P287: wb_rd         <= 5'd0;
+P288: wb_memtoreg   <= 1'b0;
+P289: wb_regwrite   <= 1'b0;
+P290: end
+P291: else begin
+P292: wb_alu_result <= mem_alu_result;
+P293: wb_read_data  <= mem_read_data;
+P294: wb_rd         <= mem_rd;
+P295: wb_memtoreg   <= mem_memtoreg;
+P296: wb_regwrite   <= mem_regwrite;
+P297: end
+P298: end
+P299: 最终写回数据由顶层模块选择：
+P300: assign write_back_value =
+P301: mem_wb_to_reg
+P302: ? mem_wb_read_data
+P303: : mem_wb_alu_result;
+P304: 当 mem_wb_to_reg = 1 时，写回数据来自数据存储器；否则来自 ALU。
+P305: 测试指令实现原理与相关代码
+P306: 3.1 测试程序组成
+P307: 测试程序主要包括以下几部分：
+P308: 使用 lui、ori 初始化寄存器；
+P309: 使用 jal 调用求和子程序；
+P310: 使用 lw 连续读取存储器中的数据；
+P311: 使用 add 完成数据累加；
+P312: 使用 jr 返回主程序；
+P313: 使用 sw 和 lw 验证数据存储器；
+P314: 使用 sub、and、or、xor 等指令验证 ALU；
+P315: 使用 beq、bne 和 j 验证分支和跳转；
+P316: 使用 sll、sra 和 srl 验证移位操作。
+P317: 指令 ROM 中的测试程序如下：
+P318: memory[ 0] = 32'h3c010000; // lui  r1, 0
+P319: memory[ 1] = 32'h34240050; // ori  r4, r1, 0x50
+P320: memory[ 2] = 32'h0c00001b; // jal  sum
+P321: memory[ 3] = 32'h20050004; // addi r5, r0, 4，jal 延迟槽
+P323: memory[ 4] = 32'hac820000; // sw   r2, 0(r4)
+P324: memory[ 5] = 32'h8c890000; // lw   r9, 0(r4)
+P325: memory[ 6] = 32'h01244022; // sub  r8, r9, r4
+P327: memory[ 7] = 32'h20050003; // addi r5, r0, 3
+P328: memory[ 8] = 32'h20a5ffff; // loop2: addi r5, r5, -1
+P329: memory[ 9] = 32'h34a8ffff; // ori  r8, r5, 0xffff
+P330: memory[10] = 32'h39085555; // xori r8, r8, 0x5555
+P331: memory[11] = 32'h2009ffff; // addi r9, r0, -1
+P332: memory[12] = 32'h312affff; // andi r10, r9, 0xffff
+P333: memory[13] = 32'h01493025; // or   r6, r10, r9
+P334: memory[14] = 32'h01494026; // xor  r8, r10, r9
+P335: memory[15] = 32'h01463824; // and  r7, r10, r6
+P337: memory[16] = 32'h10a00003; // beq  r5, r0, shift
+P338: memory[17] = 32'h00000000; // nop，分支延迟槽
+P339: memory[18] = 32'h08000008; // j    loop2
+P340: memory[19] = 32'h00000000; // nop，跳转延迟槽
+P342: memory[20] = 32'h2005ffff; // shift: addi r5, r0, -1
+P343: memory[21] = 32'h000543c0; // sll  r8, r5, 15
+P344: memory[22] = 32'h00084400; // sll  r8, r8, 16
+P345: memory[23] = 32'h00084403; // sra  r8, r8, 16
+P346: memory[24] = 32'h000843c2; // srl  r8, r8, 15
+P348: memory[25] = 32'h08000019; // finish: j finish
+P349: memory[26] = 32'h00000000; // nop，跳转延迟槽
+P351: memory[27] = 32'h00004020; // sum: add  r8, r0, r0
+P352: memory[28] = 32'h8c890000; // loop1: lw r9, 0(r4)
+P353: memory[29] = 32'h01094020; // add  r8, r8, r9
+P354: memory[30] = 32'h20a5ffff; // addi r5, r5, -1
+P355: memory[31] = 32'h14a0fffc; // bne  r5, r0, loop1
+P356: memory[32] = 32'h20840004; // addi r4, r4, 4，分支延迟槽
+P357: memory[33] = 32'h03e00008; // jr   r31
+P358: memory[34] = 32'h00081000; // sll  r2, r8, 0，jr 延迟槽
+P359: 数据存储器中的初始数据为：
+P360: data_memory[20] = 32'h000000A3;
+P361: data_memory[21] = 32'h00000027;
+P362: data_memory[22] = 32'h00000079;
+P363: data_memory[23] = 32'h00000115;
+P364: 求和子程序依次读取这四个数据：
+P365: 0xA3 + 0x27 + 0x79 + 0x115 = 0x258
+P366: 最终求和结果保存在寄存器 r8 中，并通过延迟槽指令复制到 r2。
+P368: 3.2 算术、逻辑和移位指令
+P369: R 型指令使用 rs 和 rt 作为 ALU 输入，并将结果写入 rd；I 型指令使用扩展后的立即数作为第二个 ALU 输入，并将结果写入 rt。目的寄存器选择代码如下：
+P370: assign ex_dst_reg =
+P371: is_jump_link
+P372: ? 5'd31
+P373: : ((ex_aluop == 2'b10) ? ex_rd : ex_rt);
+P374: 其中：
+P375: R 型指令使用 rd；
+P376: I 型指令使用 rt；
+P377: jal 指令使用 $31。
+P378: 立即数扩展由译码阶段完成：
+P379: always @(*) begin
+P380: case (opcode)
+P381: 6'b001100,
+P382: 6'b001101,
+P383: 6'b001110,
+P384: 6'b001111: begin
+P385: extended_immediate = {
+P386: 16'h0000,
+P387: immediate16
+P388: };
+P389: end
+P391: default: begin
+P392: extended_immediate = {
+P393: {16{immediate16[15]}},
+P394: immediate16
+P395: };
+P396: end
+P397: endcase
+P398: end
+P399: 其中：
+P400: andi、ori、xori 和 lui 使用零扩展；
+P401: addi、lw、sw、beq 和 bne 使用符号扩展。
+P402: 移位指令使用指令中的 shamt 字段：
+P403: if (is_shift_instruction) begin
+P404: alu_operand_a = {
+P405: 27'h0000000,
+P406: ex_imm_out[10:6]
+P407: };
+P408: end
+P409: 测试程序中的 sll、sra 和 srl 指令用于验证不同类型的移位操作。
+P411: 3.3 lw 和 sw 指令
+P412: lw 和 sw 指令首先在 EX 阶段计算访存地址：
+P413: 访存地址 = 基址寄存器 + 符号扩展后的立即数
+P414: MEM 阶段根据控制信号访问数据存储器：
+P415: always @(posedge clk) begin
+P416: if (exm_memwrite) begin
+P417: data_memory[data_address] <= store_data_final;
+P418: end
+P419: end
+P421: assign mem_read_data = data_memory[data_address];
+P422: 其中：
+P423: lw 指令使用 mem_read_data；
+P424: sw 指令使用 store_data_final；
+P425: 数据存储器地址使用 ALU 结果的 [7:2] 位；
+P426: 写操作在时钟上升沿进行；
+P427: 读操作采用组合读方式。
+P429: 3.4 数据前推机制
+P430: 流水线中，前一条指令的结果可能还没有写回寄存器，但后一条指令已经进入 EX 阶段。为解决这一问题，本设计设置了多级数据前推通路。
+P431: 前推优先级为：
+P432: EX/MEM → MEM/WB → 原始寄存器数据
+P433: EX 阶段操作数 A 的前推代码如下：
+P434: if (ex_mem_regwrite &&
+P435: (ex_mem_rd != 5'd0) &&
+P436: (ex_mem_rd == ex_rs)) begin
+P437: alu_operand_a = ex_mem_alu_result;
+P438: end
+P439: else if (mem_wb_regwrite &&
+P440: (mem_wb_rd != 5'd0) &&
+P441: (mem_wb_rd == ex_rs)) begin
+P442: alu_operand_a = mem_wb_wb_data;
+P443: end
+P444: 操作数 B 的前推只对寄存器型指令有效：
+P445: if (!use_immediate_operand) begin
+P446: if (ex_mem_regwrite &&
+P447: (ex_mem_rd != 5'd0) &&
+P448: (ex_mem_rd == ex_rt)) begin
+P449: alu_operand_b = ex_mem_alu_result;
+P450: end
+P451: else if (mem_wb_regwrite &&
+P452: (mem_wb_rd != 5'd0) &&
+P453: (mem_wb_rd == ex_rt)) begin
+P454: alu_operand_b = mem_wb_wb_data;
+P455: end
+P456: end
+P457: 例如，测试程序中的：
+P458: ori  r8, r5, 0xffff
+P459: xori r8, r8, 0x5555
+P460: 第二条指令需要立即使用第一条指令产生的 r8。此时结果可以通过 EX/MEM 前推直接送入 ALU，而不需要等待寄存器写回。
+P462: 3.5 分支比较前推
+P463: beq 和 bne 在 ID 阶段完成比较，因此分支比较器也需要获得最新的寄存器值。
+P464: 分支操作数前推顺序为：
+P465: EX → EX/MEM → MEM/WB → 寄存器堆
+P466: if (ex_regwrite &&
+P467: !ex_memread &&
+P468: (ex_rd != 5'd0) &&
+P469: (ex_rd == rs)) begin
+P471: branch_rs_value = ex_alu_result;
+P472: end
+P473: else if (ex_mem_regwrite &&
+P474: !ex_mem_memread &&
+P475: (ex_mem_rd != 5'd0) &&
+P476: (ex_mem_rd == rs)) begin
+P478: branch_rs_value = ex_mem_alu_result;
+P479: end
+P480: else if (mem_wb_regwrite &&
+P481: (mem_wb_rd != 5'd0) &&
+P482: (mem_wb_rd == rs)) begin
+P484: branch_rs_value = wb_data;
+P485: end
+P486: 对于 load 指令，由于其数据在 EX 阶段尚未读出，因此禁止从 EX 或 EX/MEM 阶段前推 load 数据。
+P488: 3.7 Load-use 冒险处理
+P489: load 指令的数据必须经过 MEM 阶段的存储器读取后才能得到，因此无法在 EX 阶段直接前推。当一条 lw 指令后面紧跟着使用该结果的指令时，会产生 load-use 冒险。
+P490: 测试程序中的典型指令为：
+P491: lw  r9, 0(r4)
+P492: add r8, r8, r9
+P493: 以及：
+P494: lw  r9, 0(r4)
+P495: sub r8, r9, r4
+P496: 冒险检测模块比较 ID/EX 阶段 load 指令的目标寄存器和 ID 阶段指令的源寄存器：
+P497: assign source_dependency =
+P498: (id_ex_rt == id_rs) ||
+P499: (id_ex_rt == id_rt);
+P500: always @(*) begin
+P501: stall  = 1'b0;
+P502: bubble = 1'b0;
+P503: if (id_ex_memread && source_dependency) begin
+P504: stall  = 1'b1;
+P505: bubble = 1'b1;
+P506: end
+P507: end
+P508: 检测到冒险时：
+P509: PC 停止更新；
+P510: IF/ID 寄存器保持不变；
+P511: ID/EX 寄存器清零；
+P512: EX 阶段插入一个 NOP。
+P513: 对应控制连接如下：
+P514: .wpc(~pipeline_stall)
+P515: .en(~pipeline_stall)
+P516: .stall (pipeline_stall)
+P517: .bubble(pipeline_bubble)
+P518: ID/EX 寄存器中，bubble 优先级高于 stall：
+P519: if (!clrn) begin
+P520: clear_pipeline_state;
+P521: end
+P522: else if (bubble) begin
+P523: clear_pipeline_state;
+P524: end
+P525: else if (stall) begin
+P526: // 保持当前值
+P527: end
+P528: else begin
+P529: capture_decode_state;
+P530: end
+P531: 经过一个周期的阻塞后，lw 指令进入 MEM 阶段并得到数据，后继指令再通过 MEM/WB 前推获得正确结果。
+P533: 3.8 分支和跳转指令
+P534: 分支目标地址由 PC + 4 加上符号扩展后的偏移量得到：
+P535: assign branch_target =
+P536: if_id_pc4 + {extended_immediate[29:0], 2'b00};
+P537: beq 和 bne 的判断逻辑如下：
+P538: assign take_branch =
+P539: branch &&
+P540: (
+P541: is_bne
+P542: ? (branch_rs_value != branch_rt_value)
+P543: : (branch_rs_value == branch_rt_value)
+P544: );
+P545: j 和 jal 使用指令中的 26 位目标字段，并与当前 PC 的高 4 位拼接：
+P546: assign jump_addr = {
+P547: pc_q[31:28],
+P548: if_id_instruction[25:0],
+P549: 2'b00
+P550: };
+P551: jal 指令将返回地址写入 $31：
+P552: assign link_address = ex_pc4 + 32'd4;
+P553: assign alu_result =
+P554: is_jump_link ? link_address : alu_raw_result;
+P555: 由于 ex_pc4 等于当前指令地址加 4，所以写入 $31 的实际返回地址为 PC + 8。
+P556: jr 指令则从寄存器中读取跳转地址：
+P557: assign next_pc =
+P558: id_jump
+P559: ? (is_jump_register ? id_rs_value : jump_addr)
+P560: : (branch_taken ? branch_addr : pc_next4);
+P561: 测试程序中的 jal、jr、beq、bne 和 j 用于验证子程序调用、循环执行、条件分支和无条件跳转。
+P562: 测试指令仿真结果说明
+P563: jal 跳转以及延迟槽仿真结果与说明（跳转到Sum求和前)
+P564: 图中 PC 的变化为：
+P565: 0x08 → 0x0C → 0x6C → 0x70
+P566: 对应的指令为：
+P567: 0x08：jal  sum
+P568: 0x0C：addi r5, r0, 4    // 延迟槽
+P569: 0x6C：add  r8, r0, r0   // 子程序入口
+P570: 0x70：lw   r9, 0(r4)
+P571: jal 指令的目标字段为 0x1B，跳转地址计算为：
+P572: 0x1B << 2 = 0x6C
+P573: 因此，PC 从 0x0C 跳转到 0x6C，说明跳转地址生成正确。同时，0x0C 地址处的 addi 指令正常执行，说明跳转延迟槽工作正常。
+P574: 波形中的 ealu、malu 和 walu 数据依次传递，例如：
+P575: ealu：0x50 → 0x10 → 0x04
+P576: malu：        0x50 → 0x10
+P577: walu：               0x50
+P578: 这说明 ALU 结果能够依次经过 EX、MEM 和 WB 阶段。
+P579: 预期结果： PC 正确跳转到 0x6C，延迟槽指令正常执行，后续进入求和子程序。
+P580: 结论： 该波形表明 jal 跳转、延迟槽处理以及流水线数据传递均符合预期。
+P581: Load-use 冒险仿真分析（求和部分波形图）
+P582: 相关指令为：
+P583: 0x70：lw  r9, 0(r4)
+P584: 0x74：add r8, r8, r9
+P585: add 指令紧跟在 lw 后面使用寄存器 r9，因此产生 load-use 冒险。波形中可以看到，PC 在 0x78 保持一个周期，同时 stall 信号有效，说明流水线暂停；ID/EX 阶段插入 bubble，等待 lw 数据读取完成。
+P586: 冒险解除后，lw 读取的数据继续传递到后续流水线阶段，add 指令恢复执行。
+P587: 结论： PC 暂停、stall 信号和流水线气泡均符合预期，load-use 冒险处理正确。
+P589: bne 分支跳转仿真分析（求和部分波形图）
+P591: 相关指令为：
+P592: 0x7C：bne  r5, r0, loop1
+P593: 0x80：addi r4, r4, 4    // 分支延迟槽
+P594: bne 的立即数为 0xFFFC，符号扩展后左移 2 位得到偏移量 -0x10：
+P595: 分支目标地址 = 0x80 - 0x10 = 0x70
+P596: 因此，当 r5 != 0 时，PC 应从：
+P597: 0x7C → 0x80 → 0x70
+P598: 其中 0x80 的 addi 指令作为分支延迟槽正常执行。波形中 PC 最终跳回 0x70，说明分支条件判断和目标地址计算正确。
+P599: 结论： bne 能够正确跳转到 0x70，延迟槽指令也正常执行，分支循环功能符合预期。
+P601: 求和结果仿真分析（求和部分波形图）
+P603: 在求和循环的最后一次执行中：
+P604: 0x70：lw  r9, 0(r4)
+P605: 0x74：add r8, r8, r9
+P606: 波形中可以看到：
+P607: ealu 出现 0x00000258；
+P608: 随后 malu 传递出 0x00000258；
+P609: 最后 walu 出现 0x00000258；
+P610: 说明最终累加结果经过 EX、MEM、WB 三级流水线后成功写回。
+P611: 四个数据之和为：
+P612: 0xA3 + 0x27 + 0x79 + 0x115 = 0x258
+P613: 因此，波形中的 walu = 0x00000258 与理论计算结果一致。后续 PC 继续执行 bne、延迟槽和 jr 指令，说明求和子程序即将结束并返回主程序。
+P614: 结论： 最终求和结果为 0x258，ALU 运算、数据前递、流水线传递和寄存器写回均正确。
+P615: 实验总结
+P616: 本实验完成了五级流水线 CPU 的设计与仿真，实现了 IF、ID、EX、MEM 和 WB 五个阶段，并通过流水线寄存器传递数据与控制信号。处理器能够执行算术、逻辑、移位、访存、分支及跳转等测试指令。
+P617: 设计中使用数据前递解决大部分数据冒险，并通过 stall 和 bubble 处理 load-use 冒险。仿真结果表明，各级流水线能够正常工作，指令执行结果符合预期。通过本实验，我加深了对流水线数据通路、冒险处理和控制信号传递过程的理解。
+TABLES 1
+TABLE 0
+模块名 | 主要作用
+mips_pipeline_top | CPU 顶层连接
+instruction_rom | 指令存储器
+fetch_pc_stage | IF 阶段 PC 管理
+fetch_decode_reg | IF/ID 流水线寄存器
+decode_stage | ID 阶段译码和寄存器读取
+load_use_hazard | load-use 冒险检测
+decode_execute_reg | ID/EX 流水线寄存器
+execute_stage | EX 阶段 ALU 运算和前递
+execute_memory_reg | EX/MEM 流水线寄存器
+memory_stage | MEM 阶段数据存储器访问
+memory_writeback_reg | WB 流水线寄存器

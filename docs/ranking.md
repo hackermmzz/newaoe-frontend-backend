@@ -12,6 +12,7 @@ GET `${base_url}/getrank?range=0:9`，携带 Cookie。依照请求示例用 URL 
   "data": [
     {
       "id": "20260001",
+      "avatar": "https://example.com/avatar.png",
       "win": true,
       "score": 95,
       "frame": 12,
@@ -26,7 +27,7 @@ GET `${base_url}/getrank?range=0:9`，携带 Cookie。依照请求示例用 URL 
 
 ## 展示及排序
 
-表格依次显示 id、胜利/失败、score、frame、提交时间、else。描述默认截断为 100 字符，可展开全部和收起；成功刷新或翻页后重置展开状态。
+表格依次显示头像、排名、id、胜利/失败、score、frame、提交时间、msg。头像使用接口返回的 `avatar` 字段；为空时显示占位符。描述默认截断为 100 字符，可展开全部和收起；成功刷新或翻页后重置展开状态。
 
 排序由后端完成，前端不再重新排序，严格按照接口返回数组顺序显示。前端兼容直接返回数组和 `{ "data": [] }` 包装形式（通过 axios 时即为 `response.data.data`）。
 

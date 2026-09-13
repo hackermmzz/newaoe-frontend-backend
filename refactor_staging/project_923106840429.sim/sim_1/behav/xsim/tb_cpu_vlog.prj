@@ -1,0 +1,23 @@
+# compile verilog/system verilog design source files
+verilog xil_defaultlib  --include "../../../../../../../../AMDDesignTools/2026.1/Vivado/data/rsb/busdef" \
+"../../../../project_923106840429.srcs/sources_1/new/alu.v" \
+"../../../../project_923106840429.srcs/sources_1/new/alu_control.v" \
+"../../../../project_923106840429.srcs/sources_1/new/cpu_top.v" \
+"../../../../project_923106840429.srcs/sources_1/new/ex_mem.v" \
+"../../../../project_923106840429.srcs/sources_1/new/hazard_unit.v" \
+"../../../../project_923106840429.srcs/sources_1/new/id_ex.v" \
+"../../../../project_923106840429.srcs/sources_1/new/if_id.v" \
+"../../../../project_923106840429.srcs/sources_1/new/main_control.v" \
+"../../../../project_923106840429.srcs/sources_1/new/mem_wb.v" \
+"../../../../project_923106840429.srcs/sources_1/new/pipeex.v" \
+"../../../../project_923106840429.srcs/sources_1/new/pipeid.v" \
+"../../../../project_923106840429.srcs/sources_1/new/pipeif.v" \
+"../../../../project_923106840429.srcs/sources_1/new/pipemem.v" \
+"../../../../project_923106840429.srcs/sources_1/new/regfile.v" \
+"../../../../project_923106840429.srcs/sim_1/new/tb_cpu.v" \
+
+# compile glbl module
+verilog xil_defaultlib "glbl.v"
+
+# Do not sort compile order
+nosort
