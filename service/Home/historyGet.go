@@ -48,18 +48,26 @@ func StudentHistoryGet(ctx *gin.Context) {
 	//获取记录条数
 	recordCnt := dao.CodeRunCountById(data["id"])
 	//从数据库获取提交历史
-	historyRecords := dao.CodeRunGetRangeById(data["id"], beg, end)
+	historyRecords := dao.CodeRunGetRangeById(data["id"], beg, end+1)
 	if historyRecords == nil {
 		historyRecords = make([]dao.CodeRunInfo, 0)
 	}
 	//编辑数据
 	submitRecords := make([]SubmitRecord, len(historyRecords))
+	//判断文件是否存在
+	allfiles := make([]string, len(historyRecords)*2)
+	for i, d := range historyRecords {
+		allfiles[i*2] = d.Header
+		allfiles[i*2+1] = d.Source
+	}
+	fileInfos := dao.OssCheckFilesExist(allfiles)
+	//
 	for i := 0; i < len(submitRecords); i += 1 {
 		record := &submitRecords[i]
 		history := historyRecords[i]
 		//
-		headerInfo := dao.OssCheckFileExist(history.Header)
-		sourceInfo := dao.OssCheckFileExist(history.Source)
+		headerInfo := fileInfos[history.Header]
+		sourceInfo := fileInfos[history.Source]
 		if headerInfo == nil || sourceInfo == nil {
 			util.Debug("怎么可能出现文件不存在的情况呢?")
 			continue

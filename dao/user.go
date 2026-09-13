@@ -80,3 +80,21 @@ func UserGet(id string) *Student {
 	}
 	return &user
 }
+
+// 获取指定多个用户的数据
+func UserGetByIDs(ids []string) []Student {
+
+	var users []Student
+
+	if len(ids) == 0 {
+		return users
+	}
+
+	err := DB.In("id", ids).Find(&users)
+	if err != nil {
+		util.Debug("UserGetByIDs:", err)
+		return nil
+	}
+
+	return users
+}

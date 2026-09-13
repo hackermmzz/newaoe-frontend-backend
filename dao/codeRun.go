@@ -86,11 +86,15 @@ func CodeRunCountById(id string) int64 {
 	return cnt
 }
 
+// 不包含end
 func CodeRunGetRangeById(id string, beg int, end int) []CodeRunInfo {
+	if beg < 0 || beg >= end {
+		return nil
+	}
 	var ret []CodeRunInfo
 	err := DB.Where("id = ?", id).
 		OrderBy("submittime desc").
-		Limit(end-beg+1, int(beg)).
+		Limit(end-beg, int(beg)).
 		Find(&ret)
 	if err != nil {
 		util.Debug("CodeRunGetRangeById:", err)

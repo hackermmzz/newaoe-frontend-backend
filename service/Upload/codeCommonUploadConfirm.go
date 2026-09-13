@@ -77,9 +77,10 @@ func CodeUploadConfirm(ctx *gin.Context, userInfo map[string]string, path []stri
 	header := path[0]
 	source := path[1]
 	description := path[2]
-	headerInfo := dao.OssCheckFileExist(header)
-	sourceInfo := dao.OssCheckFileExist(source)
-	descriptionInfo := dao.OssCheckFileExist(description)
+	fileExists := dao.OssCheckFilesExist([]string{header, source, description})
+	headerInfo := fileExists[header]
+	sourceInfo := fileExists[source]
+	descriptionInfo := fileExists[description]
 	if headerInfo == nil || sourceInfo == nil || descriptionInfo == nil {
 		util.ResponseNAK_MSG(ctx, "上传文件确认失败", "")
 		return

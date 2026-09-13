@@ -31,10 +31,35 @@ func FetchRank(ctx *gin.Context) {
 		util.ResponseNAK_MSG(ctx, "服务器异常", "")
 		return
 	}
-	info := dao.RankGetByRange(session, beg, end)
+	info := dao.RankGetByRange(session, beg, end+1)
 	if info == nil {
 		info = make([]dao.RankInfo, 0)
 	}
-	//获取数量
-	util.ResponseACK_MSG(ctx, "获取排行成功", info)
+	//获取人物头像
+	ids := make([]string, len(info))
+	for i, d := range info {
+		ids[i] = d.ID
+	}
+	avatars := dao.UserGetByIDs(ids)
+	if len(avatars) == 0 {
+		util.ResponseNAK_MSG(ctx, "服务器异常", "")
+		return
+	}
+	idToAvatar := make(map[string]string)
+	for _, d := range avatars {
+		idToAvatar[d.Id] = d.Avatar
+	}
+	//处理一下数据
+	type FinalDataInfo struct {
+		dao.RankInfo
+		Avatar string `json:"avatar"`
+	}
+	finaldata := make([]FinalDataInfo, len(info))
+
+	for i, d := range info {
+		finaldata[i].Avatar = idToAvatar[d.ID]
+		finaldata[i].RankInfo = d
+	}
+	//返回结果
+	util.ResponseACK_MSG(ctx, "获取排行成功", finaldata)
 }

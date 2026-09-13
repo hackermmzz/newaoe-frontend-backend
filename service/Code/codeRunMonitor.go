@@ -251,20 +251,6 @@ func updateRank(session *xorm.Session, dt []dao.CodeRunInfo) {
 		ind := dt[i].Indices
 		status := dt[i].Status
 		key := fmt.Sprintf("CodeRunInfoForRank:%v", ind)
-		//获取当前状态
-		data, exist := dao.RedisGet(context.Background(), key)
-		if !exist {
-			//从数据库读取
-			info = *dao.CodeRunGetByIndices(ind)
-			//写入redis
-			data, err = json.Marshal(info)
-			dao.RedisSet(context.Background(), key, string(data), time.Duration(30)*time.Minute)
-		}
-		err = json.Unmarshal(data, &info)
-		if err != nil {
-			util.Debug("updateRank: json.Unmarshal failed:" + err.Error())
-			continue
-		}
 		//反序列化数据
 		datajs := make(map[string]interface{})
 		err = json.Unmarshal([]byte(status), &datajs)
@@ -294,14 +280,31 @@ func updateRank(session *xorm.Session, dt []dao.CodeRunInfo) {
 			util.Debug("updateRank: json.Unmarshal failed:"+err.Error(), status)
 			continue
 		}
+		//获取当前状态
+		data, exist := dao.RedisGet(context.Background(), key)
+		if !exist {
+			//从数据库读取
+			info = *dao.CodeRunGetByIndices(ind)
+			//写入redis
+			data, err = json.Marshal(info)
+			dao.RedisSet(context.Background(), key, string(data), time.Duration(30)*time.Minute)
+		}
+		err = json.Unmarshal(data, &info)
+		if err != nil {
+			util.Debug("updateRank: json.Unmarshal failed:" + err.Error())
+			continue
+		}
 		//最终数据
 		rankinfo.ID = info.ID
 		rankinfo.SubmitTime = info.SubmitTime
-		if len(info.Description) > 0 {
-			rankinfo.Msg = "描述: " + info.Description + "\n" + "状态: " + status
-		} else {
-			rankinfo.Msg = status
+		if len(info.Description) == 0 {
+			info.Description = "原神启动!"
 		}
+		msgMp := make(map[string]string)
+		msgMp["desc"] = info.Description
+		msgMp["status"] = status
+		msgByte, _ := json.Marshal(msgMp)
+		rankinfo.Msg = string(msgByte)
 		rankinfo.Score = msgInfo.Score
 		rankinfo.Frame = msgInfo.Frame
 		rankinfo.Win = msgInfo.Win

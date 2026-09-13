@@ -35,8 +35,9 @@ func (server *GrpcCodeServer) GetCode(ctx context.Context, req *grpc_api.CodeReq
 	header_dir := codeinfo.Header
 	//获取链接（这里不走路由了，直接后端获取链接）
 	duration := time.Duration(60*30) * time.Second
-	headerUrl := dao.OssGetDownloadFileUrl(header_dir, duration, false)
-	sourceUrl := dao.OssGetDownloadFileUrl(source_dir, duration, false)
+	urlGet := dao.OssGetDownloadFileUrls([]string{header_dir, source_dir}, duration, false)
+	headerUrl := urlGet[0]
+	sourceUrl := urlGet[1]
 	if headerUrl == "" || sourceUrl == "" {
 		return &grpc_api.CodeReply{
 			Ok:  false,

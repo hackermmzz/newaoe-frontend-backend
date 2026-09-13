@@ -16,8 +16,9 @@ func AssessmentSubmissionUploadConfirm(ctx *gin.Context, userInfo map[string]str
 	//我们需要确认这两个文件都存在才算上传成功
 	header := path[0]
 	source := path[1]
-	headerInfo := dao.OssCheckFileExist(header)
-	sourceInfo := dao.OssCheckFileExist(source)
+	fileExist := dao.OssCheckFilesExist([]string{header, source})
+	headerInfo := fileExist[header]
+	sourceInfo := fileExist[source]
 	if headerInfo == nil || sourceInfo == nil {
 		util.ResponseNAK_MSG(ctx, "上传文件确认失败", "")
 		return

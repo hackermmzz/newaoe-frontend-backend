@@ -20,6 +20,7 @@ func (r RankInfo) TableName() string {
 	return "Rank"
 }
 
+// end不包括
 func RankGetByRange(session *xorm.Session, beg int, end int) []RankInfo {
 	var ranks []RankInfo
 	if beg < 0 || end <= beg {
