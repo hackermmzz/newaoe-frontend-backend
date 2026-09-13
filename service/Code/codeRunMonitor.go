@@ -287,7 +287,11 @@ func updateRank(session *xorm.Session, dt []dao.CodeRunInfo) {
 		//
 		rankinfo.ID = info.ID
 		rankinfo.SubmitTime = info.SubmitTime
-		rankinfo.Msg = status
+		if len(info.Description) > 0 {
+			rankinfo.Msg = "描述: " + info.Description + "\n" + "状态: " + status
+		} else {
+			rankinfo.Msg = status
+		}
 		rankinfo.Score = msgInfo.Score
 		rankinfo.Frame = msgInfo.Frame
 		rankinfo.Win = msgInfo.Win
