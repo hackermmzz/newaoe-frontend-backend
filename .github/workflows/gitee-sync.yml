@@ -15,12 +15,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Sync branches and tags to Gitee
+      - name: Sync current branch to Gitee
         run: |
           git remote add gitee https://crackermmzz:${{ secrets.GITEE_TOKEN }}@gitee.com/crackermmzz/newaoe-frontend-backend.git
 
-          # 同步所有普通分支
-          git push gitee --all
+          # 同步当前触发的分支
+          git push gitee HEAD:${{ github.ref_name }}
 
-          # 同步所有 tag
+          # 同步 tag（可选）
           git push gitee --tags
