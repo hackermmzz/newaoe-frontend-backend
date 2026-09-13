@@ -278,6 +278,9 @@ func updateRank(session *xorm.Session, dt []dao.CodeRunInfo) {
 			continue
 		}
 		finaldata = util.GetBracesContent(finaldata.(string))
+		if finaldata==""{
+			continue
+		}
 		var msgInfo CodeRunMsg
 		err = json.Unmarshal([]byte(finaldata.(string)), &msgInfo)
 		if err != nil || finaldata == "" {
