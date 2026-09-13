@@ -3,7 +3,7 @@ name: Sync to Gitee
 on:
   push:
     branches:
-      - "**"
+      - "judge"
 
 jobs:
   sync:
@@ -15,12 +15,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Sync branches and tags to Gitee
+      - name: Sync judge branch to Gitee
         run: |
           git remote add gitee https://crackermmzz:${{ secrets.GITEE_TOKEN }}@gitee.com/crackermmzz/newaoe-frontend-backend.git
 
-          # 同步所有普通分支
-          git push gitee --all
+          # 只同步 judge 分支
+          git push gitee judge
 
-          # 同步所有 tag
+          # 同步 tag（如果需要）
           git push gitee --tags
