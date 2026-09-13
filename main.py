@@ -135,7 +135,7 @@ def Task():
             print(f"出现异常:{e}")
 ##################################################静态编译
 def PreCompile():
-    print("进入 PreCompile")
+    print("进入 PreCompile",new_aoe_folder)
     docker_cmd = [
         "docker", "run",
         "--rm",
