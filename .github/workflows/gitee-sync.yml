@@ -3,20 +3,18 @@ name: Sync to Gitee
 on:
   push:
     branches:
-      - main
+      - "**"
 
 jobs:
   sync:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Sync to Gitee
         run: |
           git remote add gitee https://crackermmzz:${{ secrets.GITEE_TOKEN }}@gitee.com/crackermmzz/newaoe-frontend-backend.git
-          git push gitee --all
-          git push gitee --tags
+          git push gitee --mirror
