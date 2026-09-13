@@ -6,12 +6,15 @@ import (
 	"newaoe/service/Code"
 	data "newaoe/service/Data"
 	"newaoe/service/Email"
+	"newaoe/service/Home"
 	"newaoe/util"
 )
 
 func ServiceInit() {
 	//初始化邮箱连接
 	Email.EmailSenderInit()
+	//初始化反馈推送
+	Home.FeedbackInit()
 	//初始化代码运行状态服务
 	Code.CodeRunServiceInit()
 }

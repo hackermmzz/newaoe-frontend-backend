@@ -40,12 +40,13 @@ func FileUpload(ctx *gin.Context) {
 }
 
 // 文件上传接口(返回上传链接)
-func UploadFile(ctx *gin.Context, filePath []string, expireDuration []time.Duration) {
+func UploadFile(ctx *gin.Context, filePath []string, expireDuration []time.Duration) bool {
 	urls := dao.GetUploadFileUrls(filePath, expireDuration)
 	if urls == nil {
 		util.Debug("UploadFile:生成上传链接失败")
 		util.ResponseNAK_MSG(ctx, "上传文件失败!", "")
-		return
+		return false
 	}
 	util.ResponseACK_MSG(ctx, "上传文件成功!", map[string]interface{}{"urls": urls})
+	return true
 }

@@ -98,3 +98,5 @@ other:
   superUser: ["923106840429","BJS9006210"]  #超级用户，通常为管理员（wlh和娄震）
   superUserPassword: "newaoe"  #超级用户密码
   superUserEmail: "2049983474@qq.com"  #超级用户邮箱
+  feedbackNeedSendToEmailTopic: "FeedbackNeedSendToEmail"   #存用户反馈，后台会把这个队列里面所有的反馈发到wlh邮箱
+  feedbackSendToEmail: "2049983474@qq.com"   #反馈发送的邮箱

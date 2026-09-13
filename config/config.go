@@ -126,6 +126,8 @@ type OtherConfig struct {
 	SuperUser                         []string `yaml:"superUser"`                         //超级用户
 	SuperUserPassword                 string   `yaml:"superUserPassword"`                 //超级用户密码
 	SuperUserEmail                    string   `yaml:"superUserEmail"`                    //超级用户邮箱
+	FeedbackNeedSendToEmailTopic      string   `yaml:"feedbackNeedSendToEmailTopic"`      //反馈发送邮箱队列
+	FeedbackSendToEmail               string   `yaml:"feedbackSendToEmail"`               //反馈发送的邮箱
 }
 
 var (
