@@ -265,29 +265,36 @@ func updateRank(session *xorm.Session, dt []dao.CodeRunInfo) {
 			util.Debug("updateRank: json.Unmarshal failed:" + err.Error())
 			continue
 		}
-		//序列化数据
+		//反序列化数据
 		datajs := make(map[string]interface{})
 		err = json.Unmarshal([]byte(status), &datajs)
 		if err != nil {
 			util.Debug("updateRank: json.Unmarshal datajs failed:" + err.Error())
 			continue
 		}
+		//检测状态码，如果不是在运行就不管
+		statusCode, ok := datajs["status"]
+		if !ok {
+			util.Debug("The status in datajs is an error!", err, status)
+			continue
+		}
+		if statusCode.(int) < Code_Status_Running {
+			continue
+		}
+		//反序列化运行数据
 		finaldata, ok := datajs["data"]
 		if !ok {
 			util.Debug("The data in datajs is an error!", err, status)
 			continue
 		}
 		finaldata = util.GetBracesContent(finaldata.(string))
-		if finaldata==""{
-			continue
-		}
 		var msgInfo CodeRunMsg
 		err = json.Unmarshal([]byte(finaldata.(string)), &msgInfo)
 		if err != nil || finaldata == "" {
 			util.Debug("updateRank: json.Unmarshal failed:"+err.Error(), status)
 			continue
 		}
-		//
+		//最终数据
 		rankinfo.ID = info.ID
 		rankinfo.SubmitTime = info.SubmitTime
 		if len(info.Description) > 0 {
