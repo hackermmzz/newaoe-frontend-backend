@@ -268,7 +268,6 @@ func batchUpdateCodeRunStatus(indices []int) {
 		util.DebugError("batchUpdateCodeRunStatus: commit transaction failed:", err)
 		return
 	}
-	util.DebugSuccess("更新成功!", tempDataArr)
 }
 
 func processCodeRunningStatus(status CodeRunStatusInfoPushRedis) string {
