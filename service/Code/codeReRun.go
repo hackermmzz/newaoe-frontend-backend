@@ -47,7 +47,7 @@ func CodeReRun(ctx *gin.Context) {
 		Status:      dao.ProcessDataMessageByStatus(dao.NewCodeRunStatusInfo()).Marshal(),
 		Version:     util.UTC_Time().UnixMilli(),
 	}
-	if !RunUserCode(session, runInfo) {
+	if !RunUserCode(session, runInfo, true) {
 		util.ResponseNAK_MSG(ctx, "运行失败!", "")
 		return
 	}

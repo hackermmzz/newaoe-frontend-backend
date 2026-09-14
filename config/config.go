@@ -80,6 +80,7 @@ type CodeConfig struct {
 	CodeWaitForRunQueueTopic              string `yaml:"codeWaitForRunQueueTopic"`              //代码待运行topic
 	CodeSubmitTimesPerDay                 int    `yaml:"codeSubmitTimesPerDay"`                 //一天可以提交的次数
 	CodeAssessmentTimes                   int    `yaml:"codeAssessmentTimes"`                   //考核提交可以提交的次数
+	CodeWaitTooLongTimeLimit              int    `yaml:"codeWaitTooLongTimeLimit"`              //代码等待结果超时时长
 }
 
 type RegistVerifyCodeConfig struct {

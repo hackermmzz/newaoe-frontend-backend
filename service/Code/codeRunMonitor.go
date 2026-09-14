@@ -87,10 +87,46 @@ func CodeRunServiceInit() {
 		panic("CodeRunServiceInit:" + err.Error())
 	}
 	//启动队列处理线程
-	go CodeRunStatusUpdateQueueProcess()
+	go codeRunStatusUpdateQueueProcess()
+	//启动一个协程定期检查过期没运行的
+	go codeRunningLongTimeWaitRepush()
 }
 
-func CodeRunStatusUpdateQueueProcess() {
+func codeRunningLongTimeWaitRepush() {
+	for {
+		func() {
+			session := dao.DB.NewSession()
+			defer session.Close()
+			// 超时时间
+			expireDuration := time.Duration(config.Conf.Code.CodeWaitTooLongTimeLimit) * time.Minute
+			runningList := dao.CodeRunningGetExpireTime(session, expireDuration)
+			if len(runningList) == 0 {
+				return
+			}
+			//获取所有info
+			indicesArr := make([]int, len(runningList))
+			for i, d := range runningList {
+				indicesArr[i] = d.Indices
+			}
+			coderunInfos := dao.CodeRunBatchGetByIndices(indicesArr)
+			for _, info := range coderunInfos {
+				if RunUserCode(session, info, false) {
+					//成功了就更新当前的重新运行的时间戳
+					if !dao.CodeRunningUpdate(session, dao.CodeRunningInfo{
+						Indices:    info.Indices,
+						SubmitTime: util.UTC_Time(),
+					}) {
+						util.DebugError("CodeRunningUpdate失败!")
+					}
+				}
+			}
+
+		}()
+		// 防止CPU空转
+		time.Sleep(10 * time.Second)
+	}
+}
+func codeRunStatusUpdateQueueProcess() {
 	duration := time.Duration(config.Conf.Code.CodeRunStatusUpdateInterval) * time.Second
 	timer := time.NewTicker(duration)
 	for {
@@ -170,7 +206,7 @@ func batchUpdateCodeRunStatus(indices []int) {
 	for i := range dataArr {
 		tempDataArr[i] = TempCodeRunInfo{
 			Indices:    dataArr[i].Indices,
-			Status:     dataArr[i].Status,
+			Status:     util.TruncateString(dataArr[i].Status, 16*1024), //最多保留16kb
 			NewVersion: dataArr[i].Version,
 		}
 	}
@@ -201,10 +237,12 @@ func batchUpdateCodeRunStatus(indices []int) {
 	}
 	//更新排行榜
 	updateRank(session, dataArr)
+	//移除已经结束的记录
+	removeCodeRunRecordAlreadyFinish(session, dataArr)
 	//提交事务
 	err = session.Commit()
 	if err != nil {
-		util.DebugError("batchUpdateCodeRunStatus: commit transaction failed:" + err.Error())
+		util.DebugError("batchUpdateCodeRunStatus: commit transaction failed:", err)
 		return
 	}
 
@@ -311,4 +349,35 @@ func updateRank(session *xorm.Session, dt []dao.CodeRunInfo) {
 	if !dao.RankBatchUpdateOrInsertIfBetter(session, finalRankInfo) {
 		util.DebugError("updateRank fail!")
 	}
+}
+
+func removeCodeRunRecordAlreadyFinish(session *xorm.Session, dt []dao.CodeRunInfo) bool {
+	needRemove := make([]int, 0)
+	for _, info := range dt {
+		ind := info.Indices
+		status := info.Status
+		//解析运行结果
+		var codeRunningStatus dao.CodeRunStatusInfo
+		if err := codeRunningStatus.Unmarshal([]byte(status)); err != nil {
+			util.DebugError("status解析失败:", err)
+			continue
+		}
+		//运行状态表明程序没有结束
+		if !codeRunningStatus.IsFinish() {
+			continue
+		}
+		//
+		needRemove = append(needRemove, ind)
+	}
+	//批量删除
+	if !dao.CodeRunningBatchRemove(session, needRemove) {
+		util.DebugError("批量移除CodeRunning失败!执行单个单个删除操作!")
+		//单个单个移除
+		for _, ind := range needRemove {
+			if !dao.CodeRunningRemove(session, ind) {
+				util.DebugError("单个删除CodeRunning表记录失败!")
+			}
+		}
+	}
+	return true
 }

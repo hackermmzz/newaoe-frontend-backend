@@ -322,3 +322,14 @@ func GetLeftTimeForOneDay() time.Duration {
 	)
 	return tomorrow.Sub(now)
 }
+
+func TruncateString(s string, maxLen int) string {
+	if maxLen <= 0 {
+		return ""
+	}
+	runes := []rune(s)
+	if len(runes) <= maxLen {
+		return s
+	}
+	return string(runes[:maxLen])
+}

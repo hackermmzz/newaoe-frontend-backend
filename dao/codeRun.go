@@ -48,6 +48,14 @@ func (c *CodeRunStatusInfo) Unmarshal(data []byte) error {
 	err := json.Unmarshal(data, &c)
 	return err
 }
+func (c CodeRunStatusInfo) IsFinish() bool {
+	switch c.Status {
+	case Code_Status_Error, Code_Status_Compile_Fail,
+		Code_Status_Success, Code_Status_Fail, Code_Status_Crash:
+		return true
+	}
+	return false
+}
 
 func ProcessDataMessageByStatus(coderunStatus CodeRunStatusInfo) CodeRunStatusInfo {
 	var ret CodeRunStatusInfo
@@ -111,6 +119,18 @@ func CodeRunAdd(session *xorm.Session, c CodeRunInfo) int {
 	return c.Indices
 }
 
+func CodeRunUpdate(session *xorm.Session, newInfo CodeRunInfo) bool {
+	affected, err := session.
+		ID(newInfo.Indices).
+		AllCols().
+		Update(&newInfo)
+	if err != nil {
+		util.DebugError("CodeRunUpdate:", err)
+		return false
+	}
+	return affected > 0
+}
+
 func CodeRunUpdateStatusAsync(session *xorm.Session, indices int, status string) bool {
 	var info CodeRunInfo
 	info.Status = status
@@ -143,6 +163,21 @@ func CodeRunGetByIndices(indices int) *CodeRunInfo {
 		return nil
 	}
 	return &ret
+}
+
+func CodeRunBatchGetByIndices(indices []int) []CodeRunInfo {
+	var ret []CodeRunInfo
+	if len(indices) == 0 {
+		return ret
+	}
+	err := DB.
+		Where("indices IN (?)", indices).
+		Find(&ret)
+	if err != nil {
+		util.DebugError("CodeRunBatchGetByIndices:", err)
+		return nil
+	}
+	return ret
 }
 
 func CodeRunGetById(id string) []CodeRunInfo {

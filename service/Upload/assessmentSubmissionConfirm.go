@@ -81,7 +81,7 @@ func AssessmentSubmissionUploadProcess(ctx *gin.Context, userInfo map[string]str
 		Description: fmt.Sprintf("this is the final code you submit (teacher:%v)", teacher),
 		Status:      dao.ProcessDataMessageByStatus(dao.NewCodeRunStatusInfo()).Marshal(),
 	}
-	if !Code.RunUserCode(session, info) {
+	if !Code.RunUserCode(session, info, true) {
 		util.ResponseNAK_MSG(ctx, "上传失败!", "")
 		return
 	}

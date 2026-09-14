@@ -52,7 +52,7 @@ func ProcessUploadCode(ctx *gin.Context, userInfo map[string]string, path []mini
 		Description: string(description),
 		Status:      dao.ProcessDataMessageByStatus(dao.NewCodeRunStatusInfo()).Marshal(),
 	}
-	if !Code.RunUserCode(session, runinfo) {
+	if !Code.RunUserCode(session, runinfo, true) {
 		util.ResponseNAK_MSG(ctx, "代码上传失败", "")
 		return
 	}
