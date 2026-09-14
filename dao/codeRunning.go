@@ -78,3 +78,12 @@ func CodeRunningGetExpireTime(session *xorm.Session, expireDuration time.Duratio
 	}
 	return result
 }
+
+func CodeRunningExist(session *xorm.Session, indices int) bool {
+	exists, err := session.Where("indices = ?", indices).Exist(&CodeRunningInfo{})
+	if err != nil {
+		util.Debug("CodeRunningExist err:", err)
+		return false
+	}
+	return exists
+}

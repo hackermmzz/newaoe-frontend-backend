@@ -119,6 +119,15 @@ func CodeRunAdd(session *xorm.Session, c CodeRunInfo) int {
 	return c.Indices
 }
 
+func CodeRunExist(session *xorm.Session, indices int) bool {
+	exist, err := session.Where("indices= ?", indices).Exist(&CodeRunInfo{})
+	if err != nil {
+		util.Debug("CodeRunExist err:", err)
+		return false
+	}
+	return exist
+}
+
 func CodeRunUpdate(session *xorm.Session, newInfo CodeRunInfo) bool {
 	affected, err := session.
 		ID(newInfo.Indices).

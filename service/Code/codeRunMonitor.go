@@ -120,7 +120,9 @@ func codeRunningLongTimeWaitRepush() {
 					}
 				}
 			}
-
+			if err := session.Commit(); err != nil {
+				util.DebugError("codeRunningLongTimeWaitRepush:session commit fail", err)
+			}
 		}()
 		// 防止CPU空转
 		time.Sleep(10 * time.Second)

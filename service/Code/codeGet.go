@@ -57,18 +57,29 @@ func (server *GrpcCodeServer) GetCode(ctx context.Context, req *grpc_api.CodeReq
 }
 
 func GetOneCodeTask() interface{} {
-	data, success := dao.RedisListPop(context.Background(), config.Conf.Code.CodeWaitForRunQueueTopic)
-	if !success {
-		return nil
-	}
+	session := dao.DB.NewSession()
+	defer session.Close()
 	var codeinfo dao.CodeRunInfo
-	err := json.Unmarshal([]byte(data), &codeinfo)
-	if err != nil {
-		util.DebugError("GetOneCodeTask JsonUnmarshal err:", err)
-		return nil
+	//这里要做幂等，防止这个消息已经被消费过了
+	for i := 0; i < 10; i += 1 {
+		data, success := dao.RedisListPop(context.Background(), config.Conf.Code.CodeWaitForRunQueueTopic)
+		if !success {
+			return nil
+		}
+		err := json.Unmarshal([]byte(data), &codeinfo)
+		if err != nil {
+			util.DebugError("GetOneCodeTask JsonUnmarshal err:", err)
+			return nil
+		}
+		//判断是否已经处理过了
+		if dao.CodeRunningExist(session, codeinfo.Indices) || !dao.CodeRunExist(session, codeinfo.Indices) {
+			//
+			util.DebugSuccess("OJ successfully get one code!")
+			return codeinfo
+		}
 	}
-	util.DebugSuccess("OJ successfully get one code!")
-	return codeinfo
+	//
+	return nil
 }
 
 // 鉴权使用
