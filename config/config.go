@@ -77,7 +77,7 @@ type CodeConfig struct {
 	CodeRunStatusUpdateQueueMaxSize       int    `yaml:"codeRunStatusUpdateQueueMaxSize"`       // 代码运行状态更新队列最大大小
 	CodeRunStatusUpdateQueueSizeThreshold int    `yaml:"codeRunStatusUpdateQueueSizeThreshold"` // 队列触发更新大小阈值
 	CodeRunStatusUpdateInterval           int    `yaml:"codeRunStatusUpdateInterval"`           // 队列更新间隔 单位：秒
-	CodeWaitForRunRedisQueueTopic         string `yaml:"codeWaitForRunRedisQueueTopic"`         //代码待运行topic
+	CodeWaitForRunQueueTopic              string `yaml:"codeWaitForRunQueueTopic"`              //代码待运行topic
 	CodeSubmitTimesPerDay                 int    `yaml:"codeSubmitTimesPerDay"`                 //一天可以提交的次数
 	CodeAssessmentTimes                   int    `yaml:"codeAssessmentTimes"`                   //考核提交可以提交的次数
 }
@@ -128,10 +128,13 @@ type OtherConfig struct {
 	SuperUserEmail                    string   `yaml:"superUserEmail"`                    //超级用户邮箱
 	FeedbackNeedSendToEmailTopic      string   `yaml:"feedbackNeedSendToEmailTopic"`      //反馈发送邮箱队列
 	FeedbackSendToEmail               string   `yaml:"feedbackSendToEmail"`               //反馈发送的邮箱
+	UnlimitUser                       []string `yaml:"unlimitUser"`                       //不限制提交用户(这类用户通常给予了判题机资源)
 }
 
 var (
-	Conf Config
+	Conf           Config
+	SuperUserMap   = make(map[string]struct{})
+	UnlimitUserMap = make(map[string]struct{})
 )
 
 // 初始化一些配置
@@ -155,4 +158,12 @@ func ConfigInit() {
 	}
 	//设置基础时区为UTC
 	time.LoadLocation(time.UTC.String())
+	//初始化SuperUserMap
+	for _, d := range Conf.Other.SuperUser {
+		SuperUserMap[d] = struct{}{}
+	}
+	//初始化UnlimitUserMap
+	for _, d := range Conf.Other.UnlimitUser {
+		UnlimitUserMap[d] = struct{}{}
+	}
 }

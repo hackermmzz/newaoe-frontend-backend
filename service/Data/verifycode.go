@@ -54,7 +54,7 @@ func VerifyCodeAdd(id string, code string, class int8) bool {
 	tx.Set(ctx, data.Tag(), "", resend_time)
 	_, err := tx.Exec(ctx)
 	if err != nil {
-		util.Debug("VerifyCodeAdd:", err)
+		util.DebugError("VerifyCodeAdd:", err)
 		return false
 	}
 
@@ -69,7 +69,7 @@ func VerifyCodeExist(id string, code string, class int8) bool {
 	}
 	exist, err := dao.RDB.Exists(dao.RDB.Context(), data.String()).Result()
 	if err != nil {
-		util.Debug("VerifyCodeExist:", err)
+		util.DebugError("VerifyCodeExist:", err)
 		return false
 	}
 	return exist == 1
@@ -82,7 +82,7 @@ func VerifyCodeCanSend(id string, class int8) bool {
 	}
 	exist, err := dao.RDB.Exists(dao.RDB.Context(), data.Tag()).Result()
 	if err != nil {
-		util.Debug("VerifyCodeCanSend:", err)
+		util.DebugError("VerifyCodeCanSend:", err)
 		return false
 	}
 	return exist == 1
@@ -95,7 +95,7 @@ func VerifyCodeCanSendTTL(id string, class int8) int64 {
 	}
 	ttl, err := dao.RDB.TTL(dao.RDB.Context(), data.Tag()).Result()
 	if err != nil {
-		util.Debug("VerifyCodeCanSendTTL:", err)
+		util.DebugError("VerifyCodeCanSendTTL:", err)
 		return int64(1e9)
 	}
 	return int64(ttl.Seconds())

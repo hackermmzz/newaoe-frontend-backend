@@ -35,7 +35,7 @@ func AvatarUploadConfirm(ctx *gin.Context, userInfo map[string]string, path stri
 	info := dao.OssCheckFileExist(path)
 	if info == nil {
 		util.ResponseNAK_MSG(ctx, "头像上传确认失败!", "")
-		util.Debug("AvatarUploadConfirm:", userInfo["id"], path)
+		util.DebugError("AvatarUploadConfirm:", userInfo["id"], path)
 		return
 	}
 	ProcessUploadAvatar(ctx, userInfo, *info)

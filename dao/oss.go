@@ -59,7 +59,7 @@ func OssInit() {
 		panic(fmt.Sprintf("获取默认头像失败: %v桶的路径%v内没有默认头像资源!", config.Conf.OSS.BucketName, avatarPath))
 	}
 	//
-	util.Debug("OSS连接成功!")
+	util.DebugSuccess("OSS连接成功!")
 }
 
 // 判断错误是否值得重试而不是无脑重试
@@ -111,7 +111,7 @@ func OssCheckFileExist(filePath string) *minio.ObjectInfo {
 		backoff(i)
 	}
 
-	util.Debug("OssCheckFileExist:", lastErr.Error())
+	util.DebugError("OssCheckFileExist:", lastErr.Error())
 	return nil
 }
 
@@ -195,7 +195,7 @@ func OssGetFileData(filePath string) []byte {
 		backoff(i)
 	}
 	//无法获取
-	util.Debug("OssGetFileData:", lastErr.Error())
+	util.DebugError("OssGetFileData:", lastErr.Error())
 	return nil
 }
 
@@ -234,7 +234,7 @@ func OssGetDownloadFileUrl(filePath string, expireDuration time.Duration, attach
 		backoff(i)
 	}
 
-	util.Debug("OssGetDownloadFileUrl:", lastErr.Error())
+	util.DebugError("OssGetDownloadFileUrl:", lastErr.Error())
 	return ""
 }
 
@@ -282,7 +282,7 @@ func GetUploadFileUrls(filePath []string, expireDuration []time.Duration) []stri
 				}
 				backoff(j)
 			}
-			util.Debug("GetUploadFileUrls:", lastErr.Error())
+			util.DebugError("GetUploadFileUrls:", lastErr.Error())
 			mu.Lock()
 			success = false
 			mu.Unlock()
@@ -339,7 +339,7 @@ func OssGetDownloadFileUrls(filePaths []string, expireDuration time.Duration, at
 				}
 				backoff(retry)
 			}
-			util.Debug(
+			util.DebugError(
 				"OssGetDownloadFileUrl:",
 				path,
 				lastErr,

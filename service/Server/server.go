@@ -26,7 +26,7 @@ func ServeInit() {
 	trustedProxyConfig()
 	//
 	if err := Engine.Run(fmt.Sprintf(":%d", config.Conf.Server.ServerListenPort)); err != nil {
-		util.Debug("服务器启动失败: " + err.Error())
+		util.DebugError("服务器启动失败: " + err.Error())
 	}
-	util.Debug("服务器启动成功")
+	util.DebugSuccess("服务器启动成功")
 }

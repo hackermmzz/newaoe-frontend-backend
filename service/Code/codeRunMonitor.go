@@ -27,63 +27,40 @@ var (
 func (server *GrpcCodeServer) CodeStatusUpdate(ctx context.Context, req *grpc_api.CodeStatusUpdateRequest) (*grpc_api.Empty, error) {
 	//鉴权
 	if !codeGrpcServerAuthConfirm(req.Auth) {
-		util.Debug("疑似Auth泄露!")
+		util.DebugError("疑似Auth泄露!")
 		return nil, nil
 	}
 	//更新数据
 	indices := req.Indices
-	codeRunStatus := ProcessDataMessageByStatus(int(req.Status), req.Data)
+	info := dao.NewCodeRunStatusInfo()
+	if info.Unmarshal([]byte(req.Data)) != nil {
+		util.DebugError("OJ传过来的数据格式有误!")
+		return nil, nil
+	}
+	codeRunStatus := dao.ProcessDataMessageByStatus(info)
 	//先更新redis
 	ctx1 := context.Background()
-	duration := time.Duration(60) * time.Minute                                              //设置60分钟过期
-	dao.RedisSet(ctx1, fmt.Sprintf("CodeRun:%v", indices), codeRunStatus.String(), duration) //这里肯定不会乱序，因为judge那边是同步发送的
+	duration := time.Duration(60) * time.Minute                                               //设置60分钟过期
+	dao.RedisSet(ctx1, fmt.Sprintf("CodeRun:%v", indices), codeRunStatus.Marshal(), duration) //这里肯定不会乱序，因为judge那边是同步发送的
 	//再次push到mq（只push编号）
 	indices_byte := make([]byte, 8)
 	binary.BigEndian.PutUint64(indices_byte, uint64(indices))
-	dao.RocketMQProducer.SendAsync(context.Background(), func(ctx context.Context, result *primitive.SendResult, err error) {
-		if err != nil {
-			util.Debug("代码状态发送到mq失败:" + err.Error())
-		}
-	}, primitive.NewMessage(
-		config.Conf.Code.CodeRunStatusTopic,
-		indices_byte,
-	))
+	msg := primitive.NewMessage(config.Conf.Code.CodeRunStatusTopic, indices_byte)
+	pushCodeRunStatusNeedUpdateToQueue(msg, 3) //默认重试3次
 	return nil, nil
 }
 
-func ProcessDataMessageByStatus(status int, data string) CodeRunStatus {
-	var ret CodeRunStatus
-	switch status {
-	case Code_Status_Wait:
-		ret.Data = "排队中..."
-		ret.Status = Code_Status_Wait
-	case Code_Status_Compile:
-		ret.Data = "编译中..."
-		ret.Status = Code_Status_Compile
-	case Code_Status_Compile_Error:
-		ret.Data = "编译错误: " + data
-		ret.Status = Code_Status_Compile_Error
-	case Code_Status_Compile_Success:
-		ret.Data = "编译成功"
-		ret.Status = Code_Status_Compile_Success
-	case Code_Status_Crash:
-		ret.Data = "运行崩溃: " + data
-		ret.Status = Code_Status_Crash
-	case Code_Status_Fail:
-		ret.Data = "游戏失败: " + data
-		ret.Status = Code_Status_Fail
-	case Code_Status_Success:
-		ret.Data = "游戏胜利: " + data
-		ret.Status = Code_Status_Success
-	case Code_Status_Running:
-		ret.Data = "正在奋战: " + data
-		ret.Status = Code_Status_Running
-	default:
-		ret.Data = "服务器异常"
-		ret.Status = Code_Status_Error
+func pushCodeRunStatusNeedUpdateToQueue(msg *primitive.Message, limit int) {
+	if limit <= 0 {
+		util.DebugError("代码运行状态推送队列超出最大重试次数!")
+		return
 	}
-
-	return ret
+	dao.RocketMQProducer.SendAsync(context.Background(), func(ctx context.Context, result *primitive.SendResult, err error) {
+		if err != nil {
+			util.DebugError("代码状态发送到mq失败:" + err.Error())
+			pushCodeRunStatusNeedUpdateToQueue(msg, limit)
+		}
+	}, msg)
 }
 
 // 初始化代码运行监控服务
@@ -158,7 +135,9 @@ func batchUpdateCodeRunStatus(indices []int) {
 		if exist {
 			dt.Status = string(data)
 		} else {
-			dt.Status = ProcessDataMessageByStatus(Code_Status_Error, "").String()
+			status := dao.NewCodeRunStatusInfo()
+			status.Status = dao.Code_Status_Error
+			dt.Status = dao.ProcessDataMessageByStatus(status).Marshal()
 		}
 		idx += 1
 	}
@@ -170,14 +149,14 @@ func batchUpdateCodeRunStatus(indices []int) {
 	//开启事务
 	err = session.Begin()
 	if err != nil {
-		util.Debug("batchUpdateCodeRunStatus:" + err.Error())
+		util.DebugError("batchUpdateCodeRunStatus:" + err.Error())
 		return
 	}
 	//创建临时表
 	temp_table := fmt.Sprintf("tmp_code_run_%v", version)
 	_, err = session.Exec(fmt.Sprintf("CREATE TEMPORARY TABLE %v (indices INT, status TEXT, new_version BIGINT)", temp_table))
 	if err != nil {
-		util.Debug("batchUpdateCodeRunStatus: create temp table failed:" + err.Error())
+		util.DebugError("batchUpdateCodeRunStatus: create temp table failed:" + err.Error())
 		session.Rollback()
 		return
 	}
@@ -197,7 +176,7 @@ func batchUpdateCodeRunStatus(indices []int) {
 	}
 	_, err = session.Table(temp_table).Insert(tempDataArr)
 	if err != nil {
-		util.Debug("batchUpdateCodeRunStatus: insert temp table failed:" + err.Error())
+		util.DebugError("batchUpdateCodeRunStatus: insert temp table failed:" + err.Error())
 		session.Rollback()
 		return
 	}
@@ -210,14 +189,14 @@ func batchUpdateCodeRunStatus(indices []int) {
 	`, dao.CodeRunInfo{}.TableName(), temp_table)
 	_, err = session.Exec(cmd)
 	if err != nil {
-		util.Debug("batchUpdateCodeRunStatus: update main table failed:" + err.Error())
+		util.DebugError("batchUpdateCodeRunStatus: update main table failed:" + err.Error())
 		session.Rollback()
 		return
 	}
 	//删除临时表
 	_, err = session.Exec(fmt.Sprintf("DROP TEMPORARY TABLE %v", temp_table))
 	if err != nil {
-		util.Debug("batchUpdateCodeRunStatus: drop temp table failed:" + err.Error())
+		util.DebugError("batchUpdateCodeRunStatus: drop temp table failed:" + err.Error())
 		return
 	}
 	//更新排行榜
@@ -225,7 +204,7 @@ func batchUpdateCodeRunStatus(indices []int) {
 	//提交事务
 	err = session.Commit()
 	if err != nil {
-		util.Debug("batchUpdateCodeRunStatus: commit transaction failed:" + err.Error())
+		util.DebugError("batchUpdateCodeRunStatus: commit transaction failed:" + err.Error())
 		return
 	}
 
@@ -255,29 +234,29 @@ func updateRank(session *xorm.Session, dt []dao.CodeRunInfo) {
 		datajs := make(map[string]interface{})
 		err = json.Unmarshal([]byte(status), &datajs)
 		if err != nil {
-			util.Debug("updateRank: json.Unmarshal datajs failed:" + err.Error())
+			util.DebugError("updateRank: json.Unmarshal datajs failed:" + err.Error())
 			continue
 		}
 		//检测状态码，如果不是在运行就不管
 		statusCode, ok := datajs["status"]
 		if !ok {
-			util.Debug("The status in datajs is an error!", err, status)
+			util.DebugError("The status in datajs is an error!", err, status)
 			continue
 		}
-		if int(statusCode.(float64)) < Code_Status_Running {
+		if int(statusCode.(float64)) < dao.Code_Status_Running {
 			continue
 		}
 		//反序列化运行数据
 		finaldata, ok := datajs["data"]
 		if !ok {
-			util.Debug("The data in datajs is an error!", err, status)
+			util.DebugError("The data in datajs is an error!", err, status)
 			continue
 		}
 		finaldata = util.GetBracesContent(finaldata.(string))
 		var msgInfo CodeRunMsg
 		err = json.Unmarshal([]byte(finaldata.(string)), &msgInfo)
 		if err != nil || finaldata == "" {
-			util.Debug("updateRank: json.Unmarshal failed:"+err.Error(), status)
+			util.DebugError("updateRank: json.Unmarshal failed:"+err.Error(), status)
 			continue
 		}
 		//获取当前状态
@@ -291,7 +270,7 @@ func updateRank(session *xorm.Session, dt []dao.CodeRunInfo) {
 		}
 		err = json.Unmarshal(data, &info)
 		if err != nil {
-			util.Debug("updateRank: json.Unmarshal failed:" + err.Error())
+			util.DebugError("updateRank: json.Unmarshal failed:" + err.Error())
 			continue
 		}
 		//最终数据
@@ -330,6 +309,6 @@ func updateRank(session *xorm.Session, dt []dao.CodeRunInfo) {
 	}
 	//提交更新
 	if !dao.RankBatchUpdateOrInsertIfBetter(session, finalRankInfo) {
-		util.Debug("updateRank fail!")
+		util.DebugError("updateRank fail!")
 	}
 }

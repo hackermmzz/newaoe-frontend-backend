@@ -17,7 +17,7 @@ type GrpcCodeServer struct {
 func (server *GrpcCodeServer) GetCode(ctx context.Context, req *grpc_api.CodeRequest) (*grpc_api.CodeReply, error) {
 	//鉴权
 	if !codeGrpcServerAuthConfirm(req.Auth) {
-		util.Debug("疑似Auth泄露!")
+		util.DebugError("疑似Auth泄露!")
 		return nil, nil
 	}
 	//获取一份代码
@@ -57,17 +57,17 @@ func (server *GrpcCodeServer) GetCode(ctx context.Context, req *grpc_api.CodeReq
 }
 
 func GetOneCodeTask() interface{} {
-	data, success := dao.RedisListPop(context.Background(), config.Conf.Code.CodeWaitForRunRedisQueueTopic)
+	data, success := dao.RedisListPop(context.Background(), config.Conf.Code.CodeWaitForRunQueueTopic)
 	if !success {
 		return nil
 	}
 	var codeinfo dao.CodeRunInfo
 	err := json.Unmarshal([]byte(data), &codeinfo)
 	if err != nil {
-		util.Debug("GetOneCodeTask JsonUnmarshal err:", err)
+		util.DebugError("GetOneCodeTask JsonUnmarshal err:", err)
 		return nil
 	}
-	util.Debug("OJ successfully get one code!")
+	util.DebugSuccess("OJ successfully get one code!")
 	return codeinfo
 }
 

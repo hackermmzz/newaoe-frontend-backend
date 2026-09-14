@@ -16,7 +16,7 @@ func TeacherGetAll() ([]Teacher, error) {
 	var ret []Teacher
 	err := DB.Find(&ret)
 	if err != nil {
-		util.Debug("TeacherGetAll:", err)
+		util.DebugError("TeacherGetAll:", err)
 		return nil, err
 	}
 	return ret, nil

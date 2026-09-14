@@ -31,7 +31,7 @@ func SendTextEmail(recvEmail string, subject string, text string) {
 		func(ctx context.Context, result *primitive.SendResult, err error) {
 			// 回调：发送完才进来
 			if err != nil {
-				util.Debug("SendTextEmail:", err)
+				util.DebugError("SendTextEmail:", err)
 				return
 			}
 		},

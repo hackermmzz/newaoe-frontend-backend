@@ -53,22 +53,17 @@ func EmailSenderInit() {
 			for _, msg := range msgs {
 				var emailMsg EmailMsg
 				if err := json.Unmarshal(msg.Body, &emailMsg); err != nil {
-					util.Debug("邮件消息解析失败:", err)
+					util.DebugError("邮件消息解析失败:", err)
 					continue
 				}
 				if emailMsg.Email == "" ||
 					emailMsg.Subject == "" ||
 					emailMsg.Text == "" {
-					util.Debug("邮件字段不完整")
+					util.DebugError("邮件字段不完整")
 					continue
 				}
 				if err := sendEmailMsgToServer(emailMsg); err != nil {
-					util.Debug(
-						"邮件提交到 Postfix 失败:",
-						err,
-						" 收件人:",
-						emailMsg.Email,
-					)
+					util.DebugError("邮件提交到 Postfix 失败:", err, " 收件人:", emailMsg.Email)
 					return consumer.ConsumeRetryLater, nil
 				}
 			}
@@ -92,11 +87,11 @@ func sendEmailMsgToServer(emailMsg EmailMsg) error {
 	)
 	err := EmailDialer.DialAndSend(m)
 	if err != nil {
-		util.Debug("提交邮件到 Postfix 失败:", err, " 收件人:", emailMsg.Email)
+		util.DebugError("提交邮件到 Postfix 失败:", err, " 收件人:", emailMsg.Email)
 		return err
 	}
 
-	util.Debug("邮件已提交到 Postfix:", emailMsg.Email)
+	util.DebugSuccess("邮件已提交到 Postfix:", emailMsg.Email)
 
 	return nil
 }

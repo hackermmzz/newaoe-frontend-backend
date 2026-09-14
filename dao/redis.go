@@ -45,7 +45,7 @@ func ConnectRedis() {
 		if err = RDB.Ping(ctx).Err(); err == nil {
 			break
 		}
-		util.Debug(fmt.Sprintf("Redis 重试连接 %d/10: %v", i+1, err))
+		util.DebugError(fmt.Sprintf("Redis 重试连接 %d/10: %v", i+1, err))
 		time.Sleep(1 * time.Second)
 	}
 
@@ -53,7 +53,7 @@ func ConnectRedis() {
 		panic(fmt.Sprintf("Redis 连接最终失败: %v", err))
 	}
 
-	util.Debug("Redis连接池初始化成功")
+	util.DebugSuccess("Redis连接池初始化成功")
 }
 
 // RedisGet 带 ctx 规范获取（支持链路超时、链路追踪）
@@ -67,7 +67,7 @@ func RedisGet(ctx context.Context, key string) ([]byte, bool) {
 
 	// 真正异常才打日志
 	if err != nil {
-		util.Debug(fmt.Sprintf("[RedisGet] err: %v, key: %s", err, key))
+		util.DebugError(fmt.Sprintf("[RedisGet] err: %v, key: %s", err, key))
 		return nil, false
 	}
 
@@ -78,7 +78,7 @@ func RedisGet(ctx context.Context, key string) ([]byte, bool) {
 func RedisExist(ctx context.Context, key string) bool {
 	count, err := RDB.Exists(ctx, key).Result()
 	if err != nil {
-		util.Debug(fmt.Sprintf("[RedisExist] err: %v, key: %s", err, key))
+		util.DebugError(fmt.Sprintf("[RedisExist] err: %v, key: %s", err, key))
 		return false
 	}
 	return count > 0
@@ -88,7 +88,7 @@ func RedisExist(ctx context.Context, key string) bool {
 func RedisSet(ctx context.Context, key string, value any, expiration time.Duration) bool {
 	err := RDB.Set(ctx, key, value, expiration).Err()
 	if err != nil {
-		util.Debug(fmt.Sprintf("[RedisSet] err: %v, key: %s", err, key))
+		util.DebugError(fmt.Sprintf("[RedisSet] err: %v, key: %s", err, key))
 		return false
 	}
 	return true
@@ -98,7 +98,7 @@ func RedisSet(ctx context.Context, key string, value any, expiration time.Durati
 func RedisDel(ctx context.Context, key string) bool {
 	err := RDB.Del(ctx, key).Err()
 	if err != nil {
-		util.Debug(fmt.Sprintf("[RedisDel] err: %v, key: %s", err, key))
+		util.DebugError(fmt.Sprintf("[RedisDel] err: %v, key: %s", err, key))
 		return false
 	}
 	return true
@@ -109,7 +109,7 @@ func RedisExpire(ctx context.Context, key string, expiration time.Duration) bool
 
 	err := RDB.Expire(ctx, key, expiration).Err()
 	if err != nil {
-		util.Debug(fmt.Sprintf("[RedisExpire] err: %v, key: %s", err, key))
+		util.DebugError(fmt.Sprintf("[RedisExpire] err: %v, key: %s", err, key))
 		return false
 	}
 	return true
@@ -122,7 +122,7 @@ func RedisListPush(ctx context.Context, queue string, data string) bool {
 		data,
 	).Err()
 	if err != nil {
-		util.Debug(fmt.Sprintf("[RedisListPush] err: %v, queue: %s", err, queue))
+		util.DebugError(fmt.Sprintf("[RedisListPush] err: %v, queue: %s", err, queue))
 		return false
 	}
 	return true
@@ -134,7 +134,7 @@ func RedisListPop(ctx context.Context, queue string) (string, bool) {
 		return "", false
 	}
 	if err != nil {
-		util.Debug(fmt.Sprintf("[RedisListPop] err: %v, queue: %s", err, queue))
+		util.DebugError(fmt.Sprintf("[RedisListPop] err: %v, queue: %s", err, queue))
 		return "", false
 	}
 	return val, true

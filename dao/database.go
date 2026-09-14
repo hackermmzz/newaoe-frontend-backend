@@ -43,6 +43,6 @@ func ConnectDatabase() {
 	if err != nil {
 		panic("数据库连接失败:" + err.Error())
 	}
-	util.Debug("数据库连接成功")
+	util.DebugSuccess("数据库连接成功")
 
 }

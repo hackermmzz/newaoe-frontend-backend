@@ -31,44 +31,40 @@ func ProcessUploadCode(ctx *gin.Context, userInfo map[string]string, path []mini
 	defer session.Rollback()
 	err := session.Begin()
 	if err != nil {
-		util.Debug(id, "代码上传失败", err.Error())
+		util.DebugError(id, "代码上传失败", err.Error())
 		util.ResponseNAK_MSG(ctx, "代码上传失败", "")
 		return
 	}
 	//写入数据库
 	if !dao.CodeCommonInfoAdd(session, info) {
 		//
-		util.Debug(id, "代码上传失败", "中间过程有问题")
+		util.DebugError(id, "代码上传失败", "中间过程有问题")
 		util.ResponseNAK_MSG(ctx, "代码上传失败", "")
 		return
 	}
-	//向数据库插入一条运行记录
-	indices := dao.CodeRunAdd(session, dao.CodeRunInfo{
+	//运行
+	runinfo := dao.CodeRunInfo{
 		ID:          id,
 		SubmitTime:  util.UTC_Time(),
 		Header:      headerInfo.Key,
 		Source:      sourceInfo.Key,
 		Class:       dao.Code_Common,
 		Description: string(description),
-		Status:      Code.ProcessDataMessageByStatus(Code.Code_Status_Wait, "").String(),
-	})
-
-	if indices == 0 {
-		util.Debug(id, "代码上传失败", "indices为0")
-		util.ResponseNAK_MSG(ctx, "上传失败!", "")
-		return
+		Status:      dao.ProcessDataMessageByStatus(dao.NewCodeRunStatusInfo()).Marshal(),
 	}
-	//
-	if err = session.Commit(); err != nil {
-		util.Debug(id, "代码上传失败", err.Error())
+	if !Code.RunUserCode(session, runinfo) {
 		util.ResponseNAK_MSG(ctx, "代码上传失败", "")
 		return
 	}
-	//运行
-	Code.RunUserCode(indices)
+	//提交事务
+	if err = session.Commit(); err != nil {
+		util.DebugError(id, "代码上传失败", err.Error())
+		util.ResponseNAK_MSG(ctx, "代码上传失败", "")
+		return
+	}
 	//
 	util.ResponseACK_MSG(ctx, "代码上传成功", "")
-	util.Debug(id, "代码上传成功!")
+	util.DebugSuccess(id, "代码上传成功!")
 }
 
 func CodeUploadConfirm(ctx *gin.Context, userInfo map[string]string, path []string) {

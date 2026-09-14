@@ -22,11 +22,11 @@ func FilterLimitCodeUploadOrRun() gin.HandlerFunc {
 		}
 		id := userInfo["id"]
 		//超级用户不管
-		for _, superuser := range config.Conf.Other.SuperUser {
-			if superuser == id {
-				ctx.Next()
-				return
-			}
+		_, ok1 := config.SuperUserMap[id]
+		_, ok2 := config.UnlimitUserMap[id]
+		if ok1 || ok2 {
+			ctx.Next()
+			return
 		}
 		//
 		key := fmt.Sprintf("CommonUploadOrRunTimes_%v", id)
@@ -35,7 +35,7 @@ func FilterLimitCodeUploadOrRun() gin.HandlerFunc {
 		if exist {
 			err := json.Unmarshal(time, &curSubmitTime)
 			if err != nil {
-				util.Debug("LimitCodeUploadOrRun Unmarshal Error!", err)
+				util.DebugError("LimitCodeUploadOrRun Unmarshal Error!", err)
 			}
 		}
 		//判断是否达到限制

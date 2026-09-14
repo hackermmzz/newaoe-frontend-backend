@@ -27,7 +27,7 @@ func PostProcess() {
 func registerSuperUser() {
 	password, err := util.EncodePassword(config.Conf.Other.SuperUserPassword)
 	if err != nil {
-		util.Debug("超级用户注册失败:", err.Error())
+		util.DebugError("超级用户注册失败:", err.Error())
 		return
 	}
 	for _, userId := range config.Conf.Other.SuperUser {
@@ -37,19 +37,19 @@ func registerSuperUser() {
 				defer session.Rollback()
 				err := session.Begin()
 				if err != nil {
-					util.Debug("超级用户", userId, "注册失败", err)
+					util.DebugError("超级用户", userId, "注册失败", err)
 					continue
 				}
 				if !data.UserAdd(session, userId, password, config.Conf.Other.SuperUserEmail) {
-					util.Debug("超级用户", userId, "注册失败", err)
+					util.DebugError("超级用户", userId, "注册失败", err)
 					continue
 				}
-				util.Debug("超级用户:", userId, "注册成功!")
+				util.DebugSuccess("超级用户:", userId, "注册成功!")
 				break
 			}
 		} else {
 			util.Debug("超级用户:", userId, "已经存在!")
 		}
 	}
-	util.Debug("超级用户注册成毕！")
+	util.DebugSuccess("超级用户注册成毕！")
 }

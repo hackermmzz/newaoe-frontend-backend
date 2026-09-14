@@ -36,13 +36,13 @@ func AssessmentSubmissionUploadProcess(ctx *gin.Context, userInfo map[string]str
 	}
 	var body Body
 	if !util.JsonCtx(ctx, &body) {
-		util.Debug("AssessmentSubmissionUploadProcess:有人伪造请求!")
+		util.DebugError("AssessmentSubmissionUploadProcess:有人伪造请求!")
 		util.ResponseNAK_MSG(ctx, "你小子怎么绕过来的", "")
 		return
 	}
 	teacher := body.Teacher
 	if !data.TeacherExist(teacher) {
-		util.Debug("AssessmentSubmissionUploadProcess:这里有bug")
+		util.DebugError("AssessmentSubmissionUploadProcess:这里有bug")
 		util.ResponseNAK_MSG(ctx, "你小子怎么绕过来的", "")
 		return
 	}
@@ -51,7 +51,7 @@ func AssessmentSubmissionUploadProcess(ctx *gin.Context, userInfo map[string]str
 	defer session.Rollback()
 	err := session.Begin()
 	if err != nil {
-		util.Debug("AssessmentSubmissionUploadProcess:服务器异常!")
+		util.DebugError("AssessmentSubmissionUploadProcess:服务器异常!")
 		util.ResponseNAK_MSG(ctx, "服务器异常!", "")
 		return
 	}
@@ -67,22 +67,21 @@ func AssessmentSubmissionUploadProcess(ctx *gin.Context, userInfo map[string]str
 		HeaderSize: header.Size,
 		SourceSize: source.Size,
 	}) {
-		util.Debug("AssessmentSubmissionUploadProcess:记录数据库出错!")
+		util.DebugError("AssessmentSubmissionUploadProcess:记录数据库出错!")
 		util.ResponseNAK_MSG(ctx, "上传出错!", "")
 		return
 	}
-	//向数据库插入一条运行记录
-	indices := dao.CodeRunAdd(session, dao.CodeRunInfo{
+	//运行代码
+	info := dao.CodeRunInfo{
 		ID:          id,
 		SubmitTime:  util.UTC_Time(),
 		Header:      header.Key,
 		Source:      source.Key,
 		Class:       dao.Code_Common,
 		Description: fmt.Sprintf("this is the final code you submit (teacher:%v)", teacher),
-		Status:      Code.ProcessDataMessageByStatus(Code.Code_Status_Wait, "").String(),
-	})
-
-	if indices == 0 {
+		Status:      dao.ProcessDataMessageByStatus(dao.NewCodeRunStatusInfo()).Marshal(),
+	}
+	if !Code.RunUserCode(session, info) {
 		util.ResponseNAK_MSG(ctx, "上传失败!", "")
 		return
 	}
@@ -91,10 +90,8 @@ func AssessmentSubmissionUploadProcess(ctx *gin.Context, userInfo map[string]str
 		util.ResponseNAK_MSG(ctx, "服务器异常!", "")
 		return
 	}
-	//运行代码
-	Code.RunUserCode(indices)
 	//
 	util.ResponseACK_MSG(ctx, "上传成功!", "")
-	util.Debug(id, "上传考核代码成功!")
+	util.DebugSuccess(id, "上传考核代码成功!")
 	//
 }

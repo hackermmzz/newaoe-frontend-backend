@@ -25,7 +25,7 @@ func GrpcInit() {
 		}
 	}()
 	//
-	util.Debug("GRPC服务启动成功!")
+	util.DebugSuccess("GRPC服务启动成功!")
 }
 
 func RegistServer(server *grpc.Server) {

@@ -14,7 +14,7 @@ func FilterAssessmentSubmission() gin.HandlerFunc {
 		//获取用户
 		info := util.GetCtxTookenInfo(ctx)
 		if info == nil {
-			util.Debug("为什么这一步会出现这种异常，后端有漏洞!")
+			util.DebugError("为什么这一步会出现这种异常，后端有漏洞!")
 			util.ResponseNAK_MSG(ctx, "cookie异常!", "")
 			ctx.Abort()
 			return

@@ -1,11 +1,89 @@
 package dao
 
 import (
+	"encoding/json"
 	"newaoe/util"
 	"time"
 
 	"xorm.io/xorm"
 )
+
+// 代码当前的运行状态
+var (
+	Code_Status_Error           = 0 //服务器异常
+	Code_Status_Wait            = 1 //在等待队列里面
+	Code_Status_Compile         = 2 //编译中
+	Code_Status_Compile_Success = 3 //编译成功
+	Code_Status_Compile_Fail    = 4 //编译错误
+	Code_Status_Running         = 5 //正在运行出结果
+	Code_Status_Success         = 6 //运行胜利
+	Code_Status_Fail            = 7 //游戏失败
+	Code_Status_Crash           = 8 //游戏崩溃
+
+)
+
+type CodeRunStatusInfo struct {
+	Status int    `json:"status"`
+	Food   int    `json:"food"`
+	Wood   int    `json:"wood"`
+	Gold   int    `json:"gold"`
+	Stone  int    `json:"stone"`
+	Frame  int    `json:"frame"`
+	Win    bool   `json:"win"`
+	Score  int    `json:"score"`
+	Data   string `json:"data"`
+}
+
+func NewCodeRunStatusInfo() CodeRunStatusInfo {
+	return CodeRunStatusInfo{
+		Status: Code_Status_Wait,
+	}
+}
+func (c CodeRunStatusInfo) Marshal() string {
+	d, _ := json.Marshal(c)
+	return string(d)
+}
+
+func (c *CodeRunStatusInfo) Unmarshal(data []byte) error {
+	err := json.Unmarshal(data, &c)
+	return err
+}
+
+func ProcessDataMessageByStatus(coderunStatus CodeRunStatusInfo) CodeRunStatusInfo {
+	var ret CodeRunStatusInfo
+	ret = coderunStatus
+	data := coderunStatus.Data
+	switch coderunStatus.Status {
+	case Code_Status_Wait:
+		ret.Data = "排队中..."
+		ret.Status = Code_Status_Wait
+	case Code_Status_Compile:
+		ret.Data = "编译中..."
+		ret.Status = Code_Status_Compile
+	case Code_Status_Compile_Fail:
+		ret.Data = "编译错误: " + data
+		ret.Status = Code_Status_Compile_Fail
+	case Code_Status_Compile_Success:
+		ret.Data = "编译成功"
+		ret.Status = Code_Status_Compile_Success
+	case Code_Status_Crash:
+		ret.Data = "运行崩溃: " + data
+		ret.Status = Code_Status_Crash
+	case Code_Status_Fail:
+		ret.Data = "游戏失败: " + data
+		ret.Status = Code_Status_Fail
+	case Code_Status_Success:
+		ret.Data = "游戏胜利: " + data
+		ret.Status = Code_Status_Success
+	case Code_Status_Running:
+		ret.Data = "正在奋战: " + data
+		ret.Status = Code_Status_Running
+	default:
+		ret.Data = "服务器异常"
+		ret.Status = Code_Status_Error
+	}
+	return ret
+}
 
 // 这里我们采用分表的方式来进行
 type CodeRunInfo struct {
@@ -27,7 +105,7 @@ func (c CodeRunInfo) TableName() string {
 func CodeRunAdd(session *xorm.Session, c CodeRunInfo) int {
 	_, err := session.Insert(&c)
 	if err != nil {
-		util.Debug("CodeRunAdd:", err)
+		util.DebugError("CodeRunAdd:", err)
 		return 0
 	}
 	return c.Indices
@@ -39,7 +117,7 @@ func CodeRunUpdateStatusAsync(session *xorm.Session, indices int, status string)
 	_, err := session.Where("indices=?", indices).
 		Update(info)
 	if err != nil {
-		util.Debug("CodeRunUpdateStatusAsync:", err)
+		util.DebugError("CodeRunUpdateStatusAsync:", err)
 		return false
 	}
 	return true
@@ -51,7 +129,7 @@ func CodeRunUpdateStatusSync(indices int, status string) bool {
 	_, err := DB.Where("indices=?", indices).
 		Update(info)
 	if err != nil {
-		util.Debug("CodeRunUpdateStatusSync:", err)
+		util.DebugError("CodeRunUpdateStatusSync:", err)
 		return false
 	}
 	return true
@@ -61,7 +139,7 @@ func CodeRunGetByIndices(indices int) *CodeRunInfo {
 	var ret CodeRunInfo
 	has, err := DB.Where("indices=?", indices).Get(&ret)
 	if err != nil || !has {
-		util.Debug("CodeRunGetByIndices:", err)
+		util.DebugError("CodeRunGetByIndices:", err)
 		return nil
 	}
 	return &ret
@@ -71,7 +149,7 @@ func CodeRunGetById(id string) []CodeRunInfo {
 	var ret []CodeRunInfo
 	err := DB.Where("id = ?", id).Find(&ret)
 	if err != nil {
-		util.Debug("CodeRunGetById:", err)
+		util.DebugError("CodeRunGetById:", err)
 		return nil
 	}
 	return ret
@@ -80,7 +158,7 @@ func CodeRunGetById(id string) []CodeRunInfo {
 func CodeRunCountById(id string) int64 {
 	cnt, err := DB.Where("id = ?", id).Count(&CodeRunInfo{})
 	if err != nil {
-		util.Debug("CodeRunCountById:", err)
+		util.DebugError("CodeRunCountById:", err)
 		return 0
 	}
 	return cnt
@@ -97,7 +175,7 @@ func CodeRunGetRangeById(id string, beg int, end int) []CodeRunInfo {
 		Limit(end-beg, int(beg)).
 		Find(&ret)
 	if err != nil {
-		util.Debug("CodeRunGetRangeById:", err)
+		util.DebugError("CodeRunGetRangeById:", err)
 		return nil
 	}
 	return ret

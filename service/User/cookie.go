@@ -14,14 +14,14 @@ func UserSetCookie(ctx *gin.Context, id string) string {
 	//获取用户信息
 	user := data.UserGet(id)
 	if user == nil {
-		util.Debug(ctx, "数据库异常!", "")
+		util.DebugError(ctx, "数据库异常!", "")
 		return ""
 	}
 	//
 	tooken_value := util.GenerateCookieToken(ctx, id, user.Email, user.RegistDate, config.Conf.Cookie.ExpireTime, config.Conf.Server.JwtSecretKey)
 	//
 	if tooken_value == "" {
-		util.Debug(ctx, "生成token失败!", "")
+		util.DebugError(ctx, "生成token失败!", "")
 		return ""
 	}
 	//

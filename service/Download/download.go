@@ -72,7 +72,7 @@ func UserDownloadCheck(userInfo map[string]string, category string, filePath str
 func DownloadFile(ctx *gin.Context, filePath string, expireDuration time.Duration, attachment bool) {
 	url := dao.OssGetDownloadFileUrl(filePath, expireDuration, attachment)
 	if url == "" {
-		util.Debug("DownloadFile:无法获取下载链接!")
+		util.DebugError("DownloadFile:无法获取下载链接!")
 		util.ResponseNAK_MSG(ctx, "下载链接获取错误!", "")
 		return
 	}

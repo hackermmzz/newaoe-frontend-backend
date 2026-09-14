@@ -17,6 +17,7 @@ func RocketMQInit() {
 	rlog.SetLogLevel("error")
 	//初始化Producer(只用一个MQ足以)
 	RocketMQProducer = NewMQProducer()
+
 	//
 	err := RocketMQProducer.Start()
 	if err != nil {
@@ -34,17 +35,6 @@ func NewMQProducer() rocketmq.Producer {
 		panic("NewMQProducer" + err.Error())
 	}
 	return p
-}
-
-func NewMQPullConsumer(group string) rocketmq.PullConsumer {
-	c, err := rocketmq.NewPullConsumer(
-		consumer.WithNameServer([]string{config.Conf.RocketMQ.Host}),
-		consumer.WithGroupName(group),
-	)
-	if err != nil {
-		panic("NewMQPullConsumer" + err.Error())
-	}
-	return c
 }
 
 func NewMQPushConsumer(topic string, process func(ctx context.Context, msgs ...*primitive.MessageExt) (consumer.ConsumeResult, error), groups ...string) rocketmq.PushConsumer {
@@ -66,4 +56,20 @@ func NewMQPushConsumer(topic string, process func(ctx context.Context, msgs ...*
 	return c
 }
 
-//func MQPull
+// func MQPull
+func NewMQPullConsumer(topic string) rocketmq.PullConsumer {
+	c, err := rocketmq.NewPullConsumer(
+		consumer.WithGroupName(topic),
+	)
+	if err != nil {
+		panic("NewMQPullConsumer:" + err.Error())
+	}
+
+	err = c.Start()
+
+	if err != nil {
+		panic("NewMQPullConsumer:" + err.Error())
+	}
+
+	return c
+}

@@ -32,7 +32,7 @@ func (CodeCommonInfo) TableName() string {
 func CodeCommonInfoAdd(session *xorm.Session, data CodeCommonInfo) bool {
 	_, err := session.Insert(data)
 	if err != nil {
-		util.Debug("CodeCommonInfoAdd:", err)
+		util.DebugError("CodeCommonInfoAdd:", err)
 		return false
 	}
 	return true
@@ -42,7 +42,7 @@ func CodeCommonGetByIndices(indices int) *CodeCommonInfo {
 	var ret CodeCommonInfo
 	has, err := DB.Where("indices=?", indices).Get(&ret)
 	if err != nil || !has {
-		util.Debug("CodeCommonGetByIndices:", err)
+		util.DebugError("CodeCommonGetByIndices:", err)
 		return nil
 	}
 	return &ret
@@ -51,7 +51,7 @@ func CodeCommonGetByID(id string) []CodeCommonInfo {
 	var ret []CodeCommonInfo
 	err := DB.Where("id = ?", id).Find(&ret)
 	if err != nil {
-		util.Debug("CodeCommonGetByID:", err)
+		util.DebugError("CodeCommonGetByID:", err)
 		return nil
 	}
 	return ret

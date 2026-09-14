@@ -26,7 +26,7 @@ func (CodeAssessmentInfo) TableName() string {
 func CodeAssessmentAdd(session *xorm.Session, data CodeAssessmentInfo) bool {
 	_, err := session.Insert(data)
 	if err != nil {
-		util.Debug("CodeAssessmentAdd:", err)
+		util.DebugError("CodeAssessmentAdd:", err)
 		return false
 	}
 	return true
@@ -36,7 +36,7 @@ func CodeAssessmentGetByID(id string) []CodeAssessmentInfo {
 	var ret []CodeAssessmentInfo
 	err := DB.Where("id = ?", id).Find(&ret)
 	if err != nil {
-		util.Debug("CodeAssessmentAddGetByID:", err)
+		util.DebugError("CodeAssessmentAddGetByID:", err)
 		return nil
 	}
 	return ret

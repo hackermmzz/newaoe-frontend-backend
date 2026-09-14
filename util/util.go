@@ -16,8 +16,30 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func Debug(args ...interface{}) {
+const (
+	colorReset = "\033[0m"
+	colorRed   = "\033[31m"
+	colorGreen = "\033[32m"
+	colorCyan  = "\033[36m"
+	colorGray  = "\033[90m"
+)
+
+func printColor(color string, args ...interface{}) {
+	fmt.Print(color)
 	fmt.Println(args...)
+	fmt.Print(colorReset)
+}
+
+func Debug(args ...interface{}) {
+	printColor(colorGray, args...)
+}
+
+func DebugSuccess(args ...interface{}) {
+	printColor(colorGreen, args...)
+}
+
+func DebugError(args ...interface{}) {
+	printColor(colorRed, args...)
 }
 
 // 加密密码
@@ -80,7 +102,7 @@ func GenerateCookieToken(ctx *gin.Context, id string, email string, regist_date 
 	tokenString, err := encodedStd.SignedString(secretKey)
 	//
 	if err != nil {
-		Debug("GenerateCookieToken:", err)
+		DebugError("GenerateCookieToken:", err)
 		tokenString = ""
 	}
 	//
@@ -100,7 +122,7 @@ func CheckTokenLegal(token string) bool {
 	}
 	expireTime, err := time.Parse(time.RFC3339, expireTimeStr)
 	if err != nil {
-		Debug("CheckTokenLegal:解析过期时间失败:", err)
+		DebugError("CheckTokenLegal:解析过期时间失败:", err)
 		return false
 	}
 	if UTC_Time().After(expireTime) {
@@ -116,7 +138,7 @@ func GetTokenInfo(signed_token string) map[string]string {
 	})
 	//
 	if err != nil {
-		Debug("GetTokenInfo:", err)
+		DebugError("GetTokenInfo:", err)
 		return nil
 	}
 	//
@@ -130,7 +152,7 @@ func GetTokenInfo(signed_token string) map[string]string {
 		return data
 	}
 	//
-	Debug("GetTokenInfo:解析失败:" + signed_token)
+	DebugError("GetTokenInfo:解析失败:" + signed_token)
 	return nil
 }
 
@@ -145,7 +167,7 @@ func GetCtxTookenInfo(ctx *gin.Context) map[string]string {
 	//解码token
 	data := GetTokenInfo(token)
 	if data == nil {
-		Debug("StudentInfoGet:", "为什么过得了我的过滤器却解析不了,出BUG了?")
+		DebugError("StudentInfoGet:", "为什么过得了我的过滤器却解析不了,出BUG了?")
 		return nil
 	}
 	return data
@@ -165,7 +187,7 @@ func Mkdir(path string) bool {
 	//不存在就创建目录
 	err = os.Mkdir(path, 0755)
 	if err != nil {
-		Debug("Mkdir:", err)
+		DebugError("Mkdir:", err)
 		return false
 	}
 	return true
@@ -217,7 +239,7 @@ func GetRandomAvatar() string {
 func ReadFileContent(path string) string {
 	content, err := os.ReadFile(path) // 返回 []byte 和 error
 	if err != nil {
-		Debug("读取文件失败:", err, path)
+		DebugError("读取文件失败:", err, path)
 		return ""
 	}
 	return string(content)
@@ -227,7 +249,7 @@ func ReadFileContent(path string) string {
 func WriteFileContent(path string, data string) bool {
 	err := os.WriteFile(path, []byte(data), os.FileMode(0644))
 	if err != nil {
-		Debug("WriteFileContent:", err)
+		DebugError("WriteFileContent:", err)
 		return false
 	}
 	return true
@@ -237,7 +259,7 @@ func WriteFileContent(path string, data string) bool {
 func JsonCtx(ctx *gin.Context, addr interface{}) bool {
 	err := ctx.ShouldBindBodyWithJSON(addr)
 	if err != nil {
-		Debug("JsonCtx:", err)
+		DebugError("JsonCtx:", err)
 		return false
 	}
 	return true
@@ -247,7 +269,7 @@ func JsonCtx(ctx *gin.Context, addr interface{}) bool {
 func GetUrlFilePath(url_ string) string {
 	u, err := url.Parse(url_)
 	if err != nil {
-		Debug("GetUrlFilePath:", url_, err.Error())
+		DebugError("GetUrlFilePath:", url_, err.Error())
 		return ""
 	}
 	return strings.TrimPrefix(u.Path, "/")
@@ -257,7 +279,7 @@ func GetUrlFilePath(url_ string) string {
 func SplitBucketAndFilePath(bucket string, path string) string {
 	parts := strings.SplitN(path, "/", 2)
 	if len(parts) != 2 || parts[0] != bucket {
-		Debug("SplitBucketAndFilePath:", bucket, path, parts)
+		DebugError("SplitBucketAndFilePath:", bucket, path, parts)
 		return ""
 	}
 	return parts[1]

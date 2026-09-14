@@ -33,7 +33,7 @@ func CodeRunRecordAdd(id string) bool {
 func CodeRunRecordTTL(id string) int64 {
 	ttl, err := dao.RDB.TTL(dao.RDB.Context(), fmt.Sprintf("CodeRunOrSubmit:%v", id)).Result()
 	if err != nil {
-		util.Debug("CodeRunRecordTTL:", err)
+		util.DebugError("CodeRunRecordTTL:", err)
 		return int64(1e9)
 	}
 	return int64(ttl.Seconds())

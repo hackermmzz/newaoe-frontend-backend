@@ -36,20 +36,19 @@ func CodeReRun(ctx *gin.Context) {
 		util.ResponseNAK_MSG(ctx, "服务器异常!", "")
 		return
 	}
-	//向数据库插入一条运行记录
-	indices := dao.CodeRunAdd(session, dao.CodeRunInfo{
+	//运行代码
+	runInfo := dao.CodeRunInfo{
 		ID:          id,
 		SubmitTime:  util.UTC_Time(),
 		Header:      msg.Header,
 		Source:      msg.Source,
 		Class:       dao.Code_Common,
 		Description: msg.Description,
-		Status:      ProcessDataMessageByStatus(Code_Status_Wait, "").String(),
+		Status:      dao.ProcessDataMessageByStatus(dao.NewCodeRunStatusInfo()).Marshal(),
 		Version:     util.UTC_Time().UnixMilli(),
-	})
-
-	if indices == 0 {
-		util.ResponseNAK_MSG(ctx, "上传失败!", "")
+	}
+	if !RunUserCode(session, runInfo) {
+		util.ResponseNAK_MSG(ctx, "运行失败!", "")
 		return
 	}
 	//提交
@@ -57,8 +56,6 @@ func CodeReRun(ctx *gin.Context) {
 		util.ResponseNAK_MSG(ctx, "服务器异常!", "")
 		return
 	}
-	//运行代码
-	RunUserCode(indices)
 	//
 	util.ResponseACK_MSG(ctx, "正在运行", "")
 }

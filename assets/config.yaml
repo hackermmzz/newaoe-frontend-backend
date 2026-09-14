@@ -49,7 +49,7 @@ code:
   codeRunStatusUpdateQueueMaxSize: 800    #代码运行状态更新队列最大大小
   codeRunStatusUpdateQueueSizeThreshold: 500    #队列触发更新大小阈值
   codeRunStatusUpdateInterval: 5    #队列更新间隔 单位：秒
-  codeWaitForRunRedisQueueTopic: "CodeWaitForRun"    #代码待运行topic
+  codeWaitForRunQueueTopic: "CodeWaitForRun"    #代码待运行topic
   codeSubmitTimesPerDay: 3  #一天可以提交的次数
   codeAssessmentTimes: 1   #考核提交一共可以提交的次数
 # 注册验证码配置
@@ -96,6 +96,7 @@ other:
   privateFileDownloadUrlExpireTime: 600   #私有文件下载链接过期时间
   publicFileDownloadUrlExpireTime: 600  #公有文件下载链接过期时间
   superUser: ["923106840429","BJS9006210"]  #超级用户，通常为管理员（wlh和娄震）
+  unlimitUser: ["925106840129"]     #不限制提交用户(这类用户通常给予了判题机资源)
   superUserPassword: "newaoe"  #超级用户密码
   superUserEmail: "2049983474@qq.com"  #超级用户邮箱
   feedbackNeedSendToEmailTopic: "FeedbackNeedSendToEmail"   #存用户反馈，后台会把这个队列里面所有的反馈发到wlh邮箱

@@ -34,17 +34,16 @@ func FeedbackInit() {
 				//解析文件地址
 				var path string
 				if err := json.Unmarshal(msg.Body, &path); err != nil {
-					util.Debug("反馈信息解析失败:", err)
+					util.DebugError("反馈信息解析失败:", err)
 					continue
 				}
 				//获取文件链接
 				expireDuration := time.Duration(config.Conf.Other.PrivateFileDownloadUrlExpireTime) * time.Second
 				url := dao.OssGetDownloadFileUrl(path, expireDuration, false)
 				if url == "" {
-					util.Debug("FeedBackEmailPushConsumer get download link fail!")
+					util.DebugError("FeedBackEmailPushConsumer get download link fail!")
 					return consumer.ConsumeRetryLater, nil
 				}
-				util.Debug(config.Conf.Other.FeedbackSendToEmail)
 				//送到邮箱队列
 				email := Email.EmailMsg{
 					Email:   config.Conf.Other.FeedbackSendToEmail,
@@ -61,9 +60,9 @@ func FeedbackInit() {
 					),
 				)
 				if err == nil {
-					util.Debug("邮件成功推送到邮箱!")
+					util.DebugSuccess("反馈邮件成功推送到邮箱!")
 				} else {
-					util.Debug("FeedBackEmailPushConsumer send to emailqueue fail!:", err)
+					util.DebugError("FeedBackEmailPushConsumer send to emailqueue fail!:", err)
 					return consumer.ConsumeRetryLater, nil
 				}
 			}
@@ -94,10 +93,10 @@ func StudentFeedback(ctx *gin.Context) {
 			func(ctx context.Context, result *primitive.SendResult, err error) {
 				// 回调：发送完才进来
 				if err != nil {
-					util.Debug("反馈推送失败!", err)
+					util.DebugError("反馈推送失败!", err)
 					return
 				} else {
-					util.Debug("反馈推送成功!")
+					util.DebugSuccess("反馈推送成功!")
 				}
 			},
 			primitive.NewMessage(config.Conf.Other.FeedbackNeedSendToEmailTopic, data_byte),

@@ -24,7 +24,7 @@ func UserExist(id string) bool {
 	has, err := DB.Where("id = ?", id).Exist(&Student{})
 	if (!has) || (err != nil) {
 		if err != nil {
-			util.Debug("UserExist: ", err)
+			util.DebugError("UserExist: ", err)
 		}
 		return false
 	}
@@ -36,7 +36,7 @@ func EmailExist(email string) bool {
 	has, err := DB.Where("email = ?", email).Exist(&Student{})
 	if (!has) || (err != nil) {
 		if err != nil {
-			util.Debug("EmailExist: ", err)
+			util.DebugError("EmailExist: ", err)
 		}
 		return false
 	}
@@ -54,7 +54,7 @@ func UserAdd(session *xorm.Session, id string, password string, email string) bo
 	}
 	_, err := session.Insert(data)
 	if err != nil {
-		util.Debug("AddUser:", err)
+		util.DebugError("AddUser:", err)
 		return false
 	}
 	return true
@@ -64,7 +64,7 @@ func UserAdd(session *xorm.Session, id string, password string, email string) bo
 func UserUpdate(session *xorm.Session, id string, user Student) bool {
 	_, err := session.Where("id = ?", id).Update(&user)
 	if err != nil {
-		util.Debug("UserUpdate:", err)
+		util.DebugError("UserUpdate:", err)
 		return false
 	}
 	return true
@@ -75,7 +75,7 @@ func UserGet(id string) *Student {
 	var user Student
 	has, err := DB.Where("id = ? ", id).Get(&user)
 	if err != nil || !has {
-		util.Debug("UserGet:", err)
+		util.DebugError("UserGet:", err)
 		return nil
 	}
 	return &user
@@ -92,7 +92,7 @@ func UserGetByIDs(ids []string) []Student {
 
 	err := DB.In("id", ids).Find(&users)
 	if err != nil {
-		util.Debug("UserGetByIDs:", err)
+		util.DebugError("UserGetByIDs:", err)
 		return nil
 	}
 
