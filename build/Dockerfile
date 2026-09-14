@@ -1,10 +1,7 @@
-FROM hackermmzz/judge
+FROM hackermmzz/judge-base
 
 
 RUN apk add --no-cache \
-    git \
-    python3 \
-    py3-pip \
     bash
 
 
