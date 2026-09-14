@@ -1,5 +1,15 @@
 
 // 配置文件
+let Code_Status_Error           = 0 //服务器异常
+let Code_Status_Wait            = 1 //在等待队列里面
+let Code_Status_Compile         = 2 //编译中
+let Code_Status_Compile_Success = 3 //编译成功
+let Code_Status_Compile_Fail    = 4 //编译错误
+let Code_Status_Running         = 5 //正在运行出结果
+let Code_Status_Success         = 6 //运行胜利
+let Code_Status_Fail            = 7 //游戏失败
+let Code_Status_Crash           = 8 //游戏崩溃
+
 let base_url = "your domain here"; // 默认值
 let download_url="your download domain here";
 let upload_url="your upload domain here"
@@ -30,5 +40,13 @@ module.exports = {
     upload_url,
     code_url: code_url,
     HistoryRecordPerPage,
-
+    Code_Status_Error,
+    Code_Status_Wait,
+    Code_Status_Compile,
+    Code_Status_Compile_Success,
+    Code_Status_Compile_Fail,
+    Code_Status_Running,
+    Code_Status_Success,
+    Code_Status_Fail,
+    Code_Status_Crash,
 };

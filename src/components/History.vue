@@ -226,12 +226,18 @@
                 <div class="flex flex-wrap items-center justify-between gap-2">
                   <div class="flex items-center text-sm text-gray-600 bg-gray-50 px-3 py-1.5 rounded w-full">
                     <i class="fa fa-file-code-o mr-2 text-blue-500 shrink-0"></i>
-                    <span class="run-status-text" :class="{ 'expanded': expandedItems[index] }">
-                      运行状态: {{ item.status.data || "未运行" }}
+                    <span class="run-status-text" :class="{ 'expanded': expandedItems[index] || isCrash(item), 'crash-reason': isCrash(item) }">
+                      <span class="status-content" :ref="(element) => setStatusElement(element, index)">
+                        <span>运行状态: {{ getStatusLabel(item) }}</span>
+                        <template v-if="isCrash(item) && getStatusData(item)">
+                          <span class="block mt-1">{{ getStatusData(item) }}</span>
+                        </template>
+                      </span>
                     </span>
                   </div>
                   
                   <button 
+                    v-if="!isCrash(item) && hasStatusOverflow(index)"
                     @click="toggleExpand(index)"
                     class="text-sm text-blue-600 hover:text-blue-800 transition-colors flex items-center"
                   >
@@ -239,6 +245,27 @@
                     {{ expandedItems[index] ? "收起" : "显示全部" }}
                   </button>
                 </div>
+              </div>
+
+              <!-- 编译失败时，Data 是编译日志文件标识，需通过后端获取真实下载链接 -->
+              <div v-if="isCompileFail(item)" class="mb-4">
+                <button
+                  @click="downloadFile(getStatusData(item))"
+                  :disabled="!getStatusData(item)"
+                  class="text-sm px-3 py-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <i class="fa fa-download mr-1"></i>下载编译日志
+                </button>
+              </div>
+
+              <!-- 运行中及运行结束时展示比赛结果数据 -->
+              <div v-if="isGameStats(item)" class="mb-4 grid grid-cols-2 md:grid-cols-3 gap-2 text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded">
+                <div><strong>Food:</strong> {{ getStatusInfo(item).food }}</div>
+                <div><strong>Wood:</strong> {{ getStatusInfo(item).wood }}</div>
+                <div><strong>Gold:</strong> {{ getStatusInfo(item).gold }}</div>
+                <div><strong>Stone:</strong> {{ getStatusInfo(item).stone }}</div>
+                <div><strong>Frame:</strong> {{ getStatusInfo(item).frame }}</div>
+                <div><strong>Score:</strong> {{ getStatusInfo(item).score }}</div>
               </div>
               
               <div class="mt-2 flex gap-2">
@@ -280,7 +307,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick } from 'vue';
 import config from '../config.js';
 import { ElMessage } from 'element-plus';
 import axios from 'axios';
@@ -302,6 +329,112 @@ const isLoading = ref(true);
 const historyList = ref([]);
 const searchQuery = ref('');
 const expandedItems = ref({});
+const statusElements = ref({});
+const statusOverflow = ref({});
+
+const setStatusElement = (element, index) => {
+  if (element) {
+    statusElements.value[index] = element;
+  } else {
+    delete statusElements.value[index];
+  }
+};
+
+const updateStatusOverflow = async () => {
+  await nextTick();
+  const overflow = {};
+  Object.entries(statusElements.value).forEach(([index, element]) => {
+    if (!element) return;
+    const styles = window.getComputedStyle(element);
+    const lineHeight = parseFloat(styles.lineHeight);
+    const fontSize = parseFloat(styles.fontSize);
+    const oneLineHeight = Number.isFinite(lineHeight)
+      ? lineHeight
+      : (Number.isFinite(fontSize) ? fontSize * 1.5 : 21);
+    // status-content 不受折叠容器 max-height 影响，用实际内容高度判断是否超过一行。
+    overflow[index] = element.scrollHeight > oneLineHeight + 1;
+  });
+  statusOverflow.value = overflow;
+};
+
+const hasStatusOverflow = (index) => Boolean(statusOverflow.value[index]);
+
+watch([historyList, searchQuery], updateStatusOverflow, { flush: 'post' });
+onMounted(() => {
+  window.addEventListener('resize', updateStatusOverflow);
+  updateStatusOverflow();
+});
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', updateStatusOverflow);
+});
+
+// 后端 CodeRunStatusInfo.Status 的可读文案。Data 仅在特定状态下作为附加信息使用。
+const statusLabels = {
+  [config.Code_Status_Error]: '服务器异常',
+  [config.Code_Status_Wait]: '等待中',
+  [config.Code_Status_Compile]: '编译中',
+  [config.Code_Status_Compile_Success]: '编译成功',
+  [config.Code_Status_Compile_Fail]: '编译失败',
+  [config.Code_Status_Running]: '运行中',
+  [config.Code_Status_Success]: '运行成功',
+  [config.Code_Status_Fail]: '运行失败',
+  [config.Code_Status_Crash]: '游戏崩溃',
+};
+
+const getStatusInfo = (item) => {
+  const rawStatus = item?.status;
+  // 正常接口返回 CodeRunStatusInfo 对象；同时兼容被序列化成 JSON 字符串的情况。
+  if (rawStatus && typeof rawStatus === 'object' && !Array.isArray(rawStatus)) {
+    return rawStatus;
+  }
+  if (typeof rawStatus === 'string') {
+    try {
+      const parsedStatus = JSON.parse(rawStatus);
+      if (parsedStatus && typeof parsedStatus === 'object' && !Array.isArray(parsedStatus)) {
+        return parsedStatus;
+      }
+    } catch (error) {
+      // 解析失败时交给旧逻辑兜底，避免历史记录整条渲染失败。
+    }
+  }
+  return { status: rawStatus };
+};
+
+const getStatusCode = (item) => {
+  const rawCode = getStatusInfo(item).status;
+  if (typeof rawCode === 'number' && Number.isInteger(rawCode)) {
+    return rawCode;
+  }
+  if (typeof rawCode === 'string' && /^-?\d+$/.test(rawCode.trim())) {
+    return Number(rawCode.trim());
+  }
+  return NaN;
+};
+
+const getLegacyStatusText = (item) => {
+  const statusInfo = getStatusInfo(item);
+  if (statusInfo.data) {
+    return String(statusInfo.data);
+  }
+  return '未运行';
+};
+
+const getStatusLabel = (item) => {
+  const code = getStatusCode(item);
+  return Object.prototype.hasOwnProperty.call(statusLabels, code)
+    ? statusLabels[code]
+    : getLegacyStatusText(item);
+};
+
+const getStatusData = (item) => {
+  const data = getStatusInfo(item).data;
+  return data === undefined || data === null ? '' : String(data);
+};
+
+const isCompileFail = (item) => getStatusCode(item) === config.Code_Status_Compile_Fail;
+const isGameResult = (item) => [config.Code_Status_Success, config.Code_Status_Fail].includes(getStatusCode(item));
+const isGameStats = (item) => isGameResult(item) || getStatusCode(item) === config.Code_Status_Running;
+const isCrash = (item) => getStatusCode(item) === config.Code_Status_Crash;
 
 // ======================== 核心修改：同步页码输入框与当前页 ========================
 watch(currentPage, (newPage) => {
@@ -399,7 +532,13 @@ const getFileNameFromUrl = (url) => {
     return;
   }
 
-  const apiUrl = `${config.download_url}/${fileUrl}?download=true`;
+  // 下载接口接收文件标识并返回真实地址；兼容后端返回带前导斜杠的标识。
+  const fileIdentifier = String(fileUrl).trim().replace(/^\/+/, '');
+  if (!fileIdentifier) {
+    ElMessage.warning('文件链接无效，无法下载');
+    return;
+  }
+  const apiUrl = `${config.download_url}/${fileIdentifier}?download=true`;
 
   try {
     // 1. 获取真实的下载链接
@@ -443,6 +582,7 @@ const getFileNameFromUrl = (url) => {
 
 const toggleExpand = (index) => {
   expandedItems.value[index] = !expandedItems.value[index];
+  updateStatusOverflow();
 };
 
 const handleRun = async (item) => {
@@ -590,7 +730,7 @@ const filteredHistory = computed(() => {
     const sourceName = getFileNameFromUrl(item.source).toLowerCase();
     const descMatch = item.description ? item.description.toLowerCase().includes(query) : false;
     const dateMatch = item.submittime.toLowerCase().includes(query);
-    const statusMatch = (item.status.data || '').toLowerCase().includes(query);
+    const statusMatch = `${getStatusLabel(item)} ${getStatusData(item)}`.toLowerCase().includes(query);
     
     return headerName.includes(query) || sourceName.includes(query) || descMatch || dateMatch || statusMatch;
   });
@@ -685,9 +825,18 @@ label.border-dashed:hover {
   white-space: pre-wrap;
   transition: max-height 0.3s ease, white-space 0.3s ease;
 }
+.status-content {
+  display: block;
+}
 .run-status-text.expanded {
   max-height: 10em; /* 最多显示10行，可根据需求调整 */
   white-space: pre-wrap;
   text-overflow: unset;
+}
+.run-status-text.crash-reason {
+  max-height: none;
+  overflow: visible;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 </style>
