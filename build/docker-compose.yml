@@ -1,0 +1,25 @@
+services:
+  judge:
+    image: hackermmzz/judge:latest
+    container_name: judge
+
+    privileged: true
+
+    restart: unless-stopped
+
+    volumes:
+      # 保存docker数据
+      - docker_data:/var/lib/docker
+
+      # 你的代码目录
+      - ./newaoe-frontend-backend:/root/newaoe-frontend-backend
+
+    environment:
+      DOCKER_TLS_CERTDIR: ""
+
+    command:
+      - /entrypoint.sh
+
+
+volumes:
+  docker_data:
