@@ -4,6 +4,7 @@ import requests
 import time
 import threading
 import protoc_pb2
+from dataclasses import dataclass, asdict
 import protoc_pb2_grpc
 #服务器网址
 BaseIP="114.66.62.156"
@@ -70,12 +71,24 @@ def Log(msg):
 class PostRunStatusEnum(Enum):
     Code_Status_Wait            = 1 #在等待队列里面
     Code_Status_Compile         = 2 #编译中
-    Code_Status_Compile_Error   = 3 #编译错误
-    Code_Status_Compile_Success = 4 #编译成功
+    Code_Status_Compile_Success = 3 #编译成功
+    Code_Status_Compile_Fail    = 4 #编译错误
     Code_Status_Running         = 5 #正在运行出结果
     Code_Status_Success         = 6 #运行胜利
-    Code_Status_Crash           = 7 #游戏崩溃
-    Code_Status_Fail            = 8 #游戏失败
+    Code_Status_Fail            = 7 #游戏失败
+    Code_Status_Crash           = 8 #游戏崩溃
+
+@dataclass
+class CodeRunStatusInfo:
+    status: int = 0
+    food: int = 0
+    wood: int = 0
+    gold: int = 0
+    stone: int = 0
+    frame: int = 0
+    win: bool = False
+    score: int = 0
+    data: str = ""
 
 class PostRunStatus():
     def __init__(self,server:protoc_pb2_grpc.CodeStub,data:protoc_pb2.CodeStatusUpdateRequest):
