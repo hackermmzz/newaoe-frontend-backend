@@ -179,8 +179,7 @@ func CodeRunBatchGetByIndices(indices []int) []CodeRunInfo {
 	if len(indices) == 0 {
 		return ret
 	}
-	err := DB.
-		Where("indices IN (?)", indices).
+	err := DB.In("indices", indices).
 		Find(&ret)
 	if err != nil {
 		util.DebugError("CodeRunBatchGetByIndices:", err)

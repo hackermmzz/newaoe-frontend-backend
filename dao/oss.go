@@ -1,6 +1,7 @@
 package dao
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -350,4 +351,34 @@ func OssGetDownloadFileUrls(filePaths []string, expireDuration time.Duration, at
 	}
 	wg.Wait()
 	return urls
+}
+
+// OssUploadFileData 上传文件数据到OSS
+// filePath: OSS存储路径
+// data: 文件内容
+func OssUploadFileData(filePath string, data []byte) bool {
+	var lastErr error
+
+	for i := 0; i < config.Conf.OSS.MaxRetry; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		_, err := OssClient.PutObject(
+			ctx,
+			config.Conf.OSS.BucketName,
+			filePath,
+			bytes.NewReader(data),
+			int64(len(data)),
+			minio.PutObjectOptions{},
+		)
+		cancel()
+		if err == nil {
+			return true
+		}
+		lastErr = err
+		if !isRetryable(err) {
+			break
+		}
+		backoff(i)
+	}
+	util.DebugError("OssUploadFileData:", filePath, lastErr)
+	return false
 }

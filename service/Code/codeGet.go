@@ -71,7 +71,7 @@ func GetOneCodeTask() interface{} {
 			util.DebugError("GetOneCodeTask JsonUnmarshal err:", err)
 			return nil
 		}
-		//判断是否已经处理过了
+		//判断是否已经处理过了(只有CodeRunning表里面没有，且CodeRun表有才算成功跑结束，取反就是下面这个)
 		if dao.CodeRunningExist(session, codeinfo.Indices) || !dao.CodeRunExist(session, codeinfo.Indices) {
 			//
 			util.DebugSuccess("OJ successfully get one code!")

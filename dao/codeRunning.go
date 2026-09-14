@@ -51,12 +51,8 @@ func CodeRunningBatchRemove(session *xorm.Session, indices []int) bool {
 	if len(indices) == 0 {
 		return true
 	}
-	d := make([]CodeRunningInfo, len(indices))
-	for i, v := range indices {
-		d[i].Indices = v
-	}
 	//
-	_, err := session.In("indices", d).Delete(&CodeRunningInfo{})
+	_, err := session.In("indices", indices).Delete(&CodeRunningInfo{})
 	if err != nil {
 		util.DebugError("CodeRunningBatchRemove:", err)
 		return false
