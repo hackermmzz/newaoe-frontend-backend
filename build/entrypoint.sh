@@ -139,7 +139,7 @@ echo "安装python依赖"
 cd /root/newaoe-frontend-backend
 
 
-pip3 install -r requirement.txt || true
+pip3 install -r requirements.txt || true
 
 
 

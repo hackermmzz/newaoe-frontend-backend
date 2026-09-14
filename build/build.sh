@@ -14,28 +14,19 @@ if [[ "$OS" == "Linux" ]]
 then
     echo "Linux/WSL 环境"
 
-
 elif [[ "$OS" == MINGW* ]] || [[ "$OS" == MSYS* ]]
 then
     echo "Git Bash 环境"
 
-
 elif [[ "$OS" == CYGWIN* ]]
 then
     echo "Cygwin 环境"
-
 
 else
 
     echo "================================"
     echo "不支持的环境: $OS"
     echo "================================"
-    echo ""
-    echo "请使用以下环境运行:"
-    echo "  1. Git Bash"
-    echo "  2. WSL/Linux"
-    echo ""
-
     exit 1
 
 fi
@@ -48,16 +39,8 @@ fi
 
 if ! command -v docker >/dev/null 2>&1
 then
-
-    echo "================================"
     echo "未检测到 docker"
-    echo "================================"
-    echo ""
-    echo "请安装 Docker Desktop 或 Docker Engine"
-    echo ""
-
     exit 1
-
 fi
 
 
@@ -66,24 +49,24 @@ fi
 # 镜像配置
 #########################################
 
-IMAGE="hackermmzz/judge:latest"
+IMAGE_NAME="hackermmzz/judge"
 
 QT_IMAGE="hackermmzz/qt-env:latest"
 
 QT_TAR="qt-env.tar"
 
 
-
-#########################################
-# 更新基础 judge
-#########################################
-
-echo "=============================="
-echo "1. 更新基础 judge"
-echo "=============================="
+# 时间版本
+VERSION=$(date +"%Y%m%d_%H%M%S")
 
 
-docker pull $IMAGE || true
+VERSION_IMAGE="${IMAGE_NAME}:${VERSION}"
+
+LATEST_IMAGE="${IMAGE_NAME}:latest"
+
+
+
+echo "当前版本: ${VERSION}"
 
 
 
@@ -92,7 +75,7 @@ docker pull $IMAGE || true
 #########################################
 
 echo "=============================="
-echo "2. 更新 qt-env"
+echo "1. 更新 qt-env"
 echo "=============================="
 
 
@@ -105,7 +88,7 @@ docker pull $QT_IMAGE
 #########################################
 
 echo "=============================="
-echo "3. 导出 qt-env"
+echo "2. 导出 qt-env"
 echo "=============================="
 
 
@@ -119,17 +102,18 @@ docker save \
 
 
 #########################################
-# 构建 judge
+# 构建镜像
 #########################################
 
 echo "=============================="
-echo "4. build judge"
+echo "3. build judge"
 echo "=============================="
 
 
 docker build \
-    --no-cache \
-    -t $IMAGE .
+    -t $VERSION_IMAGE \
+    -t $LATEST_IMAGE \
+    .
 
 
 
@@ -138,7 +122,7 @@ docker build \
 #########################################
 
 echo "=============================="
-echo "5. 清理临时文件"
+echo "4. 清理"
 echo "=============================="
 
 
@@ -150,18 +134,35 @@ docker image prune -f
 
 
 #########################################
-# 推送
+# 推送版本
 #########################################
 
 echo "=============================="
-echo "6. push judge"
+echo "5. push version"
 echo "=============================="
 
 
-docker push $IMAGE
+docker push $VERSION_IMAGE
+
+
+
+#########################################
+# 推送latest
+#########################################
+
+echo "=============================="
+echo "6. push latest"
+echo "=============================="
+
+
+docker push $LATEST_IMAGE
 
 
 
 echo "=============================="
 echo "完成"
 echo "=============================="
+
+echo "版本:"
+echo "$VERSION_IMAGE"
+echo "$LATEST_IMAGE"

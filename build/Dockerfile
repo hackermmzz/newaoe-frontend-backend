@@ -20,7 +20,7 @@ RUN cd /root/new-aoe && \
 
 
 RUN cd /root/newaoe-frontend-backend && \
-    pip3 install -r requirement.txt || true
+    pip3 install -r requirements.txt || true
 
 
 COPY entrypoint.sh /entrypoint.sh
