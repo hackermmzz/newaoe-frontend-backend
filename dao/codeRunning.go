@@ -64,14 +64,14 @@ func CodeRunningBatchRemove(session *xorm.Session, indices []int) bool {
 	return true
 }
 
-func CodeRunningGetExpireTime(session *xorm.Session, expireDuration time.Duration) []CodeRunningInfo {
+func CodeRunningGetExpireTime(session *xorm.Session, expireDuration time.Duration, number int) []CodeRunningInfo {
 	var result []CodeRunningInfo
 	// 当前时间减去超时时间
 	expireTime := time.Now().Add(-expireDuration)
 	err := session.
 		Where("submittime <= ?", expireTime).
+		Limit(number). // 最多返回 number 条
 		Find(&result)
-
 	if err != nil {
 		util.Debug("CodeRunningGetExpireTime:", err)
 		return nil

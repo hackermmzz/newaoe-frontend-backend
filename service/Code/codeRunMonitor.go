@@ -99,7 +99,7 @@ func codeRunningLongTimeWaitRepush() {
 			defer session.Close()
 			// 超时时间
 			expireDuration := time.Duration(config.Conf.Code.CodeWaitTooLongTimeLimit) * time.Minute
-			runningList := dao.CodeRunningGetExpireTime(session, expireDuration)
+			runningList := dao.CodeRunningGetExpireTime(session, expireDuration, 20)
 			if len(runningList) == 0 {
 				return
 			}
