@@ -52,7 +52,9 @@ def TaskProcess():
             indices=indices,
             id=id,
             status=PostRunStatusEnum.Code_Status_Compile.value,
-            data=""
+            data=CodeRunStatusInfo(
+                status=PostRunStatusEnum.Code_Status_Compile.value
+                ).tostr()
             )).Response()
     #创建运行目录和编译目录
     rundir=f'{RunDir}/{res0["id"]}_{res0["indices"]}' if indices !="" else f'{RunDir}/{res0["id"]}'
@@ -75,8 +77,11 @@ def TaskProcess():
                 auth=GRPCAuth,
                 indices=indices,
                 id=id,
-                status=PostRunStatusEnum.Code_Status_Compile_Error.value,
-                data=res1[1]
+                status=PostRunStatusEnum.Code_Status_Compile_Fail.value,
+                data=CodeRunStatusInfo(
+                    status=PostRunStatusEnum.Code_Status_Compile_Fail.value,
+                    data=res1[1]
+                    ).tostr()
                 )).Response()
             return False
     else:
@@ -88,7 +93,9 @@ def TaskProcess():
                             indices=indices,
                             id=id,
                             status=PostRunStatusEnum.Code_Status_Compile_Success.value,
-                            data=""  
+                            data=CodeRunStatusInfo(
+                                status=PostRunStatusEnum.Code_Status_Compile_Success.value
+                                ).tostr()
                 )).Response()
     if not compileError:
         #将可执行文件移动到运行目录
@@ -139,59 +146,47 @@ def PreCompile():
     docker_cmd = [
         "docker", "run",
         "--rm",
-        "-v", f"{new_aoe_folder}:/app",
+        "-v", f"{new_aoe_folder}:/app/newaoe",
         "-w", "/app",
         new_aoe_docker_img,
 
         "bash", "-c",
         r'''
-        # 给所有 .h / .cpp 文件建立“首字母大小写相反”的软链接
-        find . -type f \( -name "*.h" -o -name "*.cpp" \) -print0 |
-        while IFS= read -r -d '' file; do
-            dir=$(dirname "$file")
-            name=$(basename "$file")
-
-            first="${name:0:1}"
-            rest="${name:1}"
-
-            # 首字母小写 -> 大写
-            if [[ "$first" =~ [a-z] ]]; then
-                new_first=$(echo "$first" | tr '[:lower:]' '[:upper:]')
-
-            # 首字母大写 -> 小写
-            elif [[ "$first" =~ [A-Z] ]]; then
-                new_first=$(echo "$first" | tr '[:upper:]' '[:lower:]')
-
-            else
-                continue
-            fi
-
-            link_name="${new_first}${rest}"
-            link_path="$dir/$link_name"
-
-            # 如果目标名字不存在，才创建软链接
-            if [ ! -e "$link_path" ] && [ ! -L "$link_path" ]; then
-                echo "创建软链接: $link_path -> $name"
-                ln -s "$name" "$link_path"
-            fi
-        done
-
+        #先copy一下newaoe目录
+        cp -r newaoe newaoe_copy
+        #把newaoe/release目录下的所有编译好的.o文件copy到newaoe_copy的目录下(减少编译时间)
+        cp newaoe/release/*.o newaoe_copy/
+        #修复所有文件的大小写
+        fixcase -f ./newaoe_copy
+        #切换到newaoe_copy目录下
+        cd newaoe_copy
+        #添加qt5.9.2的bin目录到PATH
         export PATH="$PATH:/opt/qt5.9.2/bin/"
-
-        qmake &&
-        make -j$(nproc) &&
-        rm -f UsrAI.o newAOE
+        #编译
+        if ! qmake || ! make -j$(nproc); then
+            echo "编译失败"
+            ls -l .
+            exit 1
+        fi
+        #将所有.o copy回newaoe/release目录
+        cd ../
+        mkdir -p newaoe/release
+        cp newaoe_copy/*.o newaoe/release
+        rm -f newaoe/release/UsrAI.o
+        #将moc_*.cpp文件copy到newaoe/release目录下
+        cp newaoe_copy/moc_*.cpp newaoe/
+        cp newaoe_copy/ui_*.h newaoe/
         '''
     ]
 
     result = subprocess.run(
         docker_cmd,
-        stdout=subprocess.PIPE,
+        stdout=LogFile,
         stderr=LogFile,
         text=True,
+        encoding="utf-8",
         check=False
     )
-
     if result.returncode != 0:
         print(f"预编译失败，错误信息:{result.stdout}")
         exit(1)

@@ -8,8 +8,6 @@ import aiofiles
 import json
 import protoc_pb2_grpc
 import protoc_pb2
-from dataclasses import asdict
-from uuid import uuid4
 
 #判断字符串是否为json可以解析的字符串
 def checkStrIsJson(s:str)->bool:
@@ -46,10 +44,6 @@ def CodeRun(
        -> 根据 win 判断 Success / Fail
     3. returncode == 0，但是没有最终 JSON
        -> Crash
-
-    运行态和最终态上传的 data 都是 CodeRunStatusInfo 的 JSON；
-    其中 data 字段保留原始完整结果 JSON。OOM 判定以 Docker 的
-    State.OOMKilled 为准，不再仅凭退出码 137 猜测。
     """
     workdir = "/tmp/project"
 
@@ -76,13 +70,9 @@ def CodeRun(
     # ============================================================
     # Docker 命令
     # ============================================================
-    # 不使用 --rm：进程退出后需要通过 docker inspect 读取 State.OOMKilled。
-    # 名称使用 UUID，避免并发运行时容器名冲突。
-    container_name = f"aoe-{uuid4().hex}"
-
     docker_cmd = [
         "docker", "run",
-        "--name", container_name,
+        "--rm",
         # 内存限制
         "-m", RunMemoryLimit,
         # CPU 限制
@@ -96,29 +86,22 @@ def CodeRun(
         new_aoe_docker_img,
         "bash",
         "-c",
-        """
-export QT_QPA_PLATFORM=offscreen &&
-export LD_LIBRARY_PATH=/opt/qt5.9.2/lib:$LD_LIBRARY_PATH &&
-./newAOE \
-    --offscreen \
-    --exam \
-    --freq=MAX \
-    --record \
-    --ResultLogFile={RunResultFileName}
+        f"""
+            export QT_QPA_PLATFORM=offscreen &&
+            export LD_LIBRARY_PATH=/opt/qt5.9.2/lib:$LD_LIBRARY_PATH &&
+            ./newAOE \
+            --offscreen \
+            --exam \
+            --freq=MAX \
+            --record \
+            --ResultLogFile={RunResultFileName}
         """.strip()
     ]
 
     # ============================================================
     # 根据退出码获取崩溃原因
     # ============================================================
-    def GetExitReason(code: int, oom_killed=None) -> str:
-        if oom_killed is True:
-            return "OOMKilled (Docker memory limit)"
-        if code == 137 and oom_killed is False:
-            return "SIGKILL (not Docker OOM; State.OOMKilled=false)"
-        if code == 137 and oom_killed is None:
-            return "SIGKILL (OOM status unavailable)"
-
+    def GetExitReason(code: int) -> str:
         exitReasons = {
             0: "Normal Exit",
             1: "General Error",
@@ -135,91 +118,11 @@ export LD_LIBRARY_PATH=/opt/qt5.9.2/lib:$LD_LIBRARY_PATH &&
         }
         return exitReasons.get(code, f"Unknown Exit Code ({code})")
 
-    async def GetContainerOOMKilled(container_name: str):
-        """读取 Docker 的 State.OOMKilled；读取失败时返回 None。"""
-        try:
-            inspect_process = await asyncio.create_subprocess_exec(
-                "docker", "inspect",
-                "--format", "{{.State.OOMKilled}}",
-                container_name,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            stdout, stderr = await inspect_process.communicate()
-            if inspect_process.returncode != 0:
-                print(
-                    f"[CodeRun] docker inspect failed for {container_name}: "
-                    f"{stderr.decode(errors='replace').strip()}"
-                )
-                return None
-
-            value = stdout.decode(errors="replace").strip().lower()
-            if value == "true":
-                return True
-            if value == "false":
-                return False
-            return None
-        except Exception as e:
-            print(f"[CodeRun] failed to inspect OOM status: {e}")
-            return None
-
-    async def RemoveContainer(container_name: str):
-        """清理已退出的容器；容器不存在时忽略。"""
-        try:
-            cleanup_process = await asyncio.create_subprocess_exec(
-                "docker", "rm", "-f", container_name,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            await cleanup_process.communicate()
-        except Exception as e:
-            print(f"[CodeRun] failed to remove container {container_name}: {e}")
-
-    def BuildRunStatusData(serialized_result: str) -> str:
-        """把一条结果 JSON 包装成 CodeRunStatusInfo JSON。"""
-        try:
-            result = json.loads(serialized_result)
-            if not isinstance(result, dict):
-                result = {}
-        except (json.JSONDecodeError, TypeError, ValueError):
-            result = {}
-
-        def ToInt(key: str) -> int:
-            value = result.get(key, 0)
-            try:
-                return int(value)
-            except (TypeError, ValueError):
-                return 0
-
-        def ToBool(key: str) -> bool:
-            value = result.get(key, False)
-            if isinstance(value, str):
-                return value.strip().lower() in {"1", "true", "yes", "on"}
-            return bool(value)
-
-        status_info = CodeRunStatusInfo(
-            status=ToInt("status"),
-            food=ToInt("food"),
-            wood=ToInt("wood"),
-            gold=ToInt("gold"),
-            stone=ToInt("stone"),
-            frame=ToInt("frame"),
-            win=ToBool("win"),
-            score=ToInt("score"),
-            # 保留原始完整序列化结果，包括未列出的字段（如 time、compile）。
-            data=serialized_result,
-        )
-        return json.dumps(asdict(status_info), ensure_ascii=False)
-
     # ============================================================
     # 构造 Crash JSON
     # ============================================================
-    def BuildCrashData(
-        last_post_data: str,
-        returnCode: int,
-        oom_killed=None
-    ) -> str:
-        crashReason = GetExitReason(returnCode, oom_killed)
+    def BuildCrashData(last_post_data: str, returnCode: int) -> str:
+        crashReason = GetExitReason(returnCode)
         try:
             # 如果之前已经存在合法 JSON
             if last_post_data and checkStrIsJson(last_post_data):
@@ -231,7 +134,6 @@ export LD_LIBRARY_PATH=/opt/qt5.9.2/lib:$LD_LIBRARY_PATH &&
             # 添加崩溃信息
             crashData["crash_code"] = returnCode
             crashData["crash_reason"] = crashReason
-            crashData["oom_killed"] = oom_killed
             return json.dumps(crashData, ensure_ascii=False)
         except Exception as e:
             print(f"[CodeRun] BuildCrashData failed: {e}")
@@ -240,7 +142,6 @@ export LD_LIBRARY_PATH=/opt/qt5.9.2/lib:$LD_LIBRARY_PATH &&
                 {
                     "crash_code": returnCode,
                     "crash_reason": crashReason,
-                    "oom_killed": oom_killed,
                 },
                 ensure_ascii=False
             )
@@ -264,11 +165,7 @@ export LD_LIBRARY_PATH=/opt/qt5.9.2/lib:$LD_LIBRARY_PATH &&
     # ============================================================
     # 状态上传
     # ============================================================
-    # Docker 状态：None 表示 inspect 失败或容器未创建。
-    oom_killed = None
-
     async def CodeStatusPost(resultFile, process, id, indices):
-        nonlocal oom_killed
         # 保存尚未写完整的一行
         preInfo = ""
         # 最后一个合法 JSON
@@ -309,6 +206,10 @@ export LD_LIBRARY_PATH=/opt/qt5.9.2/lib:$LD_LIBRARY_PATH &&
                             break
                     if currentJson is not None:
                         last_post_data = currentJson
+                        try:
+                            currentJson = json.loads(currentJson)
+                        except:
+                            continue
                         # =========================================
                         # 上传 Running 状态
                         # =========================================
@@ -320,7 +221,17 @@ export LD_LIBRARY_PATH=/opt/qt5.9.2/lib:$LD_LIBRARY_PATH &&
                                     indices=indices,
                                     id=id,
                                     status=PostRunStatusEnum.Code_Status_Running.value,
-                                    data=BuildRunStatusData(last_post_data)
+                                    data=CodeRunStatusInfo(
+                                        status=PostRunStatusEnum.Code_Status_Running.value,
+                                        gold=currentJson.get("gold", 0),
+                                        stone=currentJson.get("stone", 0),
+                                        wood=currentJson.get("wood", 0),
+                                        food=currentJson.get("food", 0),
+                                        frame=currentJson.get("frame", 0),
+                                        win=currentJson.get("win", False),
+                                        score=currentJson.get("score", 0),
+                                        data=last_post_data
+                                        ).tostr()
                                 )
                             ).Response()
 
@@ -340,8 +251,6 @@ export LD_LIBRARY_PATH=/opt/qt5.9.2/lib:$LD_LIBRARY_PATH &&
             # ====================================================
             await process.wait()
             returnCode = process.returncode
-            # 必须在清理容器前读取，否则容器删除后 OOMKilled 信息会丢失。
-            oom_killed = await GetContainerOOMKilled(container_name)
 
             # ====================================================
             # 再读取一次最后残留的数据
@@ -359,19 +268,27 @@ export LD_LIBRARY_PATH=/opt/qt5.9.2/lib:$LD_LIBRARY_PATH &&
                 if not last_line:
                     continue
                 if checkStrIsJson(last_line):
-                    finalJson = last_line
-                    break
+                    try:
+                        finalJson = json.loads(last_line)
+                        break
+                    except:
+                        continue
 
             # 如果最后残留数据中没找到，使用运行过程中读到的最后一条 JSON
             if finalJson is None:
                 if last_post_data and checkStrIsJson(last_post_data):
-                    finalJson = last_post_data
-
+                    try:
+                        finalJson = json.loads(last_post_data)
+                    except:
+                        finalJson = None
+            # 如果最后残留数据中也没找到，使用默认 JSON
+            if finalJson is None:
+                finalJson = CodeRunStatusInfo().tojson()
             # ====================================================
             # 情况 1：returncode != 0，只要非 0，就无条件 Crash
             # ====================================================
             if returnCode != 0:
-                crashReason = GetExitReason(returnCode, oom_killed)
+                crashReason = GetExitReason(returnCode)
                 print(
                     f"[CodeRun] Program crashed: id={id}, indices={indices}, returncode={returnCode}, reason={crashReason}"
                 )
@@ -379,11 +296,7 @@ export LD_LIBRARY_PATH=/opt/qt5.9.2/lib:$LD_LIBRARY_PATH &&
                 if finalJson is not None:
                     last_post_data = finalJson
                 # 给 JSON 添加 crash_code + crash_reason
-                last_post_data = BuildCrashData(
-                    last_post_data,
-                    returnCode,
-                    oom_killed
-                )
+                last_post_data = BuildCrashData(last_post_data, returnCode)
 
                 # 上传 Crash
                 if not DebugLocal:
@@ -394,66 +307,26 @@ export LD_LIBRARY_PATH=/opt/qt5.9.2/lib:$LD_LIBRARY_PATH &&
                             indices=indices,
                             id=id,
                             status=PostRunStatusEnum.Code_Status_Crash.value,
-                            data=BuildRunStatusData(last_post_data)
+                            data=CodeRunStatusInfo(
+                                status=PostRunStatusEnum.Code_Status_Crash.value,
+                                gold=finalJson.get("gold", 0),
+                                stone=finalJson.get("stone", 0),
+                                wood=finalJson.get("wood", 0),
+                                food=finalJson.get("food", 0),
+                                frame=finalJson.get("frame", 0),
+                                win=finalJson.get("win", False),
+                                score=finalJson.get("score", 0),
+                                data=crashReason
+                            ).tostr()
                         )
                     ).Response()
                 return
 
             # ====================================================
-            # 情况 2：returncode == 0，正常退出，但是没有最终 JSON
+            # 情况 2：returncode == 0 + 有合法最终 JSON
             # ====================================================
-            if finalJson is None:
-                crashReason = "Program exited normally but no final result JSON"
-                print(f"[CodeRun] {crashReason}: id={id}, indices={indices}")
-                # 这种情况虽然 returncode = 0，但判题逻辑属于异常
-                crashData = {
-                    "crash_code": 0,
-                    "crash_reason": crashReason
-                }
-                last_post_data = json.dumps(crashData, ensure_ascii=False)
-                if not DebugLocal:
-                    PostRunStatus(
-                        server=server,
-                        data=protoc_pb2.CodeStatusUpdateRequest(
-                            auth=GRPCAuth,
-                            indices=indices,
-                            id=id,
-                            status=PostRunStatusEnum.Code_Status_Crash.value,
-                            data=BuildRunStatusData(last_post_data)
-                        )
-                    ).Response()
-                return
-
-            # ====================================================
-            # 情况 3：returncode == 0 + 有合法最终 JSON
-            # ====================================================
-            try:
-                js = json.loads(finalJson)
-            except Exception as e:
-                crashReason = f"Invalid final JSON: {e}"
-                print(f"[CodeRun] {crashReason}")
-                last_post_data = json.dumps(
-                    {
-                        "crash_code": 0,
-                        "crash_reason": crashReason
-                    },
-                    ensure_ascii=False
-                )
-                if not DebugLocal:
-                    PostRunStatus(
-                        server=server,
-                        data=protoc_pb2.CodeStatusUpdateRequest(
-                            auth=GRPCAuth,
-                            indices=indices,
-                            id=id,
-                            status=PostRunStatusEnum.Code_Status_Crash.value,
-                            data=BuildRunStatusData(last_post_data)
-                        )
-                    ).Response()
-                return
-
             # win 判断
-            if js.get("win", False):
+            if finalJson.get("win", False):
                 status = PostRunStatusEnum.Code_Status_Success
             else:
                 status = PostRunStatusEnum.Code_Status_Fail
@@ -467,7 +340,17 @@ export LD_LIBRARY_PATH=/opt/qt5.9.2/lib:$LD_LIBRARY_PATH &&
                         indices=indices,
                         id=id,
                         status=status.value,
-                        data=BuildRunStatusData(finalJson)
+                        data=CodeRunStatusInfo(
+                            status=status.value,
+                            gold=finalJson.get("gold", 0),
+                            stone=finalJson.get("stone", 0),
+                            wood=finalJson.get("wood", 0),
+                            food=finalJson.get("food", 0),
+                            frame=finalJson.get("frame", 0),
+                            win=finalJson.get("win", False),
+                            score=finalJson.get("score", 0),
+                            data=""
+                        ).tostr()
                     )
                 ).Response()
 
@@ -486,7 +369,6 @@ export LD_LIBRARY_PATH=/opt/qt5.9.2/lib:$LD_LIBRARY_PATH &&
             if logHandle is not None:
                 await logHandle.flush()
                 await logHandle.close()
-            await RemoveContainer(container_name)
 
     # ============================================================
     # 开始运行
@@ -504,10 +386,9 @@ export LD_LIBRARY_PATH=/opt/qt5.9.2/lib:$LD_LIBRARY_PATH &&
     # ============================================================
     # 写最终退出日志
     # ============================================================
-    exitReason = GetExitReason(process.returncode, oom_killed)
+    exitReason = GetExitReason(process.returncode)
     with open(logFile, "a", errors="replace") as f:
         f.write("\n========================================\n")
         f.write(f"Process exited with return code {process.returncode}\n")
         f.write(f"Exit reason: {exitReason}\n")
-        f.write(f"OOM killed: {oom_killed}\n")
         f.write("========================================\n")

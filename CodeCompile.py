@@ -25,23 +25,35 @@ def CodeCompile(buildDir: str, logfile: str) -> tuple[bool, str]:
         # 每个用户独立的编译目录
         "-v", f"{buildDir}:/app/build",
 
-        "-w", "/app/build",
+        "-w", "/app/",
 
         new_aoe_docker_img,
 
         "bash", "-c",
 
         r'''
+        
         export PATH="$PATH:/opt/qt5.9.2/bin/" &&
         export QT="/opt/qt5.9.2" &&
         export QTINCLUDE="/opt/qt5.9.2/include" &&
-
+        #先copy一下newaoe_copy目录
+        mkdir -p newaoe_copy
+        cd project
+        find ./ \
+            \( -name "*.h" -o -name "*.cpp" -o -name "*.hpp" \) \
+            -exec cp --parents {} ../newaoe_copy \;
+        cd ../
+        #把UsrAI.h和UsrAI.cpp copy到newaoe_copy目录下
+        cp build/UsrAI.h build/UsrAI.cpp newaoe_copy/
+        #切换到newaoe_copy目录下
+        cd newaoe_copy
+        #修复大小写问题
+        fixcase -f ./ >/dev/null
         # 编译用户代码
         g++ -c UsrAI.cpp \
             -O2 \
             -fPIC \
             -I./ \
-            -I../project/ \
             -I${QTINCLUDE} \
             -I${QTINCLUDE}/QtCore \
             -I${QTINCLUDE}/QtMultimedia \
@@ -49,8 +61,8 @@ def CodeCompile(buildDir: str, logfile: str) -> tuple[bool, str]:
             -I${QTINCLUDE}/QtGui \
             -I${QTINCLUDE}/QtNetwork &&
 
-        # 链接公共 .o
-        g++ UsrAI.o ../project/*.o \
+        # 链接公共 .o 文件
+        g++ UsrAI.o ../project/release/*.o \
             -o newAOE \
             -L/opt/qt5.9.2/lib \
             -lQt5Widgets \
@@ -58,6 +70,8 @@ def CodeCompile(buildDir: str, logfile: str) -> tuple[bool, str]:
             -lQt5Core \
             -lQt5Multimedia \
             -lQt5Network
+        #把newAOE copy回buildDir目录下
+        cp newAOE ../build/  >/dev/null
         '''
     ]
 

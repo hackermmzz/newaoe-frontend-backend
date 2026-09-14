@@ -6,6 +6,7 @@ import threading
 import protoc_pb2
 from dataclasses import dataclass, asdict
 import protoc_pb2_grpc
+import json
 #服务器网址
 BaseIP="114.66.62.156"
 GRPCHost=f"{BaseIP}:50051"
@@ -89,7 +90,10 @@ class CodeRunStatusInfo:
     win: bool = False
     score: int = 0
     data: str = ""
-
+    def tojson(self):
+        return asdict(self)
+    def tostr(self):
+        return json.dumps(asdict(self),ensure_ascii=False)
 class PostRunStatus():
     def __init__(self,server:protoc_pb2_grpc.CodeStub,data:protoc_pb2.CodeStatusUpdateRequest):
         self.data=data
