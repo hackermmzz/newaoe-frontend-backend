@@ -8,7 +8,7 @@ option go_package = "./grpc_api";
 service Code {
     //获取一份待批改的代码
     rpc GetCode (CodeRequest) returns (CodeReply);
-    rpc CodeStatusUpdate (CodeStatusUpdateRequest) returns (Empty);
+    rpc CodeStatusUpdate (CodeStatusUpdateRequest) returns (StatusUpdateReply);
 }
 
 ///////////////////////////////////////////////////////// 请求消息
@@ -24,8 +24,8 @@ message CodeStatusUpdateRequest{
     string data=5; //返回的数据
 }
 ////////////////////////////////////////////////////////// 响应消息
-message Empty{
-
+message StatusUpdateReply{
+    string data =1;    //多种用途，可能是上传链接
 }
 
 message CodeReply{

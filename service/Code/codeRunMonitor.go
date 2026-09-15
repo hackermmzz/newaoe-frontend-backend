@@ -31,7 +31,8 @@ var (
 	CodeRunStatusUpdateChannel = make(chan int, config.Conf.Code.CodeRunStatusUpdateQueueMaxSize) //代码运行状态更新通道
 )
 
-func (server *GrpcCodeServer) CodeStatusUpdate(ctx context.Context, req *grpc_api.CodeStatusUpdateRequest) (*grpc_api.Empty, error) {
+func (server *GrpcCodeServer) CodeStatusUpdate(ctx context.Context, req *grpc_api.CodeStatusUpdateRequest) (*grpc_api.StatusUpdateReply, error) {
+	var ret *grpc_api.StatusUpdateReply
 	//鉴权
 	if !codeGrpcServerAuthConfirm(req.Auth) {
 		util.DebugError("疑似Auth泄露!")
@@ -39,19 +40,21 @@ func (server *GrpcCodeServer) CodeStatusUpdate(ctx context.Context, req *grpc_ap
 	}
 	//更新数据
 	indices := req.Indices
+	id := req.Id
 	info := dao.NewCodeRunStatusInfo()
 	if info.Unmarshal([]byte(req.Data)) != nil {
 		util.DebugError("OJ传过来的数据格式有误!")
 		return nil, nil
 	}
-	codeRunStatus := dao.ProcessDataMessageByStatus(info)
+	//判断是否需要下载链接(如果是会改变codeRunStatus一些字段)
+	ret = processCodeRunStatus(int(indices), id, &info)
+	//先更新redis
 	redisData := CodeRunStatusInfoPushRedis{
-		ID:                req.Id,
+		ID:                id,
 		Indices:           int(indices),
-		CodeRunStatusInfo: codeRunStatus,
+		CodeRunStatusInfo: info,
 	}
 	byte_data, _ := json.Marshal(redisData)
-	//先更新redis
 	ctx1 := context.Background()
 	duration := time.Duration(60) * time.Minute                                 //设置60分钟过期
 	dao.RedisSet(ctx1, fmt.Sprintf("CodeRun:%v", indices), byte_data, duration) //这里肯定不会乱序，因为judge那边是同步发送的
@@ -60,7 +63,59 @@ func (server *GrpcCodeServer) CodeStatusUpdate(ctx context.Context, req *grpc_ap
 	binary.BigEndian.PutUint64(indices_byte, uint64(indices))
 	msg := primitive.NewMessage(config.Conf.Code.CodeRunStatusTopic, indices_byte)
 	pushCodeRunStatusNeedUpdateToQueue(msg, 3) //默认重试3次
-	return nil, nil
+	//
+	return ret, nil
+}
+
+func processCodeRunStatus(indices int, id string, codeRunstatus *dao.CodeRunStatusInfo) *grpc_api.StatusUpdateReply {
+	status := codeRunstatus.Status
+	fp := ""
+	dtMap := make(map[string]interface{})
+	switch status {
+	case dao.Code_Status_Compile_Fail:
+		fileName := fmt.Sprintf("compile_%d_%d.log", indices, util.UTC_Time().Nanosecond())
+		fp = path.Join(config.Conf.OSS.PrivateBaseFolder, id, config.Conf.User.UserOtherFolder, fileName)
+		dtMap["compile_error_log"] = fp
+	case dao.Code_Status_Crash:
+		//解析原来的data，needlog为一个bool，表示是否生成崩溃日志
+		mp := make(map[string]interface{})
+		json.Unmarshal([]byte(codeRunstatus.Data), &mp)
+		if needlog, ok := mp["needlog"].(bool); ok && needlog {
+			fileName := fmt.Sprintf("crash_%d_%d.log", indices, util.UTC_Time().Nanosecond())
+			fp = path.Join(config.Conf.OSS.PrivateBaseFolder, id, config.Conf.User.UserCrashFolder, fileName)
+		}
+		if crash_reason, ok := mp["crash_reason"].(string); ok {
+			dtMap["crash_reason"] = crash_reason
+		} else {
+			dtMap["crash_reason"] = ""
+		}
+		dtMap["crash_log_file"] = fp
+	case dao.Code_Status_Fail:
+		fileName := fmt.Sprintf("video_fail_%d_%d.video", indices, util.UTC_Time().Nanosecond())
+		fp = path.Join(config.Conf.OSS.PrivateBaseFolder, id, config.Conf.User.UserVideoFolder, fileName)
+		dtMap["video_file"] = fp
+	case dao.Code_Status_Success:
+		fileName := fmt.Sprintf("video_success_%d_%d.video", indices, util.UTC_Time().Nanosecond())
+		fp = path.Join(config.Conf.OSS.PrivateBaseFolder, id, config.Conf.User.UserVideoFolder, fileName)
+		dtMap["video_file"] = fp
+	}
+	//无论链接生成成功与否，都不用管
+	if len(dtMap) != 0 {
+		bytes, _ := json.Marshal(dtMap)
+		codeRunstatus.Data = string(bytes)
+	}
+	if fp != "" {
+		//尝试3次
+		for i := 0; i < 3; i += 1 {
+			expire_dur := time.Duration(60) * time.Minute
+			url := dao.GetUploadFileUrls([]string{fp}, []time.Duration{expire_dur})
+			if len(url) == 1 {
+				return &grpc_api.StatusUpdateReply{Data: url[0]}
+			}
+		}
+	}
+	//
+	return nil
 }
 
 func pushCodeRunStatusNeedUpdateToQueue(msg *primitive.Message, limit int) {
@@ -271,28 +326,29 @@ func batchUpdateCodeRunStatus(indices []int) {
 }
 
 func processCodeRunningStatus(status CodeRunStatusInfoPushRedis) string {
-	runstatus := status.Status
-	data := status.Data
-	//如果是编译失败，那么则存储一个编译失败的下载链接而不是完整的编译失败信息
-	if runstatus == dao.Code_Status_Compile_Fail {
-		//生成文件地址
-		fileName := fmt.Sprintf("compile_log_%d_%d_.txt", status.Indices, util.UTC_Time().Nanosecond())
-		filePath := path.Join(config.Conf.OSS.PrivateBaseFolder, status.ID, config.Conf.User.UserOtherFolder, fileName)
-		//把数据推送到服务器
-		dao.OssUploadFileData(filePath, []byte(status.Data)) //编译失败得话status.Data就是编译错误信息
-		//
-		data = filePath
-	}
-	//如果是运行成功/运行失败，那么Data字段存储一个录像下载路径
-	if runstatus == dao.Code_Status_Fail || runstatus == dao.Code_Status_Success {
-		//下载链接已经在
-	}
-	//如果是运行崩溃，那么Data字段存一个json
-	if runstatus == dao.Code_Status_Crash {
+	/*这个在推送状态的时候就已经处理了*/
+	// runstatus := status.Status
+	// data := status.Data
+	// //如果是编译失败，那么则存储一个编译失败的下载链接而不是完整的编译失败信息
+	// if runstatus == dao.Code_Status_Compile_Fail {
+	// 	//生成文件地址
+	// 	fileName := fmt.Sprintf("compile_log_%d_%d_.txt", status.Indices, util.UTC_Time().Nanosecond())
+	// 	filePath := path.Join(config.Conf.OSS.PrivateBaseFolder, status.ID, config.Conf.User.UserOtherFolder, fileName)
+	// 	//把数据推送到服务器
+	// 	dao.OssUploadFileData(filePath, []byte(status.Data)) //编译失败得话status.Data就是编译错误信息
+	// 	//
+	// 	data = filePath
+	// }
+	// //如果是运行成功/运行失败，那么Data字段存储一个录像下载路径
+	// if runstatus == dao.Code_Status_Fail || runstatus == dao.Code_Status_Success {
+	// 	//下载链接已经在
+	// }
+	// //如果是运行崩溃，那么Data字段存一个json
+	// if runstatus == dao.Code_Status_Crash {
 
-	}
-	//
-	status.Data = data
+	// }
+	// //
+	// status.Data = data
 	return status.CodeRunStatusInfo.Marshal()
 }
 

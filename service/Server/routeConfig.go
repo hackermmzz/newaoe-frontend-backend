@@ -69,7 +69,7 @@ func routeConfig() {
 
 func routeConfig_VIPConfirm(vip_group *gin.RouterGroup) {
 	vip_group.GET("/fetchStudentInfos", vip.StudentInfosGet)
-	vip_group.POST("/getstudenthistory", vip.GetStudentHistory)
+	vip_group.GET("/getstudenthistory", vip.GetStudentHistory)
 }
 
 func routeConfig_Rank(rank_group *gin.RouterGroup) {

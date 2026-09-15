@@ -322,3 +322,9 @@ func TruncateString(s string, maxLen int) string {
 	}
 	return string(runes[:maxLen])
 }
+
+// 获取文件所在的文件夹
+// GetFileFolder 获取文件所在目录
+func GetFileFolder(file string) string {
+	return filepath.Dir(file)
+}

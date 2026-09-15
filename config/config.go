@@ -104,6 +104,8 @@ type UserConfig struct {
 	UserDefalutAvatar []string `yaml:"userDefalutAvatar"` // 默认头像(随机的)
 	UserAvatarFolder  string   `yaml:"userAvatarFolder"`  // 头像存放目录
 	UserCodeFolder    string   `yaml:"userCodeFolder"`    // 代码存放目录
+	UserVideoFolder   string   `yaml:"userVideoFolder"`   //存放录像的目录
+	UserCrashFolder   string   `yaml:"userCrashFolder"`   //存放崩溃日志的目录
 	UserOtherFolder   string   `yaml:"userOtherFolder"`   //存放一些其他文件
 }
 

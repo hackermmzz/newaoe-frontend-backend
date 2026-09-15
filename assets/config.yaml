@@ -69,7 +69,9 @@ passwordforgetverifycode:
 user:
   userAvatarFolder: "avatar"        # 用户头像存储目录(相对于privateBaseFolder)
   userCodeFolder: "code"            # 用户代码存储目录(相对与privateBaseFolder)
-  userOtherFolder: "other"          #存放一些其他文件(如编译错误日志等)
+  userVideoFolder: "video"          #存放操作录制的目录
+  userCrashFolder: "crash"          #存放崩溃日志的目录
+  userOtherFolder: "other"          #存放一些其他文件
 # Cookie 配置
 cookie:
   expireTime: 18000                 # Cookie过期时间 单位：秒（5小时）
