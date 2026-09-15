@@ -3,8 +3,18 @@
     <!-- 顶部固定导航栏 -->
     <header class="bg-white shadow-md sticky top-0 z-50 transition-all duration-300">
       <div class="container mx-auto px-4 py-4 flex justify-between items-center">
-        <h1 class="text-2xl font-bold text-gray-800">代码提交历史</h1>
+        <h1 class="text-2xl font-bold text-gray-800">
+          {{ isManagerHistory ? `${managedStudentId} 的提交历史` : '代码提交历史' }}
+        </h1>
+        <router-link
+          v-if="isManagerHistory"
+          to="/home/manager/student-statistics"
+          class="text-sm text-blue-600 hover:text-blue-800"
+        >
+          返回学生统计
+        </router-link>
         <button 
+          v-if="!isManagerHistory"
           @click="toggleUploadForm"
           class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
         >
@@ -96,7 +106,7 @@
     <!-- 主要内容区域 - 历史记录列表 -->
     <main class="flex-grow container mx-auto px-4 py-8">
       <!-- 空状态显示 -->
-      <div v-if="historyList.length === 0 && !isLoading && totalRecord === 0" class="text-center py-16">
+      <div v-if="historyList.length === 0 && !isLoading" class="text-center py-16">
         <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
           <i class="fa fa-history text-2xl text-gray-400"></i>
         </div>
@@ -117,10 +127,10 @@
       </div>
       
       <!-- 历史记录列表（核心） -->
-      <div v-if="totalRecord > 0 && !isLoading">
+      <div v-if="historyList.length > 0 && !isLoading">
         <!-- 搜索+分页控制区 -->
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-          <h2 class="text-xl font-semibold text-gray-800">提交记录 ({{ totalRecord }} 条)</h2>
+          <h2 class="text-xl font-semibold text-gray-800">提交记录（第 {{ currentPage }} 页）</h2>
           
           <!-- 搜索框 -->
           <div class="relative w-full md:w-64">
@@ -137,13 +147,13 @@
         <!-- 分页控件（核心新增） -->
         <div class="flex items-center justify-between mb-6 gap-4 flex-wrap">
           <div class="text-sm text-gray-600">
-            每页显示 {{ pageSize }} 条，共 {{ totalPages }} 页
+            每页显示 {{ pageSize }} 条，本页 {{ historyList.length }} 条
           </div>
           <div class="flex items-center gap-2">
             <!-- 上一页 -->
             <button 
               @click="handlePrevPage"
-              :disabled="currentPage === 1"
+              :disabled="isLoading || currentPage <= 1"
               class="px-3 py-1.5 border border-gray-300 rounded-md text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <i class="fa fa-chevron-left mr-1 text-xs"></i>上一页
@@ -151,13 +161,13 @@
             
             <!-- 页码显示 -->
             <span class="text-sm text-gray-700 px-2">
-              第 {{ currentPage }} / {{ totalPages }} 页
+              第 {{ currentPage }} 页
             </span>
             
             <!-- 下一页 -->
             <button 
               @click="handleNextPage"
-              :disabled="currentPage === totalPages"
+              :disabled="isLoading || !hasNextPage"
               class="px-3 py-1.5 border border-gray-300 rounded-md text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               下一页<i class="fa fa-chevron-right ml-1 text-xs"></i>
@@ -169,7 +179,6 @@
                 v-model.number="targetPage"
                 type="number"
                 :min="1"
-                :max="totalPages"
                 class="w-16 px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="页码"
               >
@@ -284,6 +293,7 @@
                   <i class="fa fa-download mr-1"></i>下载源文件
                 </button>
                 <button 
+                  v-if="!isManagerHistory"
                   @click="handleRun(item)" 
                   class="text-sm px-3 py-1.5 text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded transition-colors"
                   :disabled="!item.header || !item.source" 
@@ -311,13 +321,20 @@ import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick } from 'vue'
 import config from '../config.js';
 import { ElMessage } from 'element-plus';
 import axios from 'axios';
+import { downloadFile as requestDownload } from '../utils/download';
+import { useRoute } from 'vue-router';
 
 // ======================== 核心新增：分页状态管理 ========================
 const currentPage = ref(1); // 当前页码（默认第1页）
-const totalRecord = ref(0); // 总记录数（接口返回的 totalrecord）
 const pageSize = ref(config.HistoryRecordPerPage || 10); // 每页条数（优先从config取，默认10）
-const totalPages = ref(0); // 总页数（计算得出：totalRecord / pageSize 向上取整）
+const hasNextPage = ref(true); // 只有拿到不足一页的数据，或请求空页后，才能确认没有下一页
 const targetPage = ref(1); // 跳转目标页码（绑定输入框）
+const route = useRoute();
+const managedStudentId = computed(() => {
+  const value = route.params.studentId;
+  return typeof value === 'string' ? value.trim() : '';
+});
+const isManagerHistory = computed(() => route.meta?.managerHistory === true);
 
 // ======================== 原有状态保留 ========================
 const showUploadForm = ref(false);
@@ -441,6 +458,16 @@ watch(currentPage, (newPage) => {
   targetPage.value = newPage; // 切换页码时，输入框自动同步当前页
 });
 
+watch(managedStudentId, async (newStudentId, oldStudentId) => {
+  if (newStudentId === oldStudentId || !isManagerHistory.value) return;
+  currentPage.value = 1;
+  targetPage.value = 1;
+  hasNextPage.value = true;
+  historyList.value = [];
+  const records = await GetHistory(1, pageSize.value);
+  if (Array.isArray(records)) historyList.value = records;
+});
+
 // ======================== 时间格式转换（不变） ========================
 const convertUtcToCts = (utcTime) => {
   if (!utcTime) return '未知时间';
@@ -459,15 +486,21 @@ const convertUtcToCts = (utcTime) => {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 };
 
-// ======================== 核心修改：分页获取历史记录 ========================
+// ======================== 分页获取历史记录 ========================
 const GetHistory = async (page = 1, pageSize = config.HistoryRecordPerPage) => {
   isLoading.value = true;
   try {
-    // 1. 拼接分页参数到请求URL（page：当前页，pageSize：每页条数）
-    let beg=(page-1)*pageSize
-    let end=beg+pageSize-1
-    const requestUrl = new URL(`${config.base_url}/home/gethistory`);
+    // 后端只接收范围，不再返回总记录数或总页数。
+    const beg = (page - 1) * pageSize;
+    const end = beg + pageSize - 1;
+    const historyUrl = isManagerHistory.value
+      ? config.manager_history_url
+      : `${config.base_url}/home/gethistory`;
+    const requestUrl = new URL(historyUrl);
     requestUrl.searchParams.append('range', `${beg}:${end}`);
+    if (isManagerHistory.value && managedStudentId.value) {
+      requestUrl.searchParams.append('id', managedStudentId.value);
+    }
 
     const response = await fetch(requestUrl.toString(), {
       method: 'GET',
@@ -479,15 +512,27 @@ const GetHistory = async (page = 1, pageSize = config.HistoryRecordPerPage) => {
       throw new Error(resData.msg || `HTTP错误: ${response.status}`);
     }
 
-    // 2. 从接口获取总记录数（关键：resData.totalrecord）
-    totalRecord.value = resData.data.totalrecord || 0;
-    // 3. 计算总页数（向上取整，避免小数页）
-    totalPages.value = Math.ceil(totalRecord.value / pageSize);
-    // 4. 同步当前页码
-    currentPage.value = page;
+    // 兼容 data 直接是数组，以及旧的 data.record 包装格式。
+    const payload = resData?.data;
+    const rawRecords = Array.isArray(payload)
+      ? payload
+      : (Array.isArray(payload?.record)
+        ? payload.record
+        : (Array.isArray(payload?.records) ? payload.records : []));
 
-    // 5. 处理当前页数据（保留原有排序和字段校验）
-    let records = Array.isArray(resData.data.record) ? resData.data.record : [];
+    // 请求了不存在的页时保持当前页，和排行榜的行为一致。
+    if (rawRecords.length === 0 && page > 1) {
+      // 只有顺序请求紧邻的下一页时，空结果才能确认当前页是最后一页。
+      if (page === currentPage.value + 1) {
+        hasNextPage.value = false;
+      }
+      // 跳转到不存在的页也要把输入框恢复为实际停留的页码。
+      targetPage.value = currentPage.value;
+      return null;
+    }
+
+    // 处理当前页数据（保留原有排序和字段校验）
+    let records = [...rawRecords];
     // 按提交时间倒序（最新在前）
     records = records.sort((a, b) => {
       const timeA = new Date(a.submittime).getTime();
@@ -504,15 +549,17 @@ const GetHistory = async (page = 1, pageSize = config.HistoryRecordPerPage) => {
       }
       return true;
     });
-    //
+
+    currentPage.value = page;
+    // 本页不足 pageSize 条时，直接推断为最后一页；满页则继续允许请求下一页。
+    hasNextPage.value = rawRecords.length >= pageSize;
     ElMessage.success(`成功加载 ${records.length} 条记录`);
     return records;
 
   } catch (error) {
     ElMessage.error(error.message||'分页获取历史记录失败');
-    totalRecord.value = 0;
-    totalPages.value = 0;
-    return [];
+    targetPage.value = currentPage.value;
+    return null;
   } finally {
     isLoading.value = false; // 结束加载状态
   }
@@ -526,57 +573,17 @@ const getFileNameFromUrl = (url) => {
   return fileName.includes('.') ? fileName : '未命名文件';
 };
 
- const downloadFile = async (fileUrl) => {
-  if (!fileUrl) {
-    ElMessage.warning('文件链接无效，无法下载');
-    return;
-  }
-
-  // 下载接口接收文件标识并返回真实地址；兼容后端返回带前导斜杠的标识。
-  const fileIdentifier = String(fileUrl).trim().replace(/^\/+/, '');
-  if (!fileIdentifier) {
-    ElMessage.warning('文件链接无效，无法下载');
-    return;
-  }
-  const apiUrl = `${config.download_url}/${fileIdentifier}?download=true`;
-
+const downloadFile = async (fileUrl) => {
   try {
-    // 1. 获取真实的下载链接
-    const UrlGetResp = await fetch(apiUrl, {
-      method: 'GET',
-      credentials: 'include'
-    });
-
-    if (!UrlGetResp.ok) {
-      ElMessage.error("获取下载链接失败");
-      return;
-    }
-
-    const data = await UrlGetResp.json();
-    if (!data?.data?.url) {
-      ElMessage.error("下载链接无效：" + (data.msg || "未知错误"));
-      return;
-    }
-
-    const realUrl = data.data.url;
-    const fileName = getFileNameFromUrl(realUrl);
-
-    // ==========================================
-    // ✅ 核心：触发浏览器自带下载 + 右上角进度条
-    // ==========================================
-    const link = document.createElement('a');
-    link.href = realUrl;
-    link.download = fileName;  // 强制下载，不预览
-    link.target = '_self';     // 不打开新窗口
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
+    const { fileName } = await requestDownload(fileUrl);
     ElMessage.success(`开始下载：${fileName}`);
-
   } catch (error) {
-    console.error('下载失败：', error);
-    ElMessage.error('下载失败，请重试');
+    if (error?.message === '文件链接无效') {
+      ElMessage.warning(error.message);
+    } else {
+      console.error('下载失败：', error);
+      ElMessage.error(error?.message || '下载失败，请重试');
+    }
   }
 };
 
@@ -607,8 +614,8 @@ const handleRun = async (item) => {
 
     ElMessage.success("运行成功");
     // 重新获取当前页数据（保证状态同步）
-    const newRecords=await GetHistory(currentPage.value, pageSize.value);
-    historyList.value=newRecords
+    const newRecords = await GetHistory(currentPage.value, pageSize.value);
+    if (Array.isArray(newRecords)) historyList.value = newRecords;
   } catch (error) {
     ElMessage.error(error.message || '运行出错');
 
@@ -709,7 +716,7 @@ const submitFiles = async () => {
     ElMessage.success('文件提交成功！');
     // 提交后重新获取当前页数据（保证新记录显示）
     const newHistory = await GetHistory(currentPage.value, pageSize.value);
-    historyList.value = newHistory;
+    if (Array.isArray(newHistory)) historyList.value = newHistory;
     expandedItems.value = {};
     toggleUploadForm();
 
@@ -742,39 +749,45 @@ const handlePrevPage = async () => {
   if (currentPage.value > 1) {
     const prevPage = currentPage.value - 1;
     const records = await GetHistory(prevPage, pageSize.value);
-    historyList.value = records;
-    expandedItems.value = {}; // 切换页重置展开状态
+    if (Array.isArray(records)) {
+      historyList.value = records;
+      expandedItems.value = {}; // 切换页重置展开状态
+    }
   }
 };
 
 // 下一页
 const handleNextPage = async () => {
-  if (currentPage.value < totalPages.value) {
+  if (hasNextPage.value) {
     const nextPage = currentPage.value + 1;
     const records = await GetHistory(nextPage, pageSize.value);
-    historyList.value = records;
-    expandedItems.value = {}; // 切换页重置展开状态
+    if (Array.isArray(records)) {
+      historyList.value = records;
+      expandedItems.value = {}; // 切换页重置展开状态
+    }
   }
 };
 
 // 页码跳转
 const handlePageJump = async () => {
-  // 校验目标页合法性（必须是数字、在1~总页数之间、不等于当前页）
+  // 只校验正整数；总页数未知，越界由接口返回空数据来判断。
   const target = Number(targetPage.value);
-  if (isNaN(target) || target < 1 || target > totalPages.value || target === currentPage.value) {
+  if (!Number.isInteger(target) || target < 1 || target === currentPage.value) {
     ElMessage.warning('请输入合法的页码');
     return;
   }
   const records = await GetHistory(target, pageSize.value);
-  historyList.value = records;
-  expandedItems.value = {}; // 切换页重置展开状态
+  if (Array.isArray(records)) {
+    historyList.value = records;
+    expandedItems.value = {}; // 切换页重置展开状态
+  }
 };
 
 // ======================== 组件挂载：加载第1页数据 ========================
 onMounted(async () => {
   try {
     const initialHistory = await GetHistory(1, pageSize.value);
-    historyList.value = initialHistory;
+    historyList.value = Array.isArray(initialHistory) ? initialHistory : [];
   } catch (error) {
     ElMessage.error(error.message || '加载历史记录失败 ');
     historyList.value = [];

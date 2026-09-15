@@ -7,17 +7,17 @@
       </div>
       <nav class="flex-1">
         <ul class="list-none p-0 m-0">
-          <li 
-            v-for="(item, index) in menuItems" 
-            :key="index" 
-            :class="['p-4 cursor-pointer transition-colors duration-200']"
+            <li
+              v-for="(item, index) in visibleMenuItems"
+              :key="index"
+              :class="['p-4 cursor-pointer transition-colors duration-200']"
           >
             <!-- 导航链接必须使用完整路径 -->
             <router-link 
               :to="item.path"
               :class="{ 
-                'bg-gray-100 font-bold': $route.path === item.path,
-                'hover:bg-gray-50': $route.path !== item.path
+                'bg-gray-100 font-bold': $route.path === item.path || $route.path.startsWith(`${item.path}/`),
+                'hover:bg-gray-50': !($route.path === item.path || $route.path.startsWith(`${item.path}/`))
               }"
               class="block w-full h-full"
             >
@@ -47,10 +47,13 @@
 </template>
 
 <script>
+import config from '../config';
+
 export default {
   name: 'HomePage',
   data() {
     return {
+      userVip: null,
       menuItems: [
         { 
           name: '个人中心', 
@@ -76,21 +79,56 @@ export default {
           name: '系统设置', 
           description: '配置系统参数、权限及模块开关',
           path: '/home/settings'
+        },
+        {
+          name: '管理平台',
+          description: '查看所有学生信息及提交历史',
+          path: '/home/manager',
+          requiresVip: true
         }
       ]
     };
   },
   computed: {
+    isVipUser() {
+      return Number(this.userVip) >= Number(config.VIP_SUPER);
+    },
+    visibleMenuItems() {
+      return this.menuItems.filter(item => !item.requiresVip || this.isVipUser);
+    },
     currentMenu() {
       // 优先匹配当前路由，无匹配时默认取第一个菜单（双重保险）
-      return this.menuItems.find(item => item.path === this.$route.path) || this.menuItems[0];
+      return this.visibleMenuItems.find(item => this.$route.path === item.path
+        || this.$route.path.startsWith(`${item.path}/`))
+        || this.visibleMenuItems[0]
+        || this.menuItems[0];
     }
   },
   mounted() {
+    this.loadUserVip();
     // 组件挂载后：若当前路由不是任何子路由（如仅进入父路由“/home”），自动跳转到第一个菜单
-    const isCurrentRouteValid = this.menuItems.some(item => item.path === this.$route.path);
+    const isCurrentRouteValid = this.menuItems.some(item => this.$route.path === item.path
+      || this.$route.path.startsWith(`${item.path}/`));
     if (!isCurrentRouteValid) {
       this.$router.push(this.menuItems[0].path);
+    }
+  },
+  methods: {
+    async loadUserVip() {
+      try {
+        const response = await fetch(`${config.base_url}/home/studentInfo`, {
+          method: 'GET',
+          credentials: 'include'
+        });
+        const data = await response.json();
+        if (response.ok && data?.status) {
+          this.userVip = data?.data?.vip ?? data?.user?.vip ?? 0;
+        } else {
+          this.userVip = 0;
+        }
+      } catch (error) {
+        this.userVip = 0;
+      }
     }
   }
 };

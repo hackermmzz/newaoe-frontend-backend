@@ -63,6 +63,7 @@ import { ref, onMounted, reactive } from 'vue';
 import config from '../config'; // 引入配置文件
 import { ElMessage } from 'element-plus';
 import axios from 'axios'
+import { getDownloadUrl } from '../utils/download';
 export default {
   name: 'StudentHome',
   
@@ -72,7 +73,8 @@ export default {
       avatar: '', // 默认头像
       studentId: '', // 学号将通过网络请求获取
       email: '', // 邮箱将通过网络请求获取
-      registDate: '',// 注册日期将通过网络请求获取
+      registDate: '',// 注册日期将通过网络请求获取,
+      vip: 0,
     });
     
     // 反馈内容和提交状态
@@ -96,20 +98,12 @@ export default {
         }
         // 更新用户信息
         if (data.data.avatar) {
-          //拿到链接
-          const response = await fetch(
-            `${config.download_url}/${data.data.avatar}`, 
-            {
-              method: 'GET',
-              credentials: 'include' // 如果需要携带cookie
-            }
-          );
-          const res=await response.json()
-          userInfo.avatar=res.data.url;
+          userInfo.avatar = await getDownloadUrl(data.data.avatar);
         }
         if (data.data.id) userInfo.studentId= data.data.id;
         if (data.data.email) userInfo.email = data.data.email;
-        if(data.data.regist_date) userInfo.registDate = data.data.regist_date;
+        if(data.data.registDate) userInfo.registDate = data.data.registDate;
+        if(data.data.vip) userInfo.vip=data.data.vip;
       } catch (error) {
         ElMessage.error(error.message)
         // 可以在这里添加错误提示给用户

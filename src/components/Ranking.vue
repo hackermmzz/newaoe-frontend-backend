@@ -234,6 +234,7 @@ import {
 
 import config from '../config';
 import { ElMessage } from 'element-plus';
+import { getDownloadUrl } from '../utils/download';
 
 export default {
   name: 'StudentRanking',
@@ -494,61 +495,14 @@ export default {
         return '';
       }
 
-      const avatarPath = avatar.replace(/^\/+/, '');
-
       try {
-        const response = await fetch(
-          `${config.download_url}/${avatarPath}`,
-          {
-            method: 'GET',
-            credentials: 'include',
-            signal
-          }
-        );
-
-        if (!response.ok) {
-          console.warn(
-            '[排行榜] 头像下载失败：',
-            {
-              avatar,
-              status: response.status
-            }
-          );
-
-          return '';
-        }
-
-        const result = await response.json();
-
-        console.log(
-          '[排行榜] 头像下载接口返回：',
-          {
-            avatar,
-            result
-          }
-        );
-
-        const avatarUrl =
-          typeof result?.data?.url === 'string'
-            ? result.data.url.trim()
-            : '';
-
-        if (!avatarUrl) {
-          console.warn(
-            '[排行榜] 头像下载响应中没有 data.url：',
-            {
-              avatar,
-              result
-            }
-          );
-        }
-
-        return avatarUrl;
+        return await getDownloadUrl(avatar, { signal });
       } catch (error) {
         if (error.name === 'AbortError') {
           throw error;
         }
 
+        console.warn('[排行榜] 头像下载失败：', { avatar, error });
         return '';
       }
     };

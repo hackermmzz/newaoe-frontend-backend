@@ -9,6 +9,7 @@ import History from './components/History.vue'
 import AssessmentSubmission from './components/AssessmentSubmission.vue'
 import SystemBoard from './components/SystemBoard.vue'
 import Ranking from './components/Ranking.vue'
+import ManagerPage from './components/ManagerPage.vue'
 // 可以先导入一个空组件作为其他页面的占位
 
 const routes = [
@@ -37,7 +38,28 @@ const routes = [
       { path: 'history', component: History }, // 历史记录
       { path: 'assessment', component: AssessmentSubmission }, // 学生考核
       { path: 'ranking', component: Ranking }, // 排行榜
-      { path: 'settings', component: SystemBoard } // 系统设置
+      { path: 'settings', component: SystemBoard }, // 系统设置
+      {
+        path: 'manager',
+        component: ManagerPage,
+        children: [
+          {
+            path: '',
+            redirect: { name: 'StudentStatistics' }
+          },
+          {
+            path: 'student-statistics',
+            name: 'StudentStatistics',
+            component: () => import('./components/StudentStatistics.vue')
+          },
+          {
+            path: 'student-history/:studentId',
+            name: 'ManagerStudentHistory',
+            component: History,
+            meta: { managerHistory: true }
+          }
+        ]
+      }
     ]
   }
 ]
