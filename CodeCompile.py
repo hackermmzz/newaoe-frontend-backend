@@ -14,7 +14,13 @@ def CodeCompile(buildDir: str, logfile: str) -> tuple[bool, str]:
     不使用全局 compileLock，
     不同 buildDir 可以并发编译。
     """
-
+    # 读取bash脚本
+    with open(f"bash/codecompile.sh", "r",encoding="utf-8") as f:
+        bashScript = f.read()
+    bashScript = bashScript.format(
+                buildDir=buildDir,
+                ).strip()
+    
     docker_cmd = [
         "docker", "run",
         "--rm",
@@ -30,49 +36,7 @@ def CodeCompile(buildDir: str, logfile: str) -> tuple[bool, str]:
         new_aoe_docker_img,
 
         "bash", "-c",
-
-        r'''
-        
-        export PATH="$PATH:/opt/qt5.9.2/bin/" &&
-        export QT="/opt/qt5.9.2" &&
-        export QTINCLUDE="/opt/qt5.9.2/include" &&
-        #先copy一下newaoe_copy目录
-        mkdir -p newaoe_copy
-        cd project
-        find ./ \
-            \( -name "*.h" -o -name "*.cpp" -o -name "*.hpp" \) \
-            -exec cp --parents {} ../newaoe_copy \;
-        cd ../
-        #把UsrAI.h和UsrAI.cpp copy到newaoe_copy目录下
-        cp build/UsrAI.h build/UsrAI.cpp newaoe_copy/
-        #切换到newaoe_copy目录下
-        cd newaoe_copy
-        #修复大小写问题
-        fixcase -f ./ >/dev/null
-        # 编译用户代码
-        g++ -c UsrAI.cpp \
-            -O2 \
-            -fPIC \
-            -I./ \
-            -I${QTINCLUDE} \
-            -I${QTINCLUDE}/QtCore \
-            -I${QTINCLUDE}/QtMultimedia \
-            -I${QTINCLUDE}/QtWidgets \
-            -I${QTINCLUDE}/QtGui \
-            -I${QTINCLUDE}/QtNetwork &&
-
-        # 链接公共 .o 文件
-        g++ UsrAI.o ../project/release/*.o \
-            -o newAOE \
-            -L/opt/qt5.9.2/lib \
-            -lQt5Widgets \
-            -lQt5Gui \
-            -lQt5Core \
-            -lQt5Multimedia \
-            -lQt5Network
-        #把newAOE copy回buildDir目录下
-        cp newAOE ../build/  >/dev/null
-        '''
+        bashScript,
     ]
 
     with open(

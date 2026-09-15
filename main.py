@@ -57,10 +57,12 @@ def TaskProcess():
                 ).tostr()
             )).Response()
     #创建运行目录和编译目录
-    rundir=f'{RunDir}/{res0["id"]}_{res0["indices"]}' if indices !="" else f'{RunDir}/{res0["id"]}'
+    rundir=f'{RunDir}/{res0["id"]}_{res0["indices"]}_{Util.GetRandomStr()}' if indices !="" else f'{RunDir}/{res0["id"]}'
     buildDir=f"{rundir}/build"
+    crashDir=f"{rundir}/crash"
     os.makedirs(rundir,exist_ok=True)
     os.makedirs(buildDir,exist_ok=True)
+    os.makedirs(crashDir,exist_ok=True)
     #保存代码为文件到编译目录
     with open(f"{buildDir}/UsrAI.h","w",errors="replace")as f:
         f.write(res0["header"])
@@ -73,16 +75,19 @@ def TaskProcess():
     if compileError:
         Log(f"{id}/{indices}/编译失败!")
         if not DebugLocal:
-            PostRunStatus(server=server,data=protoc_pb2.CodeStatusUpdateRequest(
+            resp=PostRunStatus(server=server,data=protoc_pb2.CodeStatusUpdateRequest(
                 auth=GRPCAuth,
                 indices=indices,
                 id=id,
                 status=PostRunStatusEnum.Code_Status_Compile_Fail.value,
                 data=CodeRunStatusInfo(
                     status=PostRunStatusEnum.Code_Status_Compile_Fail.value,
-                    data=res1[1]
+                    data="" #这里不传编译失败日志，走链接上传
                     ).tostr()
                 )).Response()
+            #失败则将失败日志上传到对应的链接
+            if resp:
+                Util.UploadData(resp.data.encode(),res1[1].encode())
             return False
     else:
         Log(f"{id}/{indices}/编译成功!")
@@ -105,9 +110,15 @@ def TaskProcess():
             pass
         with open(f"{rundir}/{RunResultFileName}","w",errors="replace")as f:
             pass
+        with open(f"{rundir}/{RecordFileName}","w",errors="replace")as f:
+            pass
         #运行代码
+        
         Log(f"{res0['id']}/{res0['indices']}/开始运行!")
-        CodeRun(res0["id"],res0["indices"],rundir,f"{rundir}/{RunLogFileName}",f"{rundir}/{RunResultFileName}",server)
+        CodeRun(res0["id"],res0["indices"],rundir,crashDir,
+                f"{rundir}/{RunLogFileName}",
+                f"{rundir}/{RecordFileName}",
+                f"{rundir}/{RunResultFileName}",server)
         Log(f"{res0['id']}/{res0['indices']}/运行结束!")
     #导出到excel表
     if DebugLocal:
@@ -143,40 +154,20 @@ def Task():
 ##################################################静态编译
 def PreCompile():
     print("进入 PreCompile",new_aoe_folder)
+    # 读取bash脚本
+    with open(f"bash/precompile.sh", "r",encoding="utf-8") as f:
+        bashScript = f.read()
+    bashScript = bashScript.format(new_aoe_folder=new_aoe_folder
+                        ).strip()
+    
     docker_cmd = [
         "docker", "run",
         "--rm",
         "-v", f"{new_aoe_folder}:/app/newaoe",
         "-w", "/app",
         new_aoe_docker_img,
-
         "bash", "-c",
-        r'''
-        #先copy一下newaoe目录
-        cp -r newaoe newaoe_copy
-        #把newaoe/release目录下的所有编译好的.o文件copy到newaoe_copy的目录下(减少编译时间)
-        cp newaoe/release/*.o newaoe_copy/
-        #修复所有文件的大小写
-        fixcase -f ./newaoe_copy
-        #切换到newaoe_copy目录下
-        cd newaoe_copy
-        #添加qt5.9.2的bin目录到PATH
-        export PATH="$PATH:/opt/qt5.9.2/bin/"
-        #编译
-        if ! qmake || ! make -j$(nproc); then
-            echo "编译失败"
-            ls -l .
-            exit 1
-        fi
-        #将所有.o copy回newaoe/release目录
-        cd ../
-        mkdir -p newaoe/release
-        cp newaoe_copy/*.o newaoe/release
-        rm -f newaoe/release/UsrAI.o
-        #将moc_*.cpp文件copy到newaoe/release目录下
-        cp newaoe_copy/moc_*.cpp newaoe/
-        cp newaoe_copy/ui_*.h newaoe/
-        '''
+        bashScript,
     ]
 
     result = subprocess.run(

@@ -8,6 +8,7 @@ import aiofiles
 import json
 import protoc_pb2_grpc
 import protoc_pb2
+import Util
 
 #判断字符串是否为json可以解析的字符串
 def checkStrIsJson(s:str)->bool:
@@ -24,11 +25,50 @@ import protoc_pb2
 import protoc_pb2_grpc
 
 
+# ============================================================
+# 判断退出码是否为程序自身原因退出
+# ============================================================
+def IsProgramSelfReason(code: int) -> bool:
+    # 程序主动退出：正常退出、通用错误、命令执行失败、找不到命令、程序内部触发的abort/非法指令/除零/段错误
+    self_exit_codes = {0, 1, 125, 126, 127, 132, 134, 136, 139}
+    # 外部信号干掉：SIGINT、SIGKILL、SIGTERM
+    external_kill_codes = {130, 137, 143}
+    
+    if code in self_exit_codes:
+        return True
+    elif code in external_kill_codes:
+        return False
+    else:
+        # 不在定义的字典内，可按你的需求处理，这里默认返回True或者抛异常，当前返回True
+        return True
+
+# ============================================================
+# 根据退出码获取崩溃原因
+# ============================================================
+def GetExitReason(code: int) -> str:
+    exitReasons = {
+        0: "Normal Exit",
+        1: "General Error",
+        125: "Docker Run Error",
+        126: "Command Cannot Execute",
+        127: "Command Not Found",
+        130: "SIGINT",
+        132: "SIGILL (Illegal Instruction)",
+        134: "SIGABRT (Abort / Assertion Failed)",
+        136: "SIGFPE (Arithmetic Exception / Divide By Zero)",
+        137: "SIGKILL (Possibly OOM / Memory Limit)",
+        139: "SIGSEGV (Segmentation Fault)",
+        143: "SIGTERM",
+    }
+    return exitReasons.get(code, f"Unknown Exit Code ({code})")
+
 def CodeRun(
     id: str,
     indices: int,
     dir: str,
+    crashDir: str,
     logFile: str,
+    recordFile: str,
     resultFile: str,
     server: protoc_pb2_grpc.CodeStub
 ):
@@ -46,7 +86,7 @@ def CodeRun(
        -> Crash
     """
     workdir = "/tmp/project"
-
+    container_name=f"{id}_{indices}_{Util.GetRandomStr()}"
     # ============================================================
     # 挂载文件
     # ============================================================
@@ -55,8 +95,9 @@ def CodeRun(
         f"{new_aoe_folder}/config.json": f"{workdir}/config.json:ro",
         f"{dir}/newAOE": f"{workdir}/newAOE:ro",
         f"{resultFile}": f"{workdir}/{RunResultFileName}",
+        f"{recordFile}": f"{workdir}/{RecordFileName}",
     }
-
+    # 挂载所有地图文件
     mountArg = []
     for localP, containerP in fileMap.items():
         mountArg.append("-v")
@@ -66,15 +107,25 @@ def CodeRun(
     for x in MapFiles:
         mountArg.append("-v")
         mountArg.append(f"{new_aoe_folder}/{x}:{workdir}/{x}:ro")
-
+    #读取bash脚本
+    with open(f"bash/coderun.sh", "r",encoding="utf-8") as f:
+        bashScript = f.read()
+    bashScript = bashScript.format(
+        id=id,indices=indices,
+        workdir=workdir,RunResultFileName=RunResultFileName,
+        RecordOutputFileName=RecordFileName,
+        ).strip()
     # ============================================================
     # Docker 命令
     # ============================================================
     docker_cmd = [
         "docker", "run",
-        "--rm",
+        # 保存崩溃文件
+        "-v", f"{crashDir}:{workdir}/crash",
+        "--name",container_name,
         # 内存限制
         "-m", RunMemoryLimit,
+        "--memory-swap", RunMemoryLimit,
         # CPU 限制
         "--cpus", RunCPULimit,
         # /tmp 磁盘限制
@@ -86,66 +137,9 @@ def CodeRun(
         new_aoe_docker_img,
         "bash",
         "-c",
-        f"""
-            export QT_QPA_PLATFORM=offscreen &&
-            export LD_LIBRARY_PATH=/opt/qt5.9.2/lib:$LD_LIBRARY_PATH &&
-            ./newAOE \
-            --offscreen \
-            --exam \
-            --freq=MAX \
-            --record \
-            --ResultLogFile={RunResultFileName}
-        """.strip()
+        bashScript,
     ]
-
-    # ============================================================
-    # 根据退出码获取崩溃原因
-    # ============================================================
-    def GetExitReason(code: int) -> str:
-        exitReasons = {
-            0: "Normal Exit",
-            1: "General Error",
-            125: "Docker Run Error",
-            126: "Command Cannot Execute",
-            127: "Command Not Found",
-            130: "SIGINT",
-            132: "SIGILL (Illegal Instruction)",
-            134: "SIGABRT (Abort / Assertion Failed)",
-            136: "SIGFPE (Arithmetic Exception / Divide By Zero)",
-            137: "SIGKILL (Possibly OOM / Memory Limit)",
-            139: "SIGSEGV (Segmentation Fault)",
-            143: "SIGTERM",
-        }
-        return exitReasons.get(code, f"Unknown Exit Code ({code})")
-
-    # ============================================================
-    # 构造 Crash JSON
-    # ============================================================
-    def BuildCrashData(last_post_data: str, returnCode: int) -> str:
-        crashReason = GetExitReason(returnCode)
-        try:
-            # 如果之前已经存在合法 JSON
-            if last_post_data and checkStrIsJson(last_post_data):
-                crashData = json.loads(last_post_data)
-            else:
-                # 如果程序刚启动就崩了，没有任何结果
-                crashData = {}
-
-            # 添加崩溃信息
-            crashData["crash_code"] = returnCode
-            crashData["crash_reason"] = crashReason
-            return json.dumps(crashData, ensure_ascii=False)
-        except Exception as e:
-            print(f"[CodeRun] BuildCrashData failed: {e}")
-            # 即使原 JSON 有问题，也保证 crash 信息能上传
-            return json.dumps(
-                {
-                    "crash_code": returnCode,
-                    "crash_reason": crashReason,
-                },
-                ensure_ascii=False
-            )
-
+    
     # ============================================================
     # 启动 Docker
     # ============================================================
@@ -251,7 +245,31 @@ def CodeRun(
             # ====================================================
             await process.wait()
             returnCode = process.returncode
-
+            # ====================================================
+            # 检查是否 OOM
+            # ====================================================
+            docker_result = subprocess.check_output(
+                [
+                    "docker",
+                    "inspect",
+                    container_name
+                ]
+            )
+            info = json.loads(docker_result)[0]
+            oom = info["State"]["OOMKilled"]
+            if oom:
+                returnCode = 137
+            # ====================================================
+            # 删除容器
+            # ====================================================
+            subprocess.run(
+                [
+                    "docker",
+                    "rm",
+                    container_name
+                ]
+            )
+            
             # ====================================================
             # 再读取一次最后残留的数据
             # ====================================================
@@ -284,23 +302,21 @@ def CodeRun(
             # 如果最后残留数据中也没找到，使用默认 JSON
             if finalJson is None:
                 finalJson = CodeRunStatusInfo().tojson()
+            # 获取崩溃文件名
+            crashLogFileName = Util.GetFolerRandomFileIfExist(crashDir)
+            need_Log = crashLogFileName!="" and IsProgramSelfReason(returnCode)
             # ====================================================
             # 情况 1：returncode != 0，只要非 0，就无条件 Crash
             # ====================================================
             if returnCode != 0:
                 crashReason = GetExitReason(returnCode)
-                print(
-                    f"[CodeRun] Program crashed: id={id}, indices={indices}, returncode={returnCode}, reason={crashReason}"
-                )
-                # 如果退出前又产生了一条合法 JSON，优先使用最终的那条
-                if finalJson is not None:
-                    last_post_data = finalJson
-                # 给 JSON 添加 crash_code + crash_reason
-                last_post_data = BuildCrashData(last_post_data, returnCode)
-
+                Log(f"[CodeRun] Program crashed: id={id}, \
+                    indices={indices}, \
+                    returncode={returnCode}, \
+                    reason={crashReason}")
                 # 上传 Crash
                 if not DebugLocal:
-                    PostRunStatus(
+                    resp=PostRunStatus(
                         server=server,
                         data=protoc_pb2.CodeStatusUpdateRequest(
                             auth=GRPCAuth,
@@ -316,10 +332,20 @@ def CodeRun(
                                 frame=finalJson.get("frame", 0),
                                 win=finalJson.get("win", False),
                                 score=finalJson.get("score", 0),
-                                data=crashReason
+                                data=json.dumps(
+                                    {
+                                        "crash_reason": crashReason,
+                                        "needlog": need_Log
+                                    }, 
+                                    ensure_ascii=False
+                                    )
                             ).tostr()
                         )
                     ).Response()
+                    if need_Log and resp:
+                        Util.UploadData(resp.data.encode(), Util.read_any_text(f"{crashDir}/{crashLogFileName}"))
+                else:
+                    Log(f"上传CrashStatus失败，错误信息:{resp.error}")
                 return
 
             # ====================================================
@@ -333,7 +359,7 @@ def CodeRun(
 
             # 上传最终正常结果
             if not DebugLocal:
-                PostRunStatus(
+                resp=PostRunStatus(
                     server=server,
                     data=protoc_pb2.CodeStatusUpdateRequest(
                         auth=GRPCAuth,
@@ -353,7 +379,29 @@ def CodeRun(
                         ).tostr()
                     )
                 ).Response()
-
+                if resp :
+                    Util.UploadData(resp.data.encode(), Util.read_any_text(recordFile))
+    
+    # ============================================================
+    # 定时器，超时直接Crash
+    # ============================================================
+    async def DockerWatcher(process: asyncio.subprocess.Process,timeout:int):
+        """
+        监听进程结束，超时直接Crash
+        :param process: 进程对象
+        """
+        await asyncio.sleep(timeout)
+        # 判断进程是否结束
+        if process.returncode is None:
+            Log(f"[CodeRun] Program timeout: id={id},indices={indices},timeout={timeout}")
+            # 杀死docker容器
+            subprocess.run(
+                [
+                    "docker",
+                    "kill",
+                    container_name
+                ]
+            )
     # ============================================================
     # 总运行函数
     # ============================================================
@@ -362,8 +410,22 @@ def CodeRun(
         logHandle = None
         try:
             process, logHandle = await CodeRunProcess(logFile, docker_cmd)
-            await CodeStatusPost(resultFile, process, id, indices)
-            await process.wait()
+            t1 = asyncio.create_task(CodeStatusPost(resultFile, process, id, indices))
+            t2 = asyncio.create_task(DockerWatcher(process, RunTimeout))
+            # 等待任意一个任务完成
+            done, pending = await asyncio.wait(
+                [t1, t2],
+                return_when=asyncio.FIRST_COMPLETED
+            )
+            # 把剩下还在跑的任务全部取消
+            for task in pending:
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    # 被取消属于正常，直接吞掉
+                    pass
+            
             return process
         finally:
             if logHandle is not None:

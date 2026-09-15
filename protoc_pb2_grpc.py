@@ -5,7 +5,7 @@ import warnings
 
 import protoc_pb2 as protoc__pb2
 
-GRPC_GENERATED_VERSION = '1.80.0'
+GRPC_GENERATED_VERSION = '1.78.0'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
@@ -44,7 +44,7 @@ class CodeStub(object):
         self.CodeStatusUpdate = channel.unary_unary(
                 '/Code/CodeStatusUpdate',
                 request_serializer=protoc__pb2.CodeStatusUpdateRequest.SerializeToString,
-                response_deserializer=protoc__pb2.Empty.FromString,
+                response_deserializer=protoc__pb2.StatusUpdateReply.FromString,
                 _registered_method=True)
 
 
@@ -77,7 +77,7 @@ def add_CodeServicer_to_server(servicer, server):
             'CodeStatusUpdate': grpc.unary_unary_rpc_method_handler(
                     servicer.CodeStatusUpdate,
                     request_deserializer=protoc__pb2.CodeStatusUpdateRequest.FromString,
-                    response_serializer=protoc__pb2.Empty.SerializeToString,
+                    response_serializer=protoc__pb2.StatusUpdateReply.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -135,7 +135,7 @@ class Code(object):
             target,
             '/Code/CodeStatusUpdate',
             protoc__pb2.CodeStatusUpdateRequest.SerializeToString,
-            protoc__pb2.Empty.FromString,
+            protoc__pb2.StatusUpdateReply.FromString,
             options,
             channel_credentials,
             insecure,

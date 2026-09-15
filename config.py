@@ -37,6 +37,8 @@ RunDir=f"{os.getcwd()}/RunDir"
 RunLogFileName="RunLog.txt"
 #运行时实时作战结果输出文件
 RunResultFileName="RunResult.txt"
+#运行时记录文件
+RecordFileName="Record.video"
 #所有的地图文件
 MapFiles=[x for x in os.listdir(new_aoe_folder) if x.endswith(".njust")]
 #限制运行内存
@@ -45,6 +47,8 @@ RunMemoryLimit="256m"
 RunCPULimit="2.5"
 #限制磁盘使用
 RunDiskLimit="20m"
+#超时时间
+RunTimeout=30*60   
 #判题机的负载
 JudgeMaxPayLoad=10
 #获取任务失败进行休眠时长n秒
@@ -54,7 +58,7 @@ CodeRunStatusUploadInterval=1
 #日志线程锁
 LogLock=threading.Lock()
 #日志文件
-LogFile=open(f"{os.getcwd()}/JudgeLog.txt","w")
+LogFile=open(f"{os.getcwd()}/JudgeLog.txt","w",encoding="utf-8")
 #本地测试
 DebugLocal=False
 #是否单线程测试
@@ -98,12 +102,15 @@ class PostRunStatus():
     def __init__(self,server:protoc_pb2_grpc.CodeStub,data:protoc_pb2.CodeStatusUpdateRequest):
         self.data=data
         self.server=server
-    def Response(self)->bool:
+    def Response(self)->any:
         if DebugLocal:
             return
         try:
             resp=self.server.CodeStatusUpdate(self.data)
             if resp==None:
                 Log(f"{self.id}/{self.indices}/后端异常!")
+                return None
+            return resp
         except Exception as e:
             Log(f"{self.id}/{self.indices}/状态上传出现异常:{e}")
+            return None
