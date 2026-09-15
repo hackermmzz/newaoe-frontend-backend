@@ -9,8 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func AssessmentSubmissionUpload(ctx *gin.Context, userInfo map[string]string) {
-	id, _ := userInfo["id"]
+func AssessmentSubmissionUpload(ctx *gin.Context, userInfo map[string]interface{}) {
+	id, _ := userInfo["id"].(string)
 	//
 	prefix := "AssessmentSubmission" + "_" + util.UTC_Time().Format("2006_01_02_150405000")
 	base_dir := path.Join(config.Conf.OSS.PrivateBaseFolder, id, config.Conf.User.UserCodeFolder, prefix)

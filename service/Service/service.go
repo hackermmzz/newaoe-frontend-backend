@@ -40,7 +40,15 @@ func registerSuperUser() {
 					util.DebugError("超级用户", userId, "注册失败", err)
 					continue
 				}
-				if !data.UserAdd(session, userId, password, config.Conf.Other.SuperUserEmail) {
+				info := dao.Student{
+					Id:         userId,
+					Password:   password,
+					Email:      config.Conf.Other.SuperUserEmail,
+					RegistDate: util.UTC_Time(),
+					Avatar:     util.GetRandomAvatar(),
+					Vip:        dao.VIP_SUPER,
+				}
+				if !data.UserAddByStudentInfo(session, info) {
 					util.DebugError("超级用户", userId, "注册失败", err)
 					continue
 				}

@@ -10,6 +10,7 @@ import (
 	"newaoe/service/Server/Filter"
 	"newaoe/service/Upload"
 	"newaoe/service/User"
+	vip "newaoe/service/Vip"
 
 	"github.com/gin-gonic/gin"
 )
@@ -52,12 +53,23 @@ func routeConfig() {
 		{
 			routeConfig_UploadConfirm(uploadconFirm_group)
 		}
+		//VIP路由
+		vipconFire_group := api_gorup.Group("/vip")
+		vipconFire_group.Use(Filter.FilterCookieCheck(), Filter.FilterVIP())
+		{
+			routeConfig_VIPConfirm(vipconFire_group)
+		}
 		//接口路由
 		code_group := api_gorup.Group("/code")
 		{
 			routeConfig_Code(code_group)
 		}
 	}
+}
+
+func routeConfig_VIPConfirm(vip_group *gin.RouterGroup) {
+	vip_group.GET("/fetchStudentInfos", vip.StudentInfosGet)
+	vip_group.POST("/getstudenthistory", vip.GetStudentHistory)
 }
 
 func routeConfig_Rank(rank_group *gin.RouterGroup) {

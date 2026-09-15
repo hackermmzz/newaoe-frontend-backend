@@ -9,8 +9,8 @@ import (
 	"github.com/minio/minio-go/v7"
 )
 
-func ProcessUploadAvatar(ctx *gin.Context, userInfo map[string]string, file minio.ObjectInfo) {
-	id, _ := userInfo["id"]
+func ProcessUploadAvatar(ctx *gin.Context, userInfo map[string]interface{}, file minio.ObjectInfo) {
+	id, _ := userInfo["id"].(string)
 	//
 	var err error
 	session := dao.DB.NewSession()
@@ -31,7 +31,7 @@ func ProcessUploadAvatar(ctx *gin.Context, userInfo map[string]string, file mini
 	}
 }
 
-func AvatarUploadConfirm(ctx *gin.Context, userInfo map[string]string, path string) {
+func AvatarUploadConfirm(ctx *gin.Context, userInfo map[string]interface{}, path string) {
 	info := dao.OssCheckFileExist(path)
 	if info == nil {
 		util.ResponseNAK_MSG(ctx, "头像上传确认失败!", "")

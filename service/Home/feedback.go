@@ -80,7 +80,7 @@ func StudentFeedback(ctx *gin.Context) {
 		util.ResponseNAK_MSG(ctx, "cookie过期或者错误!", "")
 		return
 	}
-	id := userInfo["id"]
+	id := userInfo["id"].(string)
 	//指定文件名称
 	filename := util.UTC_Time().Format("20060102_150405") + "_" + id + ".json"
 	targetfile := path.Join(config.Conf.OSS.PublicBaseFolder, "feedback", filename)

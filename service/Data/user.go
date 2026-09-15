@@ -16,10 +16,15 @@ func UserIdLegal(id string) bool {
 	return true
 }
 
-// 添加用户
+// 添加普通用户
 func UserAdd(session *xorm.Session, id string, password string, email string) bool {
 	ok := dao.UserAdd(session, id, password, email)
 	return ok
+}
+
+// 添加带权限得用户
+func UserAddByStudentInfo(session *xorm.Session, info dao.Student) bool {
+	return dao.UserAddByStudentInfo(session, info)
 }
 
 // 更新用户数据
@@ -41,6 +46,11 @@ func EmailExist(email string) bool {
 // 获取指定用户的数据
 func UserGet(id string) *dao.Student {
 	return dao.UserGet(id)
+}
+
+// 根据注册时间获取指定范围的用户
+func UserGetByRangeOrderByRegistData(beg int, end int) []dao.Student {
+	return dao.UserGetByRangeOrderByRegistData(beg, end)
 }
 
 // 获取用户密码(编码后的密码)

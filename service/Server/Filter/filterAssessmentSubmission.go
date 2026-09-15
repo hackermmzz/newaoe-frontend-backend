@@ -20,7 +20,7 @@ func FilterAssessmentSubmission() gin.HandlerFunc {
 			return
 		}
 		//获取用户id
-		id := info["id"]
+		id := info["id"].(string)
 		//判断是否到达可以提交评测的时间(默认不加以限制)
 
 		//判断是否已经提交过评测了

@@ -1,6 +1,7 @@
 package User
 
 import (
+	"encoding/json"
 	"net/http"
 	"newaoe/config"
 	data "newaoe/service/Data"
@@ -18,7 +19,22 @@ func UserSetCookie(ctx *gin.Context, id string) string {
 		return ""
 	}
 	//
-	tooken_value := util.GenerateCookieToken(ctx, id, user.Email, user.RegistDate, config.Conf.Cookie.ExpireTime, config.Conf.Server.JwtSecretKey)
+	data, err := json.Marshal(*user)
+	if err != nil {
+		util.Debug("UserSetCookie marshal err", err)
+		return ""
+	}
+	var info map[string]interface{}
+	err = json.Unmarshal(data, &info)
+	if err != nil {
+		util.Debug("UserSetCookie unmarshal err", err)
+		return ""
+	}
+	tooken_value := util.GenerateCookieToken(ctx,
+		config.Conf.Cookie.ExpireTime,
+		config.Conf.Server.JwtSecretKey,
+		info,
+	)
 	//
 	if tooken_value == "" {
 		util.DebugError(ctx, "生成token失败!", "")

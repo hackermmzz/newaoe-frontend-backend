@@ -38,7 +38,7 @@ func CodeReRun(ctx *gin.Context) {
 	}
 	//运行代码
 	runInfo := dao.CodeRunInfo{
-		ID:          id,
+		ID:          id.(string),
 		SubmitTime:  util.UTC_Time(),
 		Header:      msg.Header,
 		Source:      msg.Source,

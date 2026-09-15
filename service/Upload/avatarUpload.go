@@ -8,8 +8,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func AvatarUpload(ctx *gin.Context, userInfo map[string]string) {
-	id := userInfo["id"]
+func AvatarUpload(ctx *gin.Context, userInfo map[string]interface{}) {
+	id := userInfo["id"].(string)
 	//覆盖原来的头像
 	targetdir := path.Join(config.Conf.OSS.PrivateBaseFolder, id, config.Conf.User.UserAvatarFolder, "avatar.png")
 	duration := time.Duration(config.Conf.Other.AvatarUploadUrlExpireTime) * time.Second

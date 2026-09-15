@@ -84,19 +84,19 @@ func RandomString(n int) string {
 }
 
 // 生成cookie的tooken(jwt格式)
-func GenerateCookieToken(ctx *gin.Context, id string, email string, regist_date time.Time, expire_time int, secretKey []byte) string {
+func GenerateCookieToken(ctx *gin.Context, expire_time int, secretKey []byte, info map[string]interface{}) string {
 	//
 	expireTime := UTC_Time().Add(time.Duration(expire_time) * time.Second)
-	data := jwt.MapClaims{
-		"id":          id,
-		"login_time":  UTC_Time(),
-		"email_bind":  email,
-		"regist_date": regist_date,
-		"expire_time": expireTime,
-		"ip":          ctx.ClientIP(),
-		"wlh_to_you":  "为什么不玩原神?!",
-		"random":      RandomString(32),
+	data := jwt.MapClaims{}
+	for key, value := range info {
+		data[key] = value
 	}
+	//添加一些额外数据
+	data["wlh_to_you"] = "为什么不玩原神?!"
+	data["random"] = RandomString(32)
+	data["ip"] = ctx.ClientIP()
+	data["expire_time"] = expireTime
+	data["login_time"] = UTC_Time()
 	//
 	encodedStd := jwt.NewWithClaims(jwt.SigningMethodHS256, data)
 	tokenString, err := encodedStd.SignedString(secretKey)
@@ -110,17 +110,8 @@ func GenerateCookieToken(ctx *gin.Context, id string, email string, regist_date 
 }
 
 // 判断token是否合法
-func CheckTokenLegal(token string) bool {
-	data := GetTokenInfo(token)
-	if data == nil {
-		return false
-	}
-	//检查过期时间
-	expireTimeStr, ok := data["expire_time"]
-	if !ok {
-		return false
-	}
-	expireTime, err := time.Parse(time.RFC3339, expireTimeStr)
+func CheckTokenLegal(expire_time string) bool {
+	expireTime, err := time.Parse(time.RFC3339, expire_time)
 	if err != nil {
 		DebugError("CheckTokenLegal:解析过期时间失败:", err)
 		return false
@@ -132,7 +123,7 @@ func CheckTokenLegal(token string) bool {
 }
 
 // 获取tooken解析数据
-func GetTokenInfo(signed_token string) map[string]string {
+func GetTokenInfo(signed_token string) map[string]interface{} {
 	token, err := jwt.ParseWithClaims(signed_token, jwt.MapClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return config.Conf.Server.JwtSecretKey, nil
 	})
@@ -143,11 +134,9 @@ func GetTokenInfo(signed_token string) map[string]string {
 	}
 	//
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		data := make(map[string]string)
+		data := make(map[string]interface{})
 		for key, value := range claims {
-			if str, ok := value.(string); ok {
-				data[key] = str
-			}
+			data[key] = value
 		}
 		return data
 	}
@@ -157,7 +146,7 @@ func GetTokenInfo(signed_token string) map[string]string {
 }
 
 // 获取tooken解析数据
-func GetCtxTookenInfo(ctx *gin.Context) map[string]string {
+func GetCtxTookenInfo(ctx *gin.Context) map[string]interface{} {
 	//注意这里我并没有采用sessionID的方式，因为我觉得没必要
 	//解析token
 	token, err := ctx.Cookie(config.Conf.Cookie.TokenName)

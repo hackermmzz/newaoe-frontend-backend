@@ -43,10 +43,8 @@ func StudentHistoryGet(ctx *gin.Context) {
 		util.ResponseNAK_MSG(ctx, "参数传递错误!", "")
 		return
 	}
-	//获取记录条数
-	recordCnt := dao.CodeRunCountById(data["id"])
 	//从数据库获取提交历史
-	historyRecords := dao.CodeRunGetRangeById(data["id"], beg, end+1)
+	historyRecords := dao.CodeRunGetRangeById(data["id"].(string), beg, end+1)
 	if historyRecords == nil {
 		historyRecords = make([]dao.CodeRunInfo, 0)
 	}
@@ -86,9 +84,5 @@ func StudentHistoryGet(ctx *gin.Context) {
 		}
 	}
 	//
-	dataSubmit := map[string]interface{}{
-		"record":      submitRecords,
-		"totalrecord": recordCnt,
-	}
-	util.ResponseACK_MSG(ctx, "历史记录获取成功", dataSubmit)
+	util.ResponseACK_MSG(ctx, "历史记录获取成功", submitRecords)
 }

@@ -9,9 +9,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func CodeUpload(ctx *gin.Context, userInfo map[string]string) {
+func CodeUpload(ctx *gin.Context, userInfo map[string]interface{}) {
 
-	id, _ := userInfo["id"]
+	id, _ := userInfo["id"].(string)
 	//
 	prefix := util.UTC_Time().Format("2006_01_02_150405000")
 	base_dir := path.Join(config.Conf.OSS.PrivateBaseFolder, id, config.Conf.User.UserCodeFolder, prefix)

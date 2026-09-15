@@ -9,8 +9,8 @@ import (
 	"github.com/minio/minio-go/v7"
 )
 
-func ProcessUploadCode(ctx *gin.Context, userInfo map[string]string, path []minio.ObjectInfo) {
-	id, _ := userInfo["id"]
+func ProcessUploadCode(ctx *gin.Context, userInfo map[string]interface{}, path []minio.ObjectInfo) {
+	id, _ := userInfo["id"].(string)
 	headerInfo := path[0]
 	sourceInfo := path[1]
 	descriptionInfo := path[2]
@@ -67,7 +67,7 @@ func ProcessUploadCode(ctx *gin.Context, userInfo map[string]string, path []mini
 	util.DebugSuccess(id, "代码上传成功!")
 }
 
-func CodeUploadConfirm(ctx *gin.Context, userInfo map[string]string, path []string) {
+func CodeUploadConfirm(ctx *gin.Context, userInfo map[string]interface{}, path []string) {
 	//这里有三个文件，分别是mmzz.h和mmzz.cpp和mmzz.txt
 	//我们需要确认这几个文件都存在才算上传成功
 	header := path[0]

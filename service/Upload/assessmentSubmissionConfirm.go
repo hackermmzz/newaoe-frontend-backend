@@ -11,7 +11,7 @@ import (
 	"github.com/minio/minio-go/v7"
 )
 
-func AssessmentSubmissionUploadConfirm(ctx *gin.Context, userInfo map[string]string, path []string) {
+func AssessmentSubmissionUploadConfirm(ctx *gin.Context, userInfo map[string]interface{}, path []string) {
 	//这里有2个文件，分别是mmzz.h和mmzz.cpp
 	//我们需要确认这两个文件都存在才算上传成功
 	header := path[0]
@@ -27,9 +27,9 @@ func AssessmentSubmissionUploadConfirm(ctx *gin.Context, userInfo map[string]str
 	AssessmentSubmissionUploadProcess(ctx, userInfo, []minio.ObjectInfo{*headerInfo, *sourceInfo})
 }
 
-func AssessmentSubmissionUploadProcess(ctx *gin.Context, userInfo map[string]string, file []minio.ObjectInfo) {
+func AssessmentSubmissionUploadProcess(ctx *gin.Context, userInfo map[string]interface{}, file []minio.ObjectInfo) {
 	//
-	id := userInfo["id"]
+	id := userInfo["id"].(string)
 	//获取任课老师
 	type Body struct {
 		Teacher string `json:"teacher"`

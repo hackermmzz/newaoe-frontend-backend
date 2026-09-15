@@ -11,7 +11,7 @@ import (
 )
 
 // 下载学生私有资源
-func PrivateFileDownload(ctx *gin.Context, filepath string, uerInfo map[string]string, attachment bool) {
+func PrivateFileDownload(ctx *gin.Context, filepath string, uerInfo map[string]interface{}, attachment bool) {
 	//鉴权
 	if !PrivateDownloadCheck(uerInfo, filepath) {
 		util.ResponseNAK_MSG(ctx, "无权访问该资源!", "")
@@ -22,8 +22,8 @@ func PrivateFileDownload(ctx *gin.Context, filepath string, uerInfo map[string]s
 }
 
 // 私人资源下载鉴权(目前只不允许看别人的代码)
-func PrivateDownloadCheck(userInfo map[string]string, filePath string) bool {
-	id := userInfo["id"]
+func PrivateDownloadCheck(userInfo map[string]interface{}, filePath string) bool {
+	id := userInfo["id"].(string)
 	//判断是否是自己的资源
 	parts := strings.Split(filePath, "/")
 	if len(parts) < 3 {

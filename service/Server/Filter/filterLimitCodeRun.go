@@ -20,7 +20,7 @@ func FilterLimitCodeUploadOrRun() gin.HandlerFunc {
 			ctx.Abort()
 			return
 		}
-		id := userInfo["id"]
+		id := userInfo["id"].(string)
 		//超级用户不管
 		_, ok1 := config.SuperUserMap[id]
 		_, ok2 := config.UnlimitUserMap[id]

@@ -7,12 +7,19 @@ import (
 	"xorm.io/xorm"
 )
 
+// VIP等级
+var (
+	VIP_NONE  = 0 //没有特权
+	VIP_SUPER = 1 //特权用户
+)
+
 type Student struct {
-	Id         string    `xorm:"id"`
-	Password   string    `xorm:"password"`
-	Email      string    `xorm:"email"`
-	Avatar     string    `xorm:"avatar"`
-	RegistDate time.Time `xorm:"registDate"`
+	Id         string    `json:"id" xorm:"id"`
+	Password   string    `json:"password" xorm:"password"`
+	Email      string    `json:"email" xorm:"email"`
+	Avatar     string    `json:"avatar" xorm:"avatar"`
+	RegistDate time.Time `json:"registDate" xorm:"registDate"`
+	Vip        int       `json:"vip" xorm:"vip"`
 }
 
 func (Student) TableName() string {
@@ -60,6 +67,16 @@ func UserAdd(session *xorm.Session, id string, password string, email string) bo
 	return true
 }
 
+// 添加用户
+func UserAddByStudentInfo(session *xorm.Session, info Student) bool {
+	_, err := session.Insert(info)
+	if err != nil {
+		util.DebugError("AddUser:", err)
+		return false
+	}
+	return true
+}
+
 // 更新用户数据
 func UserUpdate(session *xorm.Session, id string, user Student) bool {
 	_, err := session.Where("id = ?", id).Update(&user)
@@ -79,6 +96,22 @@ func UserGet(id string) *Student {
 		return nil
 	}
 	return &user
+}
+
+// 根据注册时间升序排序（不包括end)
+func UserGetByRangeOrderByRegistData(beg int, end int) []Student {
+	if beg < 0 || beg >= end {
+		return nil
+	}
+	var list []Student
+	// 按regist_date升序
+	// LIMIT beg, end-beg  等价于 offset beg limit count
+	err := DB.Asc("registDate").Limit(end-beg, beg).Find(&list)
+	if err != nil {
+		util.DebugError("UserGetByRangeOrderByRegistData error:", err)
+		return nil
+	}
+	return list
 }
 
 // 获取指定多个用户的数据

@@ -271,16 +271,28 @@ func batchUpdateCodeRunStatus(indices []int) {
 }
 
 func processCodeRunningStatus(status CodeRunStatusInfoPushRedis) string {
+	runstatus := status.Status
+	data := status.Data
 	//如果是编译失败，那么则存储一个编译失败的下载链接而不是完整的编译失败信息
-	if status.Status == dao.Code_Status_Compile_Fail {
+	if runstatus == dao.Code_Status_Compile_Fail {
 		//生成文件地址
 		fileName := fmt.Sprintf("compile_log_%d_%d_.txt", status.Indices, util.UTC_Time().Nanosecond())
 		filePath := path.Join(config.Conf.OSS.PrivateBaseFolder, status.ID, config.Conf.User.UserOtherFolder, fileName)
 		//把数据推送到服务器
 		dao.OssUploadFileData(filePath, []byte(status.Data)) //编译失败得话status.Data就是编译错误信息
 		//
-		status.CodeRunStatusInfo.Data = filePath
+		data = filePath
 	}
+	//如果是运行成功/运行失败，那么Data字段存储一个录像下载路径
+	if runstatus == dao.Code_Status_Fail || runstatus == dao.Code_Status_Success {
+		//下载链接已经在
+	}
+	//如果是运行崩溃，那么Data字段存一个json
+	if runstatus == dao.Code_Status_Crash {
+
+	}
+	//
+	status.Data = data
 	return status.CodeRunStatusInfo.Marshal()
 }
 
