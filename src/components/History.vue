@@ -4,17 +4,17 @@
     <header class="bg-white shadow-md sticky top-0 z-50 transition-all duration-300">
       <div class="container mx-auto px-4 py-4 flex justify-between items-center">
         <h1 class="text-2xl font-bold text-gray-800">
-          {{ isManagerHistory ? `${managedStudentId} 的提交历史` : '代码提交历史' }}
+          {{ historyTitle }}
         </h1>
         <router-link
-          v-if="isManagerHistory"
-          to="/home/manager/student-statistics"
+          v-if="backPath"
+          :to="backPath"
           class="text-sm text-blue-600 hover:text-blue-800"
         >
           返回学生统计
         </router-link>
         <button 
-          v-if="!isManagerHistory"
+          v-if="!isReadOnly"
           @click="toggleUploadForm"
           class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
         >
@@ -24,7 +24,7 @@
       
       <!-- 上传表单区域 - 条件显示 -->
       <div 
-        v-if="showUploadForm"
+        v-if="showUploadForm && !isReadOnly"
         class="bg-gray-50 border-t border-gray-200 px-4 py-4 animate-fadeIn"
       >
         <div class="container mx-auto">
@@ -111,8 +111,11 @@
           <i class="fa fa-history text-2xl text-gray-400"></i>
         </div>
         <h3 class="text-xl font-medium text-gray-700 mb-2">暂无历史记录</h3>
-        <p class="text-gray-500 mb-6">点击上方"提交新文件"按钮开始上传你的第一个文件</p>
+        <p class="text-gray-500 mb-6">
+          {{ isReadOnly ? '暂无历史记录' : '点击上方"提交新文件"按钮开始上传你的第一个文件' }}
+        </p>
         <button 
+          v-if="!isReadOnly"
           @click="toggleUploadForm"
           class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
@@ -238,8 +241,8 @@
                     <span class="run-status-text" :class="{ 'expanded': expandedItems[index] || isCrash(item), 'crash-reason': isCrash(item) }">
                       <span class="status-content" :ref="(element) => setStatusElement(element, index)">
                         <span>运行状态: {{ getStatusLabel(item) }}</span>
-                        <template v-if="isCrash(item) && getStatusData(item)">
-                          <span class="block mt-1">{{ getStatusData(item) }}</span>
+                        <template v-if="isCrash(item) && getCrashReason(item)">
+                          <span class="block mt-1">{{ getCrashReason(item) }}</span>
                         </template>
                       </span>
                     </span>
@@ -259,11 +262,32 @@
               <!-- 编译失败时，Data 是编译日志文件标识，需通过后端获取真实下载链接 -->
               <div v-if="isCompileFail(item)" class="mb-4">
                 <button
-                  @click="downloadFile(getStatusData(item))"
-                  :disabled="!getStatusData(item)"
+                  @click="downloadFile(getCompileErrorLog(item))"
+                  :disabled="!getCompileErrorLog(item)"
                   class="text-sm px-3 py-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <i class="fa fa-download mr-1"></i>下载编译日志
+                </button>
+              </div>
+
+              <!-- 运行成功/失败时，status.data 为录像文件标识 -->
+              <div v-if="isGameResult(item)" class="mb-4">
+                <button
+                  @click="downloadFile(getVideoLink(item))"
+                  :disabled="!getVideoLink(item)"
+                  class="text-sm px-3 py-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <i class="fa fa-download mr-1"></i>下载录像
+                </button>
+              </div>
+
+              <!-- 崩溃状态的新结构中，crash_log_file 不为空时提供日志下载 -->
+              <div v-if="isCrash(item) && getCrashLogFile(item)" class="mb-4">
+                <button
+                  @click="downloadFile(getCrashLogFile(item))"
+                  class="text-sm px-3 py-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
+                >
+                  <i class="fa fa-download mr-1"></i>下载崩溃日志
                 </button>
               </div>
 
@@ -293,7 +317,7 @@
                   <i class="fa fa-download mr-1"></i>下载源文件
                 </button>
                 <button 
-                  v-if="!isManagerHistory"
+                  v-if="!isReadOnly"
                   @click="handleRun(item)" 
                   class="text-sm px-3 py-1.5 text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded transition-colors"
                   :disabled="!item.header || !item.source" 
@@ -317,24 +341,43 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick } from 'vue';
+import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick, defineProps } from 'vue';
 import config from '../config.js';
 import { ElMessage } from 'element-plus';
 import axios from 'axios';
 import { downloadFile as requestDownload } from '../utils/download';
-import { useRoute } from 'vue-router';
+
+const props = defineProps({
+  readOnly: {
+    type: Boolean,
+    default: false
+  },
+  historyTitle: {
+    type: String,
+    default: '代码提交历史'
+  },
+  backPath: {
+    type: String,
+    default: ''
+  },
+  historyUrl: {
+    type: String,
+    default: ''
+  },
+  requestParams: {
+    type: Object,
+    default: () => ({})
+  }
+});
 
 // ======================== 核心新增：分页状态管理 ========================
 const currentPage = ref(1); // 当前页码（默认第1页）
 const pageSize = ref(config.HistoryRecordPerPage || 10); // 每页条数（优先从config取，默认10）
-const hasNextPage = ref(true); // 只有拿到不足一页的数据，或请求空页后，才能确认没有下一页
+const hasNextPage = ref(true);
 const targetPage = ref(1); // 跳转目标页码（绑定输入框）
-const route = useRoute();
-const managedStudentId = computed(() => {
-  const value = route.params.studentId;
-  return typeof value === 'string' ? value.trim() : '';
-});
-const isManagerHistory = computed(() => route.meta?.managerHistory === true);
+const isReadOnly = computed(() => props.readOnly === true);
+const historyTitle = computed(() => props.historyTitle || '代码提交历史');
+const backPath = computed(() => props.backPath || '');
 
 // ======================== 原有状态保留 ========================
 const showUploadForm = ref(false);
@@ -348,6 +391,10 @@ const searchQuery = ref('');
 const expandedItems = ref({});
 const statusElements = ref({});
 const statusOverflow = ref({});
+
+watch(isReadOnly, readOnly => {
+  if (readOnly) showUploadForm.value = false;
+});
 
 const setStatusElement = (element, index) => {
   if (element) {
@@ -411,7 +458,8 @@ const getStatusInfo = (item) => {
         return parsedStatus;
       }
     } catch (error) {
-      // 解析失败时交给旧逻辑兜底，避免历史记录整条渲染失败。
+      // 解析失败时直接把原始 status.data（此处为原始值）展示出来。
+      return { status: rawStatus, data: rawStatus };
     }
   }
   return { status: rawStatus };
@@ -448,6 +496,58 @@ const getStatusData = (item) => {
   return data === undefined || data === null ? '' : String(data);
 };
 
+const getCrashDetails = (item) => {
+  let data = getStatusInfo(item).data;
+  if (typeof data === 'string') {
+    try {
+      const parsed = JSON.parse(data);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) data = parsed;
+    } catch (error) {
+      // 不是 JSON 结构时，按旧格式直接显示原始 data。
+    }
+  }
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    return {
+      reason: data.crash_reason === undefined || data.crash_reason === null
+        ? ''
+        : String(data.crash_reason),
+      logLink: data.crash_log_file === undefined || data.crash_log_file === null
+        ? ''
+        : String(data.crash_log_file).trim()
+    };
+  }
+  return { reason: data === undefined || data === null ? '' : String(data), logLink: '' };
+};
+
+const getCrashReason = (item) => getCrashDetails(item).reason;
+const getCrashLogFile = (item) => getCrashDetails(item).logLink;
+const getCompileErrorLog = (item) => {
+  let data = getStatusInfo(item).data;
+  if (typeof data === 'string') {
+    try {
+      const parsed = JSON.parse(data);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) data = parsed;
+    } catch (error) {
+      return '';
+    }
+  }
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return '';
+  return String(data.compile_error_log ?? '').trim();
+};
+const getVideoLink = (item) => {
+  let data = getStatusInfo(item).data;
+  if (typeof data === 'string') {
+    try {
+      const parsed = JSON.parse(data);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) data = parsed;
+    } catch (error) {
+      return '';
+    }
+  }
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return '';
+  return String(data.video_file ?? '').trim();
+};
+
 const isCompileFail = (item) => getStatusCode(item) === config.Code_Status_Compile_Fail;
 const isGameResult = (item) => [config.Code_Status_Success, config.Code_Status_Fail].includes(getStatusCode(item));
 const isGameStats = (item) => isGameResult(item) || getStatusCode(item) === config.Code_Status_Running;
@@ -458,8 +558,8 @@ watch(currentPage, (newPage) => {
   targetPage.value = newPage; // 切换页码时，输入框自动同步当前页
 });
 
-watch(managedStudentId, async (newStudentId, oldStudentId) => {
-  if (newStudentId === oldStudentId || !isManagerHistory.value) return;
+watch(() => props.requestParams, async (newParams, oldParams) => {
+  if (newParams === oldParams) return;
   currentPage.value = 1;
   targetPage.value = 1;
   hasNextPage.value = true;
@@ -486,21 +586,20 @@ const convertUtcToCts = (utcTime) => {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 };
 
-// ======================== 分页获取历史记录 ========================
+// ======================== 核心修改：分页获取历史记录 ========================
 const GetHistory = async (page = 1, pageSize = config.HistoryRecordPerPage) => {
   isLoading.value = true;
   try {
-    // 后端只接收范围，不再返回总记录数或总页数。
     const beg = (page - 1) * pageSize;
     const end = beg + pageSize - 1;
-    const historyUrl = isManagerHistory.value
-      ? config.manager_history_url
-      : `${config.base_url}/home/gethistory`;
+    const historyUrl = props.historyUrl || `${config.base_url}/home/gethistory`;
     const requestUrl = new URL(historyUrl);
-    requestUrl.searchParams.append('range', `${beg}:${end}`);
-    if (isManagerHistory.value && managedStudentId.value) {
-      requestUrl.searchParams.append('id', managedStudentId.value);
-    }
+    requestUrl.searchParams.set('range', `${beg}:${end}`);
+    Object.entries(props.requestParams || {}).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && String(value).trim()) {
+        requestUrl.searchParams.set(key, String(value));
+      }
+    });
 
     const response = await fetch(requestUrl.toString(), {
       method: 'GET',
@@ -512,7 +611,6 @@ const GetHistory = async (page = 1, pageSize = config.HistoryRecordPerPage) => {
       throw new Error(resData.msg || `HTTP错误: ${response.status}`);
     }
 
-    // 兼容 data 直接是数组，以及旧的 data.record 包装格式。
     const payload = resData?.data;
     const rawRecords = Array.isArray(payload)
       ? payload
@@ -520,18 +618,13 @@ const GetHistory = async (page = 1, pageSize = config.HistoryRecordPerPage) => {
         ? payload.record
         : (Array.isArray(payload?.records) ? payload.records : []));
 
-    // 请求了不存在的页时保持当前页，和排行榜的行为一致。
+    // 空页表示越界；保持当前页并停止下一页，和排行榜行为一致。
     if (rawRecords.length === 0 && page > 1) {
-      // 只有顺序请求紧邻的下一页时，空结果才能确认当前页是最后一页。
-      if (page === currentPage.value + 1) {
-        hasNextPage.value = false;
-      }
-      // 跳转到不存在的页也要把输入框恢复为实际停留的页码。
+      if (page === currentPage.value + 1) hasNextPage.value = false;
       targetPage.value = currentPage.value;
       return null;
     }
 
-    // 处理当前页数据（保留原有排序和字段校验）
     let records = [...rawRecords];
     // 按提交时间倒序（最新在前）
     records = records.sort((a, b) => {
@@ -549,9 +642,8 @@ const GetHistory = async (page = 1, pageSize = config.HistoryRecordPerPage) => {
       }
       return true;
     });
-
     currentPage.value = page;
-    // 本页不足 pageSize 条时，直接推断为最后一页；满页则继续允许请求下一页。
+    targetPage.value = page;
     hasNextPage.value = rawRecords.length >= pageSize;
     ElMessage.success(`成功加载 ${records.length} 条记录`);
     return records;
@@ -593,6 +685,7 @@ const toggleExpand = (index) => {
 };
 
 const handleRun = async (item) => {
+  if (isReadOnly.value) return;
   try {
     historyList.value = [...historyList.value];
     
@@ -614,8 +707,8 @@ const handleRun = async (item) => {
 
     ElMessage.success("运行成功");
     // 重新获取当前页数据（保证状态同步）
-    const newRecords = await GetHistory(currentPage.value, pageSize.value);
-    if (Array.isArray(newRecords)) historyList.value = newRecords;
+    const newRecords=await GetHistory(currentPage.value, pageSize.value);
+    historyList.value=newRecords
   } catch (error) {
     ElMessage.error(error.message || '运行出错');
 
@@ -632,6 +725,7 @@ const handleRun = async (item) => {
 };
 
 const toggleUploadForm = () => {
+  if (isReadOnly.value) return;
   showUploadForm.value = !showUploadForm.value;
   if (showUploadForm.value) {
     headerFile.value = null;
@@ -662,6 +756,7 @@ const handleFileUpload = (event, type) => {
 
 // ======================== 核心修改：提交后刷新当前页 ========================
 const submitFiles = async () => {
+  if (isReadOnly.value) return;
   if (!headerFile.value || !sourceFile.value) return;
   
   isSubmitting.value = true;
@@ -716,7 +811,7 @@ const submitFiles = async () => {
     ElMessage.success('文件提交成功！');
     // 提交后重新获取当前页数据（保证新记录显示）
     const newHistory = await GetHistory(currentPage.value, pageSize.value);
-    if (Array.isArray(newHistory)) historyList.value = newHistory;
+    historyList.value = newHistory;
     expandedItems.value = {};
     toggleUploadForm();
 
@@ -770,7 +865,7 @@ const handleNextPage = async () => {
 
 // 页码跳转
 const handlePageJump = async () => {
-  // 只校验正整数；总页数未知，越界由接口返回空数据来判断。
+  // 总页数未知，越界由接口返回空数据来判断。
   const target = Number(targetPage.value);
   if (!Number.isInteger(target) || target < 1 || target === currentPage.value) {
     ElMessage.warning('请输入合法的页码');

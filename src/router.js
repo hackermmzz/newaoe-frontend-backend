@@ -6,10 +6,12 @@ import Home from './components/Home.vue'
 import PasswordForget from './components/PasswordForget.vue'
 import StudentHome from './components/StudentHome.vue'
 import History from './components/History.vue'
+import ManagerHistory from './components/ManagerHistory.vue'
 import AssessmentSubmission from './components/AssessmentSubmission.vue'
 import SystemBoard from './components/SystemBoard.vue'
 import Ranking from './components/Ranking.vue'
 import ManagerPage from './components/ManagerPage.vue'
+import config from './config'
 // 可以先导入一个空组件作为其他页面的占位
 
 const routes = [
@@ -55,8 +57,17 @@ const routes = [
           {
             path: 'student-history/:studentId',
             name: 'ManagerStudentHistory',
-            component: History,
-            meta: { managerHistory: true }
+            component: ManagerHistory,
+            props: route => {
+              const studentId = String(route.params.studentId || '').trim()
+              return {
+                readOnly: true,
+                historyUrl: config.manager_history_url,
+                historyTitle: `${studentId} 的提交历史`,
+                backPath: '/home/manager/student-statistics',
+                requestParams: { student_id: studentId }
+              }
+            }
           }
         ]
       }

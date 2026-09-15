@@ -42,7 +42,7 @@ module.exports = {
     ranking_url,
     manager_url,
     manager_student_url: manager_url + "/fetchStudentInfos",
-    manager_history_url: manager_url + "/gethistory",
+    manager_history_url: manager_url + "/getstudenthistory",
     ManagerStudentRecordPerPage: 10,
     RankingRecordPerPage: 10,
     VIP_NONE,
