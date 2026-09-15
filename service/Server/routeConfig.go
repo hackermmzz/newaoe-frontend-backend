@@ -89,7 +89,7 @@ func routeConfig_Code(code_group *gin.RouterGroup) {
 }
 
 func routeConfig_Upload(upload_group *gin.RouterGroup) {
-	//普通文件的上传
+	//普通代码的上传
 	upload_group.POST(fmt.Sprintf("/%v", config.Conf.User.UserCodeFolder),
 		Filter.FilterCodeRun(), Filter.FilterLimitCodeUploadOrRun(), Upload.FileUpload)
 	//考核代码文件上传

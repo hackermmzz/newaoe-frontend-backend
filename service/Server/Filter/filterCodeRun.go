@@ -2,6 +2,7 @@ package Filter
 
 import (
 	"fmt"
+	"newaoe/config"
 	data "newaoe/service/Data"
 	"newaoe/util"
 
@@ -20,6 +21,13 @@ func FilterCodeRun() gin.HandlerFunc {
 		}
 		//
 		id := userInfo["id"].(string)
+		//如果是超级用户，不管
+		_, exist := config.SuperUserMap[id]
+		if exist {
+			ctx.Next()
+			return
+		}
+		//
 		ttl := data.CodeRunRecordTTL(id)
 		if ttl > 0 {
 			util.ResponseNAK_MSG(ctx, fmt.Sprintf("%v同学,你提交的太快了!请在%d秒后再提交!", id, ttl), "")
