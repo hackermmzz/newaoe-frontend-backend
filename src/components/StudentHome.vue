@@ -69,6 +69,32 @@
             </div>
 
             <div class="mb-6">
+              <label for="feedbackVideos" class="block text-gray-700 mb-2">反馈视频（可多选）</label>
+              <input
+                id="feedbackVideos"
+                ref="feedbackVideoInput"
+                type="file"
+                accept="video/*"
+                multiple
+                :disabled="submitting"
+                class="block w-full text-sm text-gray-600 file:mr-4 file:rounded-md file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-blue-700 hover:file:bg-blue-100"
+                @change="handleFeedbackVideos"
+              >
+              <ul v-if="feedbackVideos.length" class="mt-3 space-y-2">
+                <li
+                  v-for="(video, index) in feedbackVideos"
+                  :key="`${video.name}-${video.size}-${video.lastModified}`"
+                  class="flex items-center justify-between gap-3 rounded-md bg-white px-3 py-2 text-sm"
+                >
+                  <span class="min-w-0 truncate">{{ video.name }}（{{ formatFileSize(video.size) }}）</span>
+                  <button type="button" class="shrink-0 text-red-500 hover:text-red-700" :disabled="submitting" @click="removeFeedbackVideo(index)">
+                    删除
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            <div class="mb-6">
               <label for="feedbackFiles" class="block text-gray-700 mb-2">其他文件（可多选）</label>
               <input
                 id="feedbackFiles"
@@ -79,7 +105,7 @@
                 class="block w-full text-sm text-gray-600 file:mr-4 file:rounded-md file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-blue-700 hover:file:bg-blue-100"
                 @change="handleFeedbackFiles"
               >
-              <p class="mt-1 text-xs text-gray-500">图片请放入上方“反馈图片”中。</p>
+              <p class="mt-1 text-xs text-gray-500">图片和视频请分别放入对应区域。</p>
               <ul v-if="feedbackFiles.length" class="mt-3 space-y-2">
                 <li
                   v-for="(file, index) in feedbackFiles"
@@ -130,8 +156,10 @@ export default {
     // 反馈内容、附件和提交状态
     const feedbackContent = ref('');
     const feedbackImages = ref([]);
+    const feedbackVideos = ref([]);
     const feedbackFiles = ref([]);
     const feedbackImageInput = ref(null);
+    const feedbackVideoInput = ref(null);
     const feedbackFileInput = ref(null);
     const submitting = ref(false);
     
@@ -244,9 +272,24 @@ export default {
       ];
     };
 
+    const hasFileExtension = (file, extensions) => {
+      const name = String(file?.name || '').toLowerCase();
+      return extensions.some(extension => name.endsWith(extension));
+    };
+
+    const isImageFile = file => (
+      file.type.startsWith('image/')
+      || hasFileExtension(file, ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg'])
+    );
+
+    const isVideoFile = file => (
+      file.type.startsWith('video/')
+      || hasFileExtension(file, ['.mp4', '.webm', '.ogg', '.mov', '.m4v', '.avi', '.mkv'])
+    );
+
     const handleFeedbackImages = (event) => {
       const selectedFiles = Array.from(event.target.files || []);
-      const images = selectedFiles.filter(file => file.type.startsWith('image/'));
+      const images = selectedFiles.filter(isImageFile);
       if (images.length !== selectedFiles.length) {
         ElMessage.warning('反馈图片区域只能选择图片文件');
       }
@@ -256,16 +299,32 @@ export default {
 
     const handleFeedbackFiles = (event) => {
       const selectedFiles = Array.from(event.target.files || []);
-      const normalFiles = selectedFiles.filter(file => !file.type.startsWith('image/'));
+      const normalFiles = selectedFiles.filter(file => (
+        !isImageFile(file) && !isVideoFile(file)
+      ));
       if (normalFiles.length !== selectedFiles.length) {
-        ElMessage.warning('图片请放入“反馈图片”区域');
+        ElMessage.warning('图片和视频请放入对应区域');
       }
       feedbackFiles.value = appendUniqueFiles(feedbackFiles.value, normalFiles);
       event.target.value = '';
     };
 
+    const handleFeedbackVideos = (event) => {
+      const selectedFiles = Array.from(event.target.files || []);
+      const videos = selectedFiles.filter(isVideoFile);
+      if (videos.length !== selectedFiles.length) {
+        ElMessage.warning('反馈视频区域只能选择视频文件');
+      }
+      feedbackVideos.value = appendUniqueFiles(feedbackVideos.value, videos);
+      event.target.value = '';
+    };
+
     const removeFeedbackImage = index => {
       feedbackImages.value.splice(index, 1);
+    };
+
+    const removeFeedbackVideo = index => {
+      feedbackVideos.value.splice(index, 1);
     };
 
     const removeFeedbackFile = index => {
@@ -285,17 +344,24 @@ export default {
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
 
-    const buildFeedbackHtml = ({ indices, content, images, files }) => {
+    const buildFeedbackHtml = ({ indices, studentId, submittedAt, content, images, videos, files }) => {
       const imageHtml = images.length
         ? `<section><h2>相关图片</h2>${images.map(image => `
           <figure>
-            <img src="cid:${escapeHtml(image.cid)}" alt="${escapeHtml(image.name)}">
+            <img src="${escapeHtml(image.url)}" alt="${escapeHtml(image.name)}">
             <figcaption>${escapeHtml(image.name)}</figcaption>
           </figure>`).join('')}</section>`
         : '';
       const fileHtml = files.length
         ? `<section><h2>相关文件</h2><ul>${files.map(file => `
           <li><a href="${escapeHtml(file.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(file.name)}</a></li>`).join('')}</ul></section>`
+        : '';
+      const videoHtml = videos.length
+        ? `<section><h2>相关视频</h2>${videos.map(video => `
+          <figure>
+            <video controls preload="metadata" src="${escapeHtml(video.url)}"></video>
+            <figcaption>${escapeHtml(video.name)}</figcaption>
+          </figure>`).join('')}</section>`
         : '';
 
       return `<!doctype html>
@@ -305,25 +371,45 @@ export default {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>反馈 #${escapeHtml(indices)}</title>
   <style>
-    body { margin: 0; padding: 24px; color: #1f2937; font-family: Arial, sans-serif; line-height: 1.7; }
-    article { max-width: 900px; margin: 0 auto; }
-    section { margin-bottom: 24px; }
-    h1, h2 { color: #111827; }
-    figure { margin: 16px 0; }
-    img { display: block; max-width: 100%; height: auto; border-radius: 8px; }
-    figcaption { margin-top: 6px; color: #6b7280; font-size: 14px; }
+    :root { color-scheme: light; }
+    body { margin: 0; padding: 32px 20px; color: #1f2937; background: #f3f6fb; font-family: Arial, "Microsoft YaHei", sans-serif; line-height: 1.7; }
+    article { max-width: 900px; margin: 0 auto; overflow: hidden; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08); }
+    .feedback-header { padding: 28px 32px; color: #ffffff; background: linear-gradient(135deg, #2563eb, #4f46e5); }
+    h1 { margin: 0 0 14px; font-size: 28px; line-height: 1.3; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px 24px; color: #dbeafe; font-size: 14px; }
+    .content { padding: 28px 32px; }
+    section { margin-bottom: 28px; }
+    section:last-child { margin-bottom: 0; }
+    h2 { margin: 0 0 12px; color: #111827; font-size: 20px; }
+    .feedback-text { margin: 0; padding: 16px 18px; white-space: normal; overflow-wrap: anywhere; color: #374151; background: #f9fafb; border-left: 4px solid #60a5fa; border-radius: 8px; }
+    figure { margin: 16px 0; padding: 14px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; }
+    img { display: block; max-width: 100%; max-height: 720px; height: auto; margin: 0 auto; border-radius: 8px; object-fit: contain; }
+    video { display: block; width: 100%; max-height: 720px; margin: 0 auto; border-radius: 8px; background: #111827; }
+    figcaption { margin-top: 8px; color: #6b7280; font-size: 13px; text-align: center; overflow-wrap: anywhere; }
+    ul { margin: 0; padding-left: 22px; }
+    li + li { margin-top: 8px; }
     a { color: #2563eb; overflow-wrap: anywhere; }
+    @media (max-width: 640px) { body { padding: 12px; } .feedback-header, .content { padding: 22px 18px; } }
   </style>
 </head>
 <body>
   <article>
-    <h1>反馈 #${escapeHtml(indices)}</h1>
-    <section>
-      <h2>反馈内容</h2>
-      <p>${escapeHtml(content).replace(/\r?\n/g, '<br>')}</p>
-    </section>
-    ${imageHtml}
-    ${fileHtml}
+    <header class="feedback-header">
+      <h1>反馈 #${escapeHtml(indices)}</h1>
+      <div class="meta">
+        <span>学生 ID：${escapeHtml(studentId || '未知')}</span>
+        <span>提交时间：${escapeHtml(submittedAt)}</span>
+      </div>
+    </header>
+    <main class="content">
+      <section>
+        <h2>反馈内容</h2>
+        <p class="feedback-text">${escapeHtml(content).replace(/\r?\n/g, '<br>')}</p>
+      </section>
+      ${imageHtml}
+      ${videoHtml}
+      ${fileHtml}
+    </main>
   </article>
 </body>
 </html>`;
@@ -367,6 +453,7 @@ export default {
       }
 
       const images = [...feedbackImages.value];
+      const videos = [...feedbackVideos.value];
       const files = [...feedbackFiles.value];
       submitting.value = true;
 
@@ -380,39 +467,71 @@ export default {
           },
           body: JSON.stringify({
             images: images.map(image => image.name),
+            videos: videos.map(video => video.name),
             files: files.map(file => file.name)
           })
         });
         const attachmentData = await parseJsonResponse(attachmentResponse);
         const indices = Number(attachmentData.indices);
-        const imageUrls = Array.isArray(attachmentData.images) ? attachmentData.images : [];
-        const fileUrls = Array.isArray(attachmentData.files) ? attachmentData.files : [];
+        const imageUploadUrls = Array.isArray(attachmentData.uploadimageurls)
+          ? attachmentData.uploadimageurls
+          : [];
+        const fileUploadUrls = Array.isArray(attachmentData.uploadfileurls)
+          ? attachmentData.uploadfileurls
+          : [];
+        const videoUploadUrls = Array.isArray(attachmentData.uploadvideourls)
+          ? attachmentData.uploadvideourls
+          : [];
+        const imageDownloadUrls = Array.isArray(attachmentData.downloadimageurls)
+          ? attachmentData.downloadimageurls
+          : [];
+        const fileDownloadUrls = Array.isArray(attachmentData.downloadfileurls)
+          ? attachmentData.downloadfileurls
+          : [];
+        const videoDownloadUrls = Array.isArray(attachmentData.downloadvideourls)
+          ? attachmentData.downloadvideourls
+          : [];
 
         if (!Number.isInteger(indices)) {
           throw new Error('服务器未返回有效的反馈编号');
         }
-        if (imageUrls.length !== images.length || fileUrls.length !== files.length) {
+        if (
+          imageUploadUrls.length !== images.length
+          || fileUploadUrls.length !== files.length
+          || videoUploadUrls.length !== videos.length
+          || imageDownloadUrls.length !== images.length
+          || fileDownloadUrls.length !== files.length
+          || videoDownloadUrls.length !== videos.length
+        ) {
           throw new Error('服务器返回的附件上传链接数量不正确');
         }
 
         // 第二步：把图片和普通文件上传到各自对应的链接。
         await Promise.all([
-          ...images.map((image, index) => uploadAttachment(imageUrls[index], image)),
-          ...files.map((file, index) => uploadAttachment(fileUrls[index], file))
+          ...images.map((image, index) => uploadAttachment(imageUploadUrls[index], image)),
+          ...videos.map((video, index) => uploadAttachment(videoUploadUrls[index], video)),
+          ...files.map((file, index) => uploadAttachment(fileUploadUrls[index], file))
         ]);
 
-        // 使用 CID 引用图片附件。服务器可按反馈编号和图片序号将 CID
-        // 与第二步上传的图片附件建立对应关系。
+        // HTML 直接引用服务器返回的下载地址。
         const embeddedImages = images.map((image, index) => ({
           name: image.name,
-          url: imageUrls[index],
-          cid: `feedback-${indices}-image-${index}`
+          url: imageDownloadUrls[index]
         }));
         const feedbackHtml = buildFeedbackHtml({
           indices,
+          studentId: userInfo.studentId,
+          submittedAt: new Date().toLocaleString('zh-CN', { hour12: false }),
           content: feedbackContent.value,
           images: embeddedImages,
-          files: files.map((file, index) => ({ name: file.name, url: fileUrls[index] }))
+          videos: videos.map((video, index) => ({
+            name: video.name,
+            url: videoDownloadUrls[index]
+          })),
+          files: files.map((file, index) => ({
+            name: file.name,
+            url: fileDownloadUrls[index]
+          }))
         });
 
         // 第三步：提交包含文字、图片和普通文件链接的完整 HTML。
@@ -432,8 +551,10 @@ export default {
         ElMessage.success('反馈提交成功！感谢您的支持～');
         feedbackContent.value = '';
         feedbackImages.value = [];
+        feedbackVideos.value = [];
         feedbackFiles.value = [];
         if (feedbackImageInput.value) feedbackImageInput.value.value = '';
+        if (feedbackVideoInput.value) feedbackVideoInput.value.value = '';
         if (feedbackFileInput.value) feedbackFileInput.value.value = '';
       } catch (error) {
         console.error('提交反馈出错:', error);
@@ -448,14 +569,18 @@ export default {
       userInfo,
       feedbackContent,
       feedbackImages,
+      feedbackVideos,
       feedbackFiles,
       feedbackImageInput,
+      feedbackVideoInput,
       feedbackFileInput,
       submitting,
       handleAvatarChange,
       handleFeedbackImages,
+      handleFeedbackVideos,
       handleFeedbackFiles,
       removeFeedbackImage,
+      removeFeedbackVideo,
       removeFeedbackFile,
       formatFileSize,
       submitFeedback

@@ -57,12 +57,12 @@ export default {
       menuItems: [
         { 
           name: '个人中心', 
-          description: '查看/编辑个人信息、修改密码',
+          description: '查看/编辑个人信息,反馈Bug',
           path: '/home/student-home' // 第一个菜单的完整路径
         },
         { 
           name: '历史记录', 
-          description: '查看系统操作日志、数据变更记录',
+          description: '查看历史提交记录',
           path: '/home/history'
         },
         { 
@@ -76,15 +76,15 @@ export default {
           path: '/home/ranking'
         },
         {
-          name: '系统设置', 
-          description: '配置系统参数、权限及模块开关',
-          path: '/home/settings'
-        },
-        {
           name: '管理平台',
           description: '查看所有学生信息及提交历史',
           path: '/home/manager',
           requiresVip: true
+        },
+        {
+          name: '系统设置', 
+          description: '配置系统参数、权限及模块开关',
+          path: '/home/settings'
         }
       ]
     };

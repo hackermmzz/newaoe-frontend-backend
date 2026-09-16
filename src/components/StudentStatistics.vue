@@ -5,14 +5,24 @@
         <h2 class="text-2xl font-semibold text-gray-800">学生统计</h2>
         <p class="mt-1 text-sm text-gray-500">点击学生可查看该学生的提交历史记录。</p>
       </div>
-      <button
-        type="button"
-        class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        :disabled="isLoading"
-        @click="loadStudents(currentPage)"
-      >
-        {{ isLoading ? '加载中...' : '刷新列表' }}
-      </button>
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          class="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          :disabled="isExporting"
+          @click="exportStudentInfo"
+        >
+          {{ isExporting ? '导出中...' : '导出信息' }}
+        </button>
+        <button
+          type="button"
+          class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          :disabled="isLoading"
+          @click="loadStudents(currentPage)"
+        >
+          {{ isLoading ? '加载中...' : '刷新列表' }}
+        </button>
+      </div>
     </div>
 
     <div v-if="errorMessage" class="rounded-lg bg-red-50 p-4 text-sm text-red-700" role="alert">
@@ -121,6 +131,7 @@ export default {
     const router = useRouter();
     const students = ref([]);
     const isLoading = ref(false);
+    const isExporting = ref(false);
     const errorMessage = ref('');
     const currentPage = ref(1);
     const targetPage = ref(1);
@@ -220,6 +231,61 @@ export default {
       }
     };
 
+    const triggerDownload = url => {
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', '');
+      link.target = '_self';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
+
+    const exportStudentInfo = async () => {
+      if (isExporting.value) return;
+      isExporting.value = true;
+      try {
+        const response = await fetch(config.manager_info_export_url, {
+          method: 'GET',
+          credentials: 'include'
+        });
+        let result = {};
+        try {
+          result = await response.json();
+        } catch (error) {
+          throw new Error('导出接口返回格式错误');
+        }
+
+        if (!response.ok || result?.status === false) {
+          throw new Error(result?.msg || '网络异常');
+        }
+
+        const payload = result?.data ?? result;
+        const downloadReference = typeof payload === 'string'
+          ? payload.trim()
+          : String(
+            payload?.url
+            || payload?.downloadUrl
+            || payload?.downloadurl
+            || payload?.path
+            || payload?.file
+            || ''
+          ).trim();
+
+        if (!downloadReference) {
+          throw new Error(result?.msg || '下载链接无效');
+        }
+
+        const downloadUrl = new URL(downloadReference, `${config.base_url}/`).toString();
+        triggerDownload(downloadUrl);
+        ElMessage.success('学生信息导出成功，正在下载');
+      } catch (error) {
+        ElMessage.error(error?.message || '网络异常');
+      } finally {
+        isExporting.value = false;
+      }
+    };
+
     const handlePrevPage = () => {
       if (currentPage.value > 1) loadStudents(currentPage.value - 1);
     };
@@ -243,12 +309,14 @@ export default {
     return {
       errorMessage,
       currentPage,
+      exportStudentInfo,
       formatDate,
       handleNextPage,
       handlePageJump,
       handlePrevPage,
       hasNextPage,
       isLoading,
+      isExporting,
       loadStudents,
       openStudentHistory,
       targetPage,
