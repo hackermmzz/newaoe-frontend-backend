@@ -149,16 +149,16 @@ fi
 ##################################
 
 echo "cp到/tmp分区"
-rm -rf /tmp/judge || true
-mkdir /tmp/judge 
-cp -r /root/newaoe-frontend-backend/* /tmp/judge/
+dir="/tmp/judge_$(date +%Y%m%d_%H%M%S)"
+mkdir -p "$dir"
+cp -r /root/newaoe-frontend-backend/* $dir/
 
 ##################################
 # 切换到/tmp/judge目录下
 ##################################
 
 echo "切换到/tmp/judge目录下"
-cd /tmp/judge
+cd "$dir"
 
 
 ##################################
