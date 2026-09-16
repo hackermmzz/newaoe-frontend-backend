@@ -18,6 +18,7 @@ type finalDataInfo struct {
 	ID           string `json:"id"`            //学生学号
 	Submit       bool   `json:"submit"`        //是否提交
 	CompileError bool   `json:"compile_error"` //编译错误
+	Crash        bool   `json:"crash"`         //崩溃
 	Win          bool   `json:"win"`           //是否胜利
 	Frame        int    `json:"frame"`         //运行的帧数
 	Score        int    `json:"score"`         //运行的得分
@@ -110,6 +111,7 @@ func processFinalDataInfo(id string, status string) finalDataInfo {
 		Submit:       false,
 		CompileError: true,
 		Win:          false,
+		Crash:        true,
 		Score:        0,
 		Frame:        0,
 	}
@@ -146,22 +148,21 @@ func processFinalDataInfo(id string, status string) finalDataInfo {
 		return ret
 	}
 	ret.CompileError = false
-	//成功与否都需要得分和帧数
+	//成功/失败/崩溃 都需要得分和帧数
 	ret.Score = runstatus.Score
 	ret.Frame = runstatus.Frame
-	//运行失败/正在运行
+	//运行失败/正在运行/崩溃
 	switch runstatus.Status {
 	case dao.Code_Status_Running, dao.Code_Status_Fail,
 		dao.Code_Status_Crash, dao.Code_Status_Compile_Success:
 		switch runstatus.Status {
 		case dao.Code_Status_Running:
 			util.DebugError("代码正在运行!", id)
-		case dao.Code_Status_Crash:
-			util.DebugError("代码运行崩溃!", id)
 		case dao.Code_Status_Compile_Success:
 			util.DebugError("代码处于编译成功状态但没推进!", id)
 		}
 		ret.Win = false
+		ret.Crash = runstatus.Status == dao.Code_Status_Crash
 		return ret
 	}
 	//运行成功
@@ -185,6 +186,14 @@ func cmpTwoFinalData(data0 finalDataInfo, data1 finalDataInfo) bool {
 	//编译错误
 	if data0.CompileError {
 		return true
+	}
+	//2个都崩溃
+	if data0.Crash && data1.Crash {
+		return data0.Score < data1.Score
+	}
+	//1个崩溃
+	if data0.Crash || data1.Crash {
+		return data0.Crash
 	}
 	//2个都运行失败
 	if !data0.Win && !data1.Win {
