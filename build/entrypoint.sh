@@ -70,9 +70,6 @@ else
 
 fi
 
-docker pull hackermmzz/qt-env || true
-
-
 
 ##################################
 # git pull函数
@@ -102,7 +99,8 @@ git_retry()
     done
 
 
-    echo "三次失败，继续执行"
+    echo "git pull $dir 三次失败，程序退出"
+    exit 1
 }
 
 
@@ -139,7 +137,11 @@ echo "安装python依赖"
 cd /root/newaoe-frontend-backend
 
 
-pip3 install -r requirements.txt || true
+if ! pip3 install -r requirements.txt
+then
+    echo "安装python依赖失败，程序退出"
+    exit 1
+fi
 
 
 ##################################
@@ -147,7 +149,8 @@ pip3 install -r requirements.txt || true
 ##################################
 
 echo "cp到/tmp分区"
-mkdir /tmp/judge
+rm -rf /tmp/judge || true
+mkdir /tmp/judge 
 cp -r /root/newaoe-frontend-backend/* /tmp/judge/
 
 ##################################
