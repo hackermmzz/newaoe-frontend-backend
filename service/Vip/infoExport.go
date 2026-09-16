@@ -75,9 +75,10 @@ func StudentInfoExport(ctx *gin.Context) {
 		f.SetCellValue(sheet, fmt.Sprintf("A%d", row), item.ID)
 		f.SetCellValue(sheet, fmt.Sprintf("B%d", row), item.Submit)
 		f.SetCellValue(sheet, fmt.Sprintf("C%d", row), item.CompileError)
-		f.SetCellValue(sheet, fmt.Sprintf("D%d", row), item.Win)
-		f.SetCellValue(sheet, fmt.Sprintf("E%d", row), item.Frame)
-		f.SetCellValue(sheet, fmt.Sprintf("F%d", row), item.Score)
+		f.SetCellValue(sheet, fmt.Sprintf("D%d", row), item.Crash)
+		f.SetCellValue(sheet, fmt.Sprintf("E%d", row), item.Win)
+		f.SetCellValue(sheet, fmt.Sprintf("F%d", row), item.Frame)
+		f.SetCellValue(sheet, fmt.Sprintf("G%d", row), item.Score)
 	}
 	//获取excl数据
 	buf, err := f.WriteToBuffer()
