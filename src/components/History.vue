@@ -204,7 +204,7 @@
           >
             <!-- 记录编号与状态 -->
             <div class="p-4 border-b border-gray-100 flex justify-between items-center">
-              <h3 class="font-medium text-gray-900">提交 #{{ (currentPage - 1) * pageSize + index + 1 }}</h3>
+              <h3 class="font-medium text-gray-900">提交 #{{ item.indices }}</h3>
               <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
                 已提交
               </span>
@@ -592,7 +592,7 @@ const GetHistory = async (page = 1, pageSize = config.HistoryRecordPerPage) => {
   try {
     const beg = (page - 1) * pageSize;
     const end = beg + pageSize - 1;
-    const historyUrl = props.historyUrl || `${config.base_url}/home/gethistory`;
+    const historyUrl = props.historyUrl || `${config.history_url}/gethistory`;
     const requestUrl = new URL(historyUrl);
     requestUrl.searchParams.set('range', `${beg}:${end}`);
     Object.entries(props.requestParams || {}).forEach(([key, value]) => {

@@ -22,6 +22,8 @@ let code_url="your admin domain here"
 let uploadConfirm_url="your uploadConfirm_url domain here"
 let ranking_url="your ranking domain here"
 let manager_url="your manager domain here"
+let history_url="your history domain here"
+let feedback_url="your feedback domain here"
 const isTestMode =false;
 const HistoryRecordPerPage=10;
 // 如果不是测试模式，则使用生产环境的base_url
@@ -37,6 +39,8 @@ uploadConfirm_url=base_url+"/uploadconfirm"
 code_url=base_url+"/code"
 ranking_url=base_url+"/rank"
 manager_url=base_url+"/vip"
+history_url=base_url+"/home"
+feedback_url=base_url+"/home"
 // 导出配置
 module.exports = {
     ranking_url,
@@ -50,6 +54,8 @@ module.exports = {
     base_url,
     download_url,
     uploadConfirm_url,
+    feedback_url,
+    history_url,
     upload_url,
     code_url: code_url,
     HistoryRecordPerPage,

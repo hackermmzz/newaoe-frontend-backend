@@ -25,12 +25,11 @@
         <p class="font-medium text-lg text-blue-600">{{ userInfo.email }}</p>
       </div>
       
-      <!-- 4. 反馈建议模块（最下方，仅保留输入框+提交按钮） -->
+      <!-- 4. 反馈建议模块 -->
       <div>
         <h3 class="text-xl font-semibold mb-4 text-center">反馈与建议</h3>
         <div class="bg-gray-50 p-6 rounded-lg">
           <form @submit.prevent="submitFeedback">
-            <!-- 仅保留反馈内容输入框（核心功能） -->
             <div class="mb-6">
               <label for="feedbackContent" class="block text-gray-700 mb-2">请输入您的问题或建议</label>
               <textarea 
@@ -42,8 +41,59 @@
                 required
               ></textarea>
             </div>
-            
-            <!-- 仅保留反馈提交按钮 -->
+
+            <div class="mb-6">
+              <label for="feedbackImages" class="block text-gray-700 mb-2">反馈图片（可多选）</label>
+              <input
+                id="feedbackImages"
+                ref="feedbackImageInput"
+                type="file"
+                accept="image/*"
+                multiple
+                :disabled="submitting"
+                class="block w-full text-sm text-gray-600 file:mr-4 file:rounded-md file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-blue-700 hover:file:bg-blue-100"
+                @change="handleFeedbackImages"
+              >
+              <ul v-if="feedbackImages.length" class="mt-3 space-y-2">
+                <li
+                  v-for="(image, index) in feedbackImages"
+                  :key="`${image.name}-${image.size}-${image.lastModified}`"
+                  class="flex items-center justify-between gap-3 rounded-md bg-white px-3 py-2 text-sm"
+                >
+                  <span class="min-w-0 truncate">{{ image.name }}（{{ formatFileSize(image.size) }}）</span>
+                  <button type="button" class="shrink-0 text-red-500 hover:text-red-700" :disabled="submitting" @click="removeFeedbackImage(index)">
+                    删除
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            <div class="mb-6">
+              <label for="feedbackFiles" class="block text-gray-700 mb-2">其他文件（可多选）</label>
+              <input
+                id="feedbackFiles"
+                ref="feedbackFileInput"
+                type="file"
+                multiple
+                :disabled="submitting"
+                class="block w-full text-sm text-gray-600 file:mr-4 file:rounded-md file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-blue-700 hover:file:bg-blue-100"
+                @change="handleFeedbackFiles"
+              >
+              <p class="mt-1 text-xs text-gray-500">图片请放入上方“反馈图片”中。</p>
+              <ul v-if="feedbackFiles.length" class="mt-3 space-y-2">
+                <li
+                  v-for="(file, index) in feedbackFiles"
+                  :key="`${file.name}-${file.size}-${file.lastModified}`"
+                  class="flex items-center justify-between gap-3 rounded-md bg-white px-3 py-2 text-sm"
+                >
+                  <span class="min-w-0 truncate">{{ file.name }}（{{ formatFileSize(file.size) }}）</span>
+                  <button type="button" class="shrink-0 text-red-500 hover:text-red-700" :disabled="submitting" @click="removeFeedbackFile(index)">
+                    删除
+                  </button>
+                </li>
+              </ul>
+            </div>
+
             <button 
               type="submit"
               :disabled="submitting"
@@ -77,8 +127,12 @@ export default {
       vip: 0,
     });
     
-    // 反馈内容和提交状态
+    // 反馈内容、附件和提交状态
     const feedbackContent = ref('');
+    const feedbackImages = ref([]);
+    const feedbackFiles = ref([]);
+    const feedbackImageInput = ref(null);
+    const feedbackFileInput = ref(null);
     const submitting = ref(false);
     
     // 从网络获取用户信息
@@ -177,49 +231,213 @@ export default {
         };
 
     
+    const appendUniqueFiles = (currentFiles, incomingFiles) => {
+      const fileKeys = new Set(currentFiles.map(file => `${file.name}-${file.size}-${file.lastModified}`));
+      return [
+        ...currentFiles,
+        ...incomingFiles.filter(file => {
+          const key = `${file.name}-${file.size}-${file.lastModified}`;
+          if (fileKeys.has(key)) return false;
+          fileKeys.add(key);
+          return true;
+        })
+      ];
+    };
+
+    const handleFeedbackImages = (event) => {
+      const selectedFiles = Array.from(event.target.files || []);
+      const images = selectedFiles.filter(file => file.type.startsWith('image/'));
+      if (images.length !== selectedFiles.length) {
+        ElMessage.warning('反馈图片区域只能选择图片文件');
+      }
+      feedbackImages.value = appendUniqueFiles(feedbackImages.value, images);
+      event.target.value = '';
+    };
+
+    const handleFeedbackFiles = (event) => {
+      const selectedFiles = Array.from(event.target.files || []);
+      const normalFiles = selectedFiles.filter(file => !file.type.startsWith('image/'));
+      if (normalFiles.length !== selectedFiles.length) {
+        ElMessage.warning('图片请放入“反馈图片”区域');
+      }
+      feedbackFiles.value = appendUniqueFiles(feedbackFiles.value, normalFiles);
+      event.target.value = '';
+    };
+
+    const removeFeedbackImage = index => {
+      feedbackImages.value.splice(index, 1);
+    };
+
+    const removeFeedbackFile = index => {
+      feedbackFiles.value.splice(index, 1);
+    };
+
+    const formatFileSize = size => {
+      if (size < 1024) return `${size} B`;
+      if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+      return `${(size / 1024 / 1024).toFixed(1)} MB`;
+    };
+
+    const escapeHtml = value => String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+
+    const buildFeedbackHtml = ({ indices, content, images, files }) => {
+      const imageHtml = images.length
+        ? `<section><h2>相关图片</h2>${images.map(image => `
+          <figure>
+            <img src="cid:${escapeHtml(image.cid)}" alt="${escapeHtml(image.name)}">
+            <figcaption>${escapeHtml(image.name)}</figcaption>
+          </figure>`).join('')}</section>`
+        : '';
+      const fileHtml = files.length
+        ? `<section><h2>相关文件</h2><ul>${files.map(file => `
+          <li><a href="${escapeHtml(file.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(file.name)}</a></li>`).join('')}</ul></section>`
+        : '';
+
+      return `<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>反馈 #${escapeHtml(indices)}</title>
+  <style>
+    body { margin: 0; padding: 24px; color: #1f2937; font-family: Arial, sans-serif; line-height: 1.7; }
+    article { max-width: 900px; margin: 0 auto; }
+    section { margin-bottom: 24px; }
+    h1, h2 { color: #111827; }
+    figure { margin: 16px 0; }
+    img { display: block; max-width: 100%; height: auto; border-radius: 8px; }
+    figcaption { margin-top: 6px; color: #6b7280; font-size: 14px; }
+    a { color: #2563eb; overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+  <article>
+    <h1>反馈 #${escapeHtml(indices)}</h1>
+    <section>
+      <h2>反馈内容</h2>
+      <p>${escapeHtml(content).replace(/\r?\n/g, '<br>')}</p>
+    </section>
+    ${imageHtml}
+    ${fileHtml}
+  </article>
+</body>
+</html>`;
+    };
+
+    const createApiError = message => {
+      const error = new Error(message || '网络异常');
+      error.apiMessage = message || '';
+      return error;
+    };
+
+    const parseJsonResponse = async (response) => {
+      const responseText = await response.text();
+      let result = {};
+      if (responseText) {
+        try {
+          result = JSON.parse(responseText);
+        } catch (error) {
+          if (!response.ok) throw createApiError();
+        }
+      }
+      if (!response.ok || result?.status === false) {
+        throw createApiError(result?.msg || result?.data?.msg);
+      }
+      return result?.data && typeof result.data === 'object' ? result.data : result;
+    };
+
+    const uploadAttachment = async (url, file) => {
+      await axios.put(url, file, {
+        headers: {
+          'Content-Type': file.type || 'application/octet-stream'
+        }
+      });
+    };
+
     // 反馈提交处理函数
     const submitFeedback = async () => {
-      // 简单验证：反馈内容不能为空
       if (!feedbackContent.value.trim()) {
-        alert('请输入反馈内容后再提交');
+        ElMessage.warning('请输入反馈内容后再提交');
         return;
       }
-      
-      // 提交加载状态
+
+      const images = [...feedbackImages.value];
+      const files = [...feedbackFiles.value];
       submitting.value = true;
-      
+
       try {
-        //首先获取上传链接
-        const respForUploadUrl=await fetch(`${config.base_url}/home/feedback`,{
-          method:'POST',
-          credentials:'include'
-        })
-        const resp0=await respForUploadUrl.json()
-        if (!respForUploadUrl.ok || !resp0.status){
-           throw new Error('网络错误，提交失败' | resp0.msg);
-        }
-        //获取链接并且上传
-        const uploadUrl=resp0.data.urls[0]
-        const text=JSON.stringify({
-          "date":Date(),
-          "id":userInfo.studentId,
-          "content":feedbackContent.value
-        })
-        const respForSucess=await axios.put(uploadUrl,text,{
-           headers:{
+        // 第一步：提交客户端文件名数组，获取反馈编号和每个附件的上传链接。
+        const attachmentResponse = await fetch(`${config.feedback_url}/feedbackUploadAttachment`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
             'Content-Type': 'application/json'
-           },
-           responseType:"text"
-        })
-        if (!respForSucess.status){
-           throw new Error('网络错误，提交失败');
+          },
+          body: JSON.stringify({
+            images: images.map(image => image.name),
+            files: files.map(file => file.name)
+          })
+        });
+        const attachmentData = await parseJsonResponse(attachmentResponse);
+        const indices = Number(attachmentData.indices);
+        const imageUrls = Array.isArray(attachmentData.images) ? attachmentData.images : [];
+        const fileUrls = Array.isArray(attachmentData.files) ? attachmentData.files : [];
+
+        if (!Number.isInteger(indices)) {
+          throw new Error('服务器未返回有效的反馈编号');
         }
-        //
-        alert('反馈提交成功！感谢您的支持～');
+        if (imageUrls.length !== images.length || fileUrls.length !== files.length) {
+          throw new Error('服务器返回的附件上传链接数量不正确');
+        }
+
+        // 第二步：把图片和普通文件上传到各自对应的链接。
+        await Promise.all([
+          ...images.map((image, index) => uploadAttachment(imageUrls[index], image)),
+          ...files.map((file, index) => uploadAttachment(fileUrls[index], file))
+        ]);
+
+        // 使用 CID 引用图片附件。服务器可按反馈编号和图片序号将 CID
+        // 与第二步上传的图片附件建立对应关系。
+        const embeddedImages = images.map((image, index) => ({
+          name: image.name,
+          url: imageUrls[index],
+          cid: `feedback-${indices}-image-${index}`
+        }));
+        const feedbackHtml = buildFeedbackHtml({
+          indices,
+          content: feedbackContent.value,
+          images: embeddedImages,
+          files: files.map((file, index) => ({ name: file.name, url: fileUrls[index] }))
+        });
+
+        // 第三步：提交包含文字、图片和普通文件链接的完整 HTML。
+        const feedbackResponse = await fetch(`${config.feedback_url}/feedbackUpload`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            indices,
+            text: feedbackHtml
+          })
+        });
+        await parseJsonResponse(feedbackResponse);
+
+        ElMessage.success('反馈提交成功！感谢您的支持～');
         feedbackContent.value = '';
+        feedbackImages.value = [];
+        feedbackFiles.value = [];
+        if (feedbackImageInput.value) feedbackImageInput.value.value = '';
+        if (feedbackFileInput.value) feedbackFileInput.value.value = '';
       } catch (error) {
         console.error('提交反馈出错:', error);
-        alert('提交失败，请稍后再试');
+        ElMessage.error(error?.apiMessage || error?.response?.data?.msg || '网络异常');
       } finally {
         submitting.value = false;
       }
@@ -229,8 +447,17 @@ export default {
     return {
       userInfo,
       feedbackContent,
+      feedbackImages,
+      feedbackFiles,
+      feedbackImageInput,
+      feedbackFileInput,
       submitting,
       handleAvatarChange,
+      handleFeedbackImages,
+      handleFeedbackFiles,
+      removeFeedbackImage,
+      removeFeedbackFile,
+      formatFileSize,
       submitFeedback
     };
   }
