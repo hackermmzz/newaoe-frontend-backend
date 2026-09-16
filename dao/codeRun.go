@@ -2,13 +2,14 @@ package dao
 
 import (
 	"encoding/json"
+	"fmt"
 	"newaoe/util"
 	"time"
 
 	"xorm.io/xorm"
 )
 
-// 代码当前的运行状态
+// 代码当前的运行状态(不要随便改动顺序)
 var (
 	Code_Status_Error           = 0 //服务器异常
 	Code_Status_Wait            = 1 //在等待队列里面
@@ -222,4 +223,28 @@ func CodeRunGetRangeById(id string, beg int, end int) []CodeRunInfo {
 		return nil
 	}
 	return ret
+}
+
+// 获取所有学生最后一次提交记录
+func CodeRunGetStudentLastSubmitRecord(session *xorm.Session) []CodeRunInfo {
+	var result []CodeRunInfo
+
+	sql := fmt.Sprintf(`
+	SELECT *FROM (
+		SELECT *,
+		ROW_NUMBER() OVER(
+			PARTITION BY id 
+			ORDER BY indices DESC
+		) AS rn
+		FROM %s
+	) t
+	WHERE rn = 1
+	`, CodeRunInfo{}.TableName())
+	err := session.SQL(sql).Find(&result)
+	if err != nil {
+		util.DebugError("CodeRunGetStudentLastSubmitRecord:", err)
+		return nil
+	}
+
+	return result
 }

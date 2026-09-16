@@ -131,3 +131,16 @@ func UserGetByIDs(ids []string) []Student {
 
 	return users
 }
+
+// 获取所有学生数据(谨慎使用)
+func UserGetAll(session *xorm.Session) []Student {
+	var list []Student
+	// Find 直接把查询结果填充到切片
+	err := session.Find(&list)
+	if err != nil {
+		// 出错返回空
+		util.DebugError("UserGetAll:", err)
+		return nil
+	}
+	return list
+}

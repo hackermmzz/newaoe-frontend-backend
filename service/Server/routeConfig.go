@@ -70,6 +70,7 @@ func routeConfig() {
 func routeConfig_VIPConfirm(vip_group *gin.RouterGroup) {
 	vip_group.GET("/fetchStudentInfos", vip.StudentInfosGet)
 	vip_group.GET("/getstudenthistory", vip.GetStudentHistory)
+	vip_group.GET("/infoExport", vip.StudentInfoExport)
 }
 
 func routeConfig_Rank(rank_group *gin.RouterGroup) {
@@ -117,7 +118,8 @@ func routeConfig_User(group *gin.RouterGroup) {
 
 func routeConfig_Home(group *gin.RouterGroup) {
 	group.GET("studentInfo", Home.StudentInfoGet)
-	group.POST("feedback", Home.StudentFeedback)
+	group.POST("feedbackUploadAttachment", Home.StudentFeedbckUploadAttachment)
+	group.POST("feedbackUpload", Home.StudentFeedbackUpload)
 	group.GET("gethistory", Home.StudentHistoryGet)
 	group.GET("getteacher", Home.StudentGetTeacher)
 }

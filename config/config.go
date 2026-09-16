@@ -22,6 +22,7 @@ type Config struct {
 	CDN                      CDNConfig                      `yaml:"cdn"`
 	GRPC                     GRPCConfig                     `yaml:"grpc"`
 	RocketMQ                 RocketMQConfig                 `yaml:"rocketMQ"`
+	Feedback                 FeedbackConfig                 `yaml:"feedback"`
 	Other                    OtherConfig                    `yaml:"other"`
 }
 type RocketMQConfig struct {
@@ -116,7 +117,14 @@ type OSSConfig struct {
 	BucketName        string `yaml:"bucketName"`        // TOS桶名称
 	PublicBaseFolder  string `yaml:"PublicBaseFolder"`  // 公共数据存储目录
 	PrivateBaseFolder string `yaml:"PrivateBaseFolder"` // 私有用户数据目录
+	TmpBaseFolder     string `yaml:"TmpBaseFolder"`     //临时文件，可以随时删除
 	MaxRetry          int    `yaml:"maxRetry"`          //最大尝试次数
+}
+
+type FeedbackConfig struct {
+	FeedbackFolder               string `yaml:"feedbackFolder"`               //存反馈的目录
+	FeedbackNeedSendToEmailTopic string `yaml:"feedbackNeedSendToEmailTopic"` //存用户反馈，后台会把这个队列里面所有的反馈发到wlh邮箱
+	FeedbackSendToEmail          string `yaml:"feedbackSendToEmail"`          //反馈发送的邮箱
 }
 
 type OtherConfig struct {
@@ -130,8 +138,6 @@ type OtherConfig struct {
 	SuperUser                         []string `yaml:"superUser"`                         //超级用户
 	SuperUserPassword                 string   `yaml:"superUserPassword"`                 //超级用户密码
 	SuperUserEmail                    string   `yaml:"superUserEmail"`                    //超级用户邮箱
-	FeedbackNeedSendToEmailTopic      string   `yaml:"feedbackNeedSendToEmailTopic"`      //反馈发送邮箱队列
-	FeedbackSendToEmail               string   `yaml:"feedbackSendToEmail"`               //反馈发送的邮箱
 	UnlimitUser                       []string `yaml:"unlimitUser"`                       //不限制提交用户(这类用户通常给予了判题机资源)
 }
 

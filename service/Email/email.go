@@ -15,11 +15,17 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
+var (
+	EmailMsgType_TEXT = 0
+	EmailMsgType_XML  = 1
+)
+
 // 消息队列里面的数据结构
 type EmailMsg struct {
 	Email   string `json:"email"`
 	Subject string `json:"subject"`
 	Text    string `json:"text"`
+	Type    int    `json:"type"`
 }
 
 var (
@@ -79,13 +85,17 @@ func EmailSenderInit() {
 
 // 将邮件提交给 Postfix
 func sendEmailMsgToServer(emailMsg EmailMsg) error {
-
-	m := WrapForTextEmail(emailMsg)
-	m.SetHeader(
-		"From",
-		config.Conf.Email.SenderEmail,
-	)
-	err := EmailDialer.DialAndSend(m)
+	var msg *gomail.Message
+	//分类
+	switch emailMsg.Type {
+	case EmailMsgType_TEXT:
+		msg = WrapForTextEmail(emailMsg)
+	case EmailMsgType_XML:
+		msg = WrapForHTMLEmail(emailMsg)
+	}
+	//
+	msg.SetHeader("From", config.Conf.Email.SenderEmail)
+	err := EmailDialer.DialAndSend(msg)
 	if err != nil {
 		util.DebugError("提交邮件到 Postfix 失败:", err, " 收件人:", emailMsg.Email)
 		return err

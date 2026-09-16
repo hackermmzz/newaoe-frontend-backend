@@ -356,9 +356,12 @@ func OssGetDownloadFileUrls(filePaths []string, expireDuration time.Duration, at
 // OssUploadFileData 上传文件数据到OSS
 // filePath: OSS存储路径
 // data: 文件内容
-func OssUploadFileData(filePath string, data []byte) bool {
+func OssUploadFileData(filePath string, data []byte, contentType string) bool {
 	var lastErr error
-
+	opts := minio.PutObjectOptions{}
+	if contentType != "" {
+		opts.ContentType = contentType
+	}
 	for i := 0; i < config.Conf.OSS.MaxRetry; i++ {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		_, err := OssClient.PutObject(
@@ -367,7 +370,7 @@ func OssUploadFileData(filePath string, data []byte) bool {
 			filePath,
 			bytes.NewReader(data),
 			int64(len(data)),
-			minio.PutObjectOptions{},
+			opts,
 		)
 		cancel()
 		if err == nil {

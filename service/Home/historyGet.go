@@ -50,12 +50,12 @@ func StudentHistoryGet(ctx *gin.Context) {
 		id = student_id
 	}
 	//获取历史记录
-	submitRecords := getHistoryRangeById(id, beg, end)
+	submitRecords := GetHistoryRangeById(id, beg, end)
 	//
 	util.ResponseACK_MSG(ctx, "历史记录获取成功", submitRecords)
 }
 
-func getHistoryRangeById(id string, beg int, end int) []SubmitRecord {
+func GetHistoryRangeById(id string, beg int, end int) []SubmitRecord {
 	//从数据库获取提交历史
 	historyRecords := dao.CodeRunGetRangeById(id, beg, end+1)
 	if historyRecords == nil {

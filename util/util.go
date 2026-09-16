@@ -7,6 +7,7 @@ import (
 	"newaoe/config"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -327,4 +328,28 @@ func TruncateString(s string, maxLen int) string {
 // GetFileFolder 获取文件所在目录
 func GetFileFolder(file string) string {
 	return filepath.Dir(file)
+}
+
+// 生成一个指定值的数组
+func NewArray[T any](n int, value T) []T {
+	arr := make([]T, n)
+	for i := range arr {
+		arr[i] = value
+	}
+	return arr
+}
+
+// 获取一个结构体的所有json key
+func GetJsonKeys(obj interface{}) []string {
+	t := reflect.TypeOf(obj)
+	// 如果传的是指针
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	keys := make([]string, 0, t.NumField())
+
+	for i := 0; i < t.NumField(); i++ {
+		keys = append(keys, t.Field(i).Name)
+	}
+	return keys
 }

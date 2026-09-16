@@ -48,3 +48,17 @@ func WrapForTextEmail(email EmailMsg) *gomail.Message {
 	msg.SetBody("text/plain", email.Text)
 	return msg
 }
+
+// WrapForHTMLEmail 网络外链图片版本
+func WrapForHTMLEmail(email EmailMsg) *gomail.Message {
+	msg := gomail.NewMessage()
+	msg.SetHeader("From", encodeChinese("提瓦特须弥智慧之神纳西妲")+" <"+config.Conf.Email.SenderEmail+">")
+	msg.SetHeader("To", email.Email)
+	msg.SetHeader("Subject", email.Subject)
+
+	// multipart/alternative：纯文本降级 + HTML富文本
+	msg.SetBody("text/plain", email.Text)
+	msg.AddAlternative("text/html", email.Text)
+	msg.AddAlternative("text/html", email.Text, gomail.SetPartEncoding(gomail.Base64))
+	return msg
+}

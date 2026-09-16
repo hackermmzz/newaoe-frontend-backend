@@ -50,7 +50,7 @@ code:
   codeRunStatusUpdateQueueSizeThreshold: 500    #队列触发更新大小阈值
   codeRunStatusUpdateInterval: 5    #队列更新间隔 单位：秒
   codeWaitForRunQueueTopic: "CodeWaitForRun"    #代码待运行topic
-  codeSubmitTimesPerDay: 3  #一天可以提交的次数
+  codeSubmitTimesPerDay: 10  #一天可以提交的次数
   codeAssessmentTimes: 1   #考核提交一共可以提交的次数
   codeWaitTooLongTimeLimit: 60  #60分钟还没跑/跑完就算超时，重新跑
 # 注册验证码配置
@@ -85,10 +85,18 @@ oss:
   bucketName: "newaoe"              # OSS桶名称
   PublicBaseFolder: "public"        # 公共数据存储目录
   PrivateBaseFolder: "private"      # 私有用户数据目录
+  TmpBaseFolder: "temp"           #临时文件，可以随便删除
   maxRetry: 3                       #最大尝试次数
 # CDN配置
 cdn:
   host: "114.66.62.156:9090"    #CDN服务真实地址
+
+#Feedback配置
+feedback:
+  feedbackFolder: "feedback"  #存反馈的目录
+  feedbackNeedSendToEmailTopic: "FeedbackNeedSendToEmail"   #存用户反馈，后台会把这个队列里面所有的反馈发到wlh邮箱
+  feedbackSendToEmail: "2049983474@qq.com"   #反馈发送的邮箱
+
 #杂项
 other:
   assessmentCodeUploadCategory: "Assessment"  #考核代码上传的分类名称
@@ -102,5 +110,4 @@ other:
   unlimitUser: ["925106840129"]     #不限制提交用户(这类用户通常给予了判题机资源)
   superUserPassword: "newaoe"  #超级用户密码
   superUserEmail: "2049983474@qq.com"  #超级用户邮箱
-  feedbackNeedSendToEmailTopic: "FeedbackNeedSendToEmail"   #存用户反馈，后台会把这个队列里面所有的反馈发到wlh邮箱
-  feedbackSendToEmail: "2049983474@qq.com"   #反馈发送的邮箱
+  
