@@ -157,7 +157,7 @@ cp -r /root/newaoe-frontend-backend/* $dir/
 # 切换到/tmp/judge目录下
 ##################################
 
-echo "切换到/tmp/judge目录下"
+echo "切换到{{$dir}}目录下"
 cd "$dir"
 
 
