@@ -24,27 +24,17 @@ def CodeCompile(buildDir: str, logfile: str) -> tuple[bool, str]:
     docker_cmd = [
         "docker", "run",
         "--rm",
-
         # 公共预编译文件，只读
         "-v", f"{new_aoe_folder}:/app/project:ro",
-
         # 每个用户独立的编译目录
         "-v", f"{buildDir}:/app/build",
-
         "-w", "/app/",
-
         new_aoe_docker_img,
-
         "bash", "-c",
         bashScript,
     ]
 
-    with open(
-        logfile,
-        "w",
-        errors="replace"
-    ) as f:
-
+    with open(logfile,"w",errors="replace") as f:
         result = subprocess.run(
             docker_cmd,
             stdout=f,
@@ -52,11 +42,7 @@ def CodeCompile(buildDir: str, logfile: str) -> tuple[bool, str]:
             text=True,
             check=False
         )
-
     if result.returncode != 0:
-        return (
-            False,
-            Util.read_any_text(logfile)
-        )
-
+        Log(f"编译失败：{Util.read_any_text(logfile)}")
+        return (False,Util.read_any_text(logfile))
     return (True, "")

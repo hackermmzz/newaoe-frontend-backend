@@ -142,6 +142,21 @@ cd /root/newaoe-frontend-backend
 pip3 install -r requirements.txt || true
 
 
+##################################
+# cp到/tmp分区
+##################################
+
+echo "cp到/tmp分区"
+mkdir /tmp/judge
+cp -r /root/newaoe-frontend-backend/* /tmp/judge/
+
+##################################
+# 切换到/tmp/judge目录下
+##################################
+
+echo "切换到/tmp/judge目录下"
+cd /tmp/judge
+
 
 ##################################
 # 启动程序
