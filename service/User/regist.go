@@ -106,7 +106,13 @@ func UserRegistCodeSend(ctx *gin.Context) {
 	}
 	//发送验证码
 	code := util.GenerateVerifyCode(config.Conf.RegistVerifyCode.Length)
-	Email.SendTextEmail(dt.Email, "注册验证码", "你的验证码为: "+code)
+	email := Email.EmailMsg{
+		Email:   dt.Email,
+		Subject: "注册验证码",
+		Text:    "你的验证码为: " + code,
+		Type:    Email.EmailMsgType_TEXT,
+	}
+	Email.SendEmail(email)
 	//插入Redis
 	success := data.RegistVerifyCodeAdd(dt.Id, code)
 	//

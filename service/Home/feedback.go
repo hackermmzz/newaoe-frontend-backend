@@ -1,66 +1,16 @@
 package Home
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
 	"newaoe/config"
 	"newaoe/dao"
 	"newaoe/service/Email"
 	"newaoe/util"
 	"path"
-	"strconv"
 	"time"
 
-	"github.com/apache/rocketmq-client-go/v2"
-	"github.com/apache/rocketmq-client-go/v2/consumer"
-	"github.com/apache/rocketmq-client-go/v2/primitive"
 	"github.com/gin-gonic/gin"
 )
-
-var FeedBackEmailPushConsumer rocketmq.PushConsumer
-
-func FeedbackInit() {
-	//一个组足矣
-	var groups []string
-	for i := 0; i < 1; i++ {
-		groups = append(groups, "FeedbackEmailMQ_group"+strconv.Itoa(i))
-	}
-	//
-	FeedBackEmailPushConsumer = dao.NewMQPushConsumer(
-		config.Conf.Feedback.FeedbackNeedSendToEmailTopic,
-		func(ctx context.Context, msgs ...*primitive.MessageExt) (consumer.ConsumeResult, error) {
-			for _, msg := range msgs {
-				link := string(msg.Body)
-				//送到邮箱队列
-				email := Email.EmailMsg{
-					Email:   config.Conf.Feedback.FeedbackSendToEmail,
-					Text:    link,
-					Subject: "NewAOE网站反馈",
-					Type:    Email.EmailMsgType_TEXT,
-				}
-				data_byte, _ := json.Marshal(email)
-				//同步发
-				_, err := dao.RocketMQProducer.SendSync(
-					context.Background(),
-					primitive.NewMessage(
-						config.Conf.Email.EmailMQTopic,
-						data_byte,
-					),
-				)
-				if err == nil {
-					util.DebugSuccess("反馈邮件成功推送到邮箱!")
-				} else {
-					util.DebugError("FeedBackEmailPushConsumer send to emailqueue fail!:", err)
-					return consumer.ConsumeRetryLater, nil
-				}
-			}
-			return consumer.ConsumeSuccess, nil
-		},
-		groups...,
-	)
-	FeedBackEmailPushConsumer.Start()
-}
 
 func StudentFeedbackUpload(ctx *gin.Context) {
 	//解析数据
@@ -103,10 +53,15 @@ func StudentFeedbackUpload(ctx *gin.Context) {
 		util.ResponseNAK_MSG(ctx, "服务器异常!", nil)
 		return
 	}
-	//发送给我的邮件
-	data := fmt.Sprintf("反馈访问链接: %s", url)
-	msg := primitive.NewMessage(config.Conf.Feedback.FeedbackNeedSendToEmailTopic, []byte(data))
-	sendFeedbackToEmail(msg, 3) //最多尝试三次
+	//送到邮箱队列
+	link := fmt.Sprintf("反馈访问链接: %s", url)
+	email := Email.EmailMsg{
+		Email:   config.Conf.Feedback.FeedbackSendToEmail,
+		Text:    link,
+		Subject: "NewAOE网站反馈",
+		Type:    Email.EmailMsgType_TEXT,
+	}
+	Email.SendEmail(email)
 	//
 	util.ResponseACK_MSG(ctx, "发送成功!", nil)
 }
@@ -204,24 +159,4 @@ func StudentFeedbckUploadAttachment(ctx *gin.Context) {
 		DownloadVideoUrls: videosDownloadUrls,
 	}
 	util.ResponseACK_MSG(ctx, "成功", replyInfo)
-}
-
-func sendFeedbackToEmail(msg *primitive.Message, limit int) {
-	if limit <= 0 {
-		util.DebugError("sendFeedbackToEmail超出重试次数!")
-		return
-	}
-	//
-	dao.RocketMQProducer.SendAsync(context.Background(),
-		func(ctx context.Context, result *primitive.SendResult, err error) {
-			// 回调：发送完才进来
-			if err != nil {
-				util.DebugError("反馈推送失败!", err)
-				sendFeedbackToEmail(msg, limit-1)
-			} else {
-				util.DebugSuccess("反馈推送成功!")
-			}
-		},
-		msg,
-	)
 }

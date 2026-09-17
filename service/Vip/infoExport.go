@@ -31,6 +31,11 @@ func StudentInfoExport(ctx *gin.Context) {
 	f.SetActiveSheet(index)
 	//获取所有学生
 	session := dao.DB.NewSession()
+	if err := session.Begin(); err != nil {
+		util.DebugError("数据库异常!")
+		util.ResponseNAK_MSG(ctx, "数据库异常!", nil)
+		return
+	}
 	defer session.Close()
 	students := dao.UserGetAll(session)
 	if len(students) == 0 {

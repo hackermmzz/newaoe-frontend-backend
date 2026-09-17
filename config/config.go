@@ -122,9 +122,11 @@ type OSSConfig struct {
 }
 
 type FeedbackConfig struct {
-	FeedbackFolder               string `yaml:"feedbackFolder"`               //存反馈的目录
+	FeedbackFolder string `yaml:"feedbackFolder"` //存反馈的目录
+	/*已抛弃，不再去解析他，默认直接走EmailSend接口
 	FeedbackNeedSendToEmailTopic string `yaml:"feedbackNeedSendToEmailTopic"` //存用户反馈，后台会把这个队列里面所有的反馈发到wlh邮箱
-	FeedbackSendToEmail          string `yaml:"feedbackSendToEmail"`          //反馈发送的邮箱
+	*/
+	FeedbackSendToEmail string `yaml:"feedbackSendToEmail"` //反馈发送的邮箱
 }
 
 type OtherConfig struct {

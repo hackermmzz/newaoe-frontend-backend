@@ -101,7 +101,13 @@ func UserPasswordForgetCodeSend(ctx *gin.Context) {
 	}
 	//发送验证码
 	code := util.GenerateVerifyCode(config.Conf.PasswordForgetVerifyCode.Length)
-	Email.SendTextEmail(dt.Email, "重置密码验证码", "你的验证码为: "+code)
+	email := Email.EmailMsg{
+		Email:   dt.Email,
+		Subject: "重置密码验证码",
+		Text:    "你的验证码为: " + code,
+		Type:    Email.EmailMsgType_TEXT,
+	}
+	Email.SendEmail(email)
 	//插入Redis
 	success := data.PasswordForgetVerifyCodeAdd(dt.Id, code)
 	//
