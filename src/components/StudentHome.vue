@@ -224,7 +224,7 @@ export default {
             // 显示上传中状态
             ElMessage.success('正在上传头像，请稍候...');
             // 发送上传请求获取上传链接
-            const response = await fetch(`${config.upload_url}/avatar`, {
+            const response = await fetch(`${config.avatarUpdate_url}`, {
                 method: 'POST',
                 // 上传文件时不要手动设置Content-Type，浏览器会自动处理
                 credentials: 'include' // 若需要携带cookie（如身份验证）

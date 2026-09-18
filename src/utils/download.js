@@ -19,7 +19,7 @@ export const getDownloadUrl = async (
   const identifier = normalizeIdentifier(fileIdentifier);
   const requestUrl = new URL(`${config.download_url}/${identifier}`);
   if (forceDownload) {
-    requestUrl.searchParams.set('download', 'true');
+    requestUrl.searchParams.set('attachment', 'true');
   }
 
   const response = await fetch(requestUrl.toString(), {

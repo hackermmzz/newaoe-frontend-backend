@@ -215,7 +215,7 @@ export default {
     // 网络接口：获取授课老师列表（数据从resp.data提取）
     async fetchTeachers() {
       try {
-        const response = await fetch(`${config.base_url}/home/getteacher`, {
+        const response = await fetch(`${config.teacherFetch_url}`, {
           method: "GET",
           credentials: 'include'
         });
@@ -244,7 +244,7 @@ export default {
     async submitAssessment() {
       try {
         //拿到url链接
-        const urlResponse = await fetch(`${config.upload_url}/Assessment`, {
+        const urlResponse = await fetch(`${config.codeSubmit_url}/codeassessmentsubmit`, {
           method: 'POST',
           credentials: 'include',
         });
@@ -253,6 +253,7 @@ export default {
          throw new Error(urlData.msg || "提交失败，请稍后重试"  );
         }
         //根据上传链接上传
+        const key=urlData.data.key;
         const urls=urlData.data.urls;
         const headerUrl=urls[0]
         const sourceUrl=urls[1]
@@ -276,7 +277,7 @@ export default {
           method: 'POST',
           credentials: 'include',
           body:JSON.stringify({
-            "urls":[headerUrl,sourceUrl],
+            "key":key,
             "teacher":this.selectedTeacher
           }),
         });

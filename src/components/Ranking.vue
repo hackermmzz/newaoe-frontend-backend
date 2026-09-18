@@ -600,7 +600,7 @@ export default {
           beg + pageSize - 1;
 
         const requestUrl =
-          new URL(config.ranking_url+"/fetchrank");
+          new URL(config.ranking_url);
 
         requestUrl.searchParams.set(
           'range',

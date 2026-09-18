@@ -14,16 +14,22 @@ let Code_Status_Crash           = 8 //游戏崩溃
 let VIP_NONE  = 0 //没有特权
 let VIP_SUPER = 1 //特权用户
 
+// 上传的代码类别
+let Code_CommonSubmit     = 1 //普通提交
+let Code_AssessmentSubmit = 2 //考核提交
+let Code_ReRunSubmit= 3      //重新运行提交
+
 //api配置
 let base_url = "your domain here"; // 默认值
 let download_url="your download domain here";
-let upload_url="your upload domain here"
-let code_url="your admin domain here"
-let uploadConfirm_url="your uploadConfirm_url domain here"
 let ranking_url="your ranking domain here"
 let manager_url="your manager domain here"
 let history_url="your history domain here"
 let feedback_url="your feedback domain here"
+let avatarUpdate_url="your avatarUpdate domain here"
+let codeSubmit_url="your codeSubmit domain here"
+let codeRun_url="your codeRun domain here"
+let teacherFetch_url="your teacherFetch domain here"
 const isTestMode =false;
 const HistoryRecordPerPage=10;
 // 如果不是测试模式，则使用生产环境的base_url
@@ -34,17 +40,22 @@ if (isTestMode) {
     base_url = "http://114.66.62.156:8080/api";
 }
 download_url=base_url+"/download";
-upload_url=base_url+"/upload"
-uploadConfirm_url=base_url+"/uploadconfirm"
-code_url=base_url+"/code"
-ranking_url=base_url+"/rank"
+codeSubmit_url=base_url+"/codesubmit"
+codeRun_url=base_url+"/coderun"
+ranking_url=codeRun_url+"/fetchrank"
 manager_url=base_url+"/vip"
-history_url=base_url+"/home"
+history_url=base_url+"/coderun/fetchhistory"
 feedback_url=base_url+"/home"
+avatarUpdate_url=base_url+"/home/avatarUpdate"
+teacherFetch_url=base_url+"/codesubmit/fetchteacher"
 // 导出配置
 module.exports = {
+    Code_CommonSubmit,
+    Code_AssessmentSubmit,
+    Code_ReRunSubmit,
     ranking_url,
     manager_url,
+    teacherFetch_url,
     manager_student_url: manager_url + "/fetchStudentInfos",
     manager_history_url: manager_url + "/getstudenthistory",
     manager_info_export_url: manager_url + "/infoExport",
@@ -52,13 +63,13 @@ module.exports = {
     RankingRecordPerPage: 10,
     VIP_NONE,
     VIP_SUPER,
+    avatarUpdate_url,
+    codeSubmit_url,
+    codeRun_url,
     base_url,
     download_url,
-    uploadConfirm_url,
     feedback_url,
     history_url,
-    upload_url,
-    code_url: code_url,
     HistoryRecordPerPage,
     Code_Status_Error,
     Code_Status_Wait,

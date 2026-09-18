@@ -592,7 +592,7 @@ const GetHistory = async (page = 1, pageSize = config.HistoryRecordPerPage) => {
   try {
     const beg = (page - 1) * pageSize;
     const end = beg + pageSize - 1;
-    const historyUrl = props.historyUrl || `${config.history_url}/gethistory`;
+    const historyUrl = props.historyUrl || `${config.history_url}`;
     const requestUrl = new URL(historyUrl);
     requestUrl.searchParams.set('range', `${beg}:${end}`);
     Object.entries(props.requestParams || {}).forEach(([key, value]) => {
@@ -633,7 +633,7 @@ const GetHistory = async (page = 1, pageSize = config.HistoryRecordPerPage) => {
       return timeB - timeA;
     });
     // 校验必要字段（移除无效记录）
-    const requiredFields = ['header', 'source', 'description', 'submittime', 'headersize', 'sourcesize', 'status', 'indices'];
+    const requiredFields = ['header', 'source', 'description', 'submittime', 'headersize', 'sourcesize', 'status', 'indices','class'];
     records = records.filter(item => {
       const missingFields = requiredFields.filter(field => !(field in item));
       if (missingFields.length > 0) {
@@ -688,15 +688,12 @@ const handleRun = async (item) => {
   if (isReadOnly.value) return;
   try {
     historyList.value = [...historyList.value];
-    
-    const resp = await fetch(`${config.code_url}/CodeReRun`, {
+    const resp = await fetch(`${config.codeRun_url}/coderun`, {
       method: 'POST',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
-        source: item.source,
-        header: item.header,
-        description: item.description
+        indices:item.indices,
+        class:config.Code_ReRunSubmit
       })
     });
 
@@ -762,8 +759,8 @@ const submitFiles = async () => {
   isSubmitting.value = true;
   try {
     //获取三个上传链接
-    const uploadURLGet=await fetch(`${config.upload_url}/code`, {
-      method: 'POST',
+    const uploadURLGet=await fetch(`${config.codeSubmit_url}/codecommonsubmit`, {
+      method: 'GET',
       credentials: 'include'
     });
     const resData = await uploadURLGet.json();
@@ -771,6 +768,7 @@ const submitFiles = async () => {
       throw new Error(resData.msg || '文件提交失败');
     }
     //获取url
+    const key=resData.data.key;
     const urls=resData.data.urls;
     const headerURL=urls[0]
     const sourceURL=urls[1]
@@ -786,7 +784,7 @@ const submitFiles = async () => {
         'Content-Type':sourceFile.value.type
       }
     })
-    const p3=axios.put(descURL,description.value,{
+    const p3=axios.put(descURL,description.value ||"原神启动!" ,{
       headers:{
         'Content-Type':'text/plain'
       }
@@ -796,11 +794,11 @@ const submitFiles = async () => {
        throw new Error('文件提交失败，请重试');
     }
     //告诉服务器上传成功了
-    const tellServer=await fetch(`${config.uploadConfirm_url}/code`,{
+    const tellServer=await fetch(`${config.codeSubmit_url}/codecommonsubmitACK`,{
       method:'POST',
       credentials:'include',
       body:JSON.stringify({
-        urls:urls
+        key:key
       })
     })
     const dt=await tellServer.json()
@@ -809,6 +807,20 @@ const submitFiles = async () => {
     }
     //
     ElMessage.success('文件提交成功！');
+    //运行代码
+     const coderun=await fetch(`${config.codeRun_url}/coderun`, {
+      method: 'POST',
+      credentials: 'include',
+      body:JSON.stringify({
+        indices:dt.data.indices,
+        class:config.Code_CommonSubmit
+      })
+    });
+    const coderunData=await coderun.json()
+    if (!coderun.ok || !coderunData.status){
+       throw new Error ('运行失败，请重试' | coderunData.msg);
+    }
+    ElMessage.success('运行成功！');
     // 提交后重新获取当前页数据（保证新记录显示）
     const newHistory = await GetHistory(currentPage.value, pageSize.value);
     historyList.value = newHistory;
