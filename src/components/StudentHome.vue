@@ -24,8 +24,22 @@
         <p class="text-gray-500 text-sm mb-1">绑定的邮箱</p>
         <p class="font-medium text-lg text-blue-600">{{ userInfo.email }}</p>
       </div>
+
+      <!-- 4. 账号安全 -->
+      <div class="mb-8 bg-gray-50 p-6 rounded-lg flex items-center justify-between gap-4">
+        <div>
+          <p class="font-medium text-gray-900">账号密码</p>
+          <p class="mt-1 text-sm text-gray-500">通过绑定邮箱验证码修改密码</p>
+        </div>
+        <router-link
+          to="/passwordforget"
+          class="shrink-0 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+        >
+          修改密码
+        </router-link>
+      </div>
       
-      <!-- 4. 反馈建议模块 -->
+      <!-- 5. 反馈建议模块 -->
       <div>
         <h3 class="text-xl font-semibold mb-4 text-center">反馈与建议</h3>
         <div class="bg-gray-50 p-6 rounded-lg">
