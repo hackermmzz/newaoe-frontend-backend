@@ -10,6 +10,7 @@ require (
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/minio/minio-go/v7 v7.0.100
+	github.com/xuri/excelize/v2 v2.11.0
 	golang.org/x/crypto v0.53.0
 	google.golang.org/grpc v1.80.0
 	google.golang.org/protobuf v1.36.11
@@ -72,7 +73,6 @@ require (
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.1 // indirect
 	github.com/xuri/efp v0.0.1 // indirect
-	github.com/xuri/excelize/v2 v2.11.0 // indirect
 	github.com/xuri/nfp v0.0.2-0.20250530014748-2ddeb826f9a9 // indirect
 	go.mongodb.org/mongo-driver/v2 v2.5.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
