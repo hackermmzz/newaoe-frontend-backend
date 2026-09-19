@@ -11,8 +11,9 @@ import (
 
 // 处理一下数据
 type RankFetchInfo struct {
-	model.RankInfo
-	Avatar string `json:"avatar"`
+	RankInfo model.RankInfo    `json:"rankinfo"`
+	Msg      model.RankMsgInfo `json:"msg"`
+	Avatar   string            `json:"avatar"`
 }
 
 func RankFetch(beg int, end int) ([]RankFetchInfo, error) {
@@ -23,11 +24,12 @@ func RankFetch(beg int, end int) ([]RankFetchInfo, error) {
 		return nil, util.NewError("服务器异常")
 	}
 	defer session.Rollback()
-	//
+	//获取RankInfo
 	info := dao.RankGetByRange(session, beg, end)
 	if info == nil {
 		info = make([]model.RankInfo, 0)
 	}
+
 	//获取人物头像
 	ids := make([]string, len(info))
 	for i, d := range info {
@@ -45,8 +47,11 @@ func RankFetch(beg int, end int) ([]RankFetchInfo, error) {
 	finaldata := make([]RankFetchInfo, len(info))
 
 	for i, d := range info {
+		var msgInfo model.RankMsgInfo
+		msgInfo.Unmarshal([]byte(d.Msg))
 		finaldata[i].Avatar = idToAvatar[d.ID]
 		finaldata[i].RankInfo = d
+		finaldata[i].Msg = msgInfo
 	}
 
 	return finaldata, nil

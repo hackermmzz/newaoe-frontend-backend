@@ -193,10 +193,6 @@ func UserGetAll(session *xorm.Session) []model.Student {
 	return list
 }
 
-// 判断用户是否允许注册(不允许未授权用户注册)
-func UserIdLegal(id string) bool {
-	return true
-}
 
 // 获取用户密码(编码后的密码)
 func UserGetPassword(session *xorm.Session, id string) string {

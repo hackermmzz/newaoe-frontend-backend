@@ -1,6 +1,24 @@
 package model
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
+
+type RankMsgInfo struct {
+	Description string            `json:"description"`
+	Status      CodeRunStatusInfo `json:"status"`
+}
+
+func (c RankMsgInfo) Marshal() string {
+	d, _ := json.Marshal(c)
+	return string(d)
+}
+
+func (c *RankMsgInfo) Unmarshal(data []byte) error {
+	err := json.Unmarshal(data, &c)
+	return err
+}
 
 type RankInfo struct {
 	ID         string    `json:"id" xorm:"id pk"`              //用户学号
@@ -8,7 +26,7 @@ type RankInfo struct {
 	SubmitTime time.Time `json:"submittime" xorm:"submittime"` //提交日期
 	Score      int       `json:"score" xorm:"score"`           //分数
 	Frame      int       `json:"frame" xorm:"frame"`           //运行时间
-	Msg        string    `json:"msg" xorm:"msg"`               //运行结果
+	Msg        string    `json:"msg" xorm:"msg"`               //运行结果(格式为RankMsgInfo)
 }
 
 func (r RankInfo) TableName() string {

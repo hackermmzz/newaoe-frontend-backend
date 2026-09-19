@@ -177,11 +177,10 @@ func updateRank(session *xorm.Session, dt []model.CodeRunInfo) {
 		if len(info.Description) == 0 {
 			info.Description = "原神启动!"
 		}
-		msgMp := make(map[string]string)
-		msgMp["desc"] = info.Description
-		msgMp["status"] = codeRunStatusInfo.Data
-		msgByte, _ := json.Marshal(msgMp)
-		rankinfo.Msg = string(msgByte)
+		rankinfo.Msg = model.RankMsgInfo{
+			Description: info.Description,
+			Status:      codeRunStatusInfo,
+		}.Marshal()
 		rankinfo.Score = codeRunStatusInfo.Score
 		rankinfo.Frame = codeRunStatusInfo.Frame
 		rankinfo.Win = codeRunStatusInfo.Win
