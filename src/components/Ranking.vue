@@ -282,160 +282,57 @@ export default {
     /*
      * 检查并规范后端返回的数据。
      *
-     * 正确格式：
+     * 当前正确格式：
      *
      * {
-     *   id: "923106840404",
-     *   avatar: "public/avatar/default.png",
-     *   win: true,
-     *   score: 100,
-     *   frame: 98,
-     *   submittime: "2026-09-12T20:07:41Z",
-     *   msg: "Accepted"
+     *   rankinfo: {
+     *     id: "923106840404",
+     *     win: true,
+     *     score: 100,
+     *     frame: 98,
+     *     submittime: "2026-09-12T20:07:41Z"
+     *   },
+     *   msg: { description: "Accepted", status: {...} },
+     *   avatar: "public/avatar/default.png"
      * }
      */
-    const normalizeNestedStatusJson = value => {
-      if (typeof value === 'string') {
-        const jsonStart = value.indexOf('{');
-
-        if (jsonStart < 0) {
-          return value;
-        }
-
-        const prefix = value.slice(0, jsonStart);
-        const candidate = value.slice(jsonStart).trim();
-
-        try {
-          return `${prefix}${JSON.stringify(
-            normalizeNestedStatusJson(JSON.parse(candidate))
-          )}`;
-        } catch (error) {
-          return value;
-        }
-      }
-
-      if (Array.isArray(value)) {
-        return value.map(normalizeNestedStatusJson);
-      }
-
-      if (value && typeof value === 'object') {
-        return Object.fromEntries(
-          Object.entries(value).map(([key, nestedValue]) => [
-            key,
-            normalizeNestedStatusJson(nestedValue)
-          ])
-        );
-      }
-
-      return value;
-    };
-
-    const formatStatus = value => {
-      if (value === null || value === undefined) {
-        return '';
-      }
-
-      const formatParsedStatus = parsed => {
-        if (
-          parsed &&
-          typeof parsed === 'object' &&
-          Object.prototype.hasOwnProperty.call(parsed, 'data')
-        ) {
-          return formatStatus(parsed.data);
-        }
-
-        if (
-          parsed &&
-          typeof parsed === 'object' &&
-          (parsed.line !== undefined || parsed.error !== undefined)
-        ) {
-          const details = [];
-
-          if (parsed.line !== undefined) {
-            details.push(`第 ${parsed.line} 行`);
-          }
-
-          if (parsed.error !== undefined) {
-            details.push(String(parsed.error));
-          }
-
-          return `编译失败：${details.join('：')}`;
-        }
-
-        if (typeof parsed === 'string') {
-          return parsed;
-        }
-
-        try {
-          return JSON.stringify(
-            normalizeNestedStatusJson(parsed)
-          );
-        } catch (error) {
-          return String(parsed);
-        }
-      };
-
-      if (typeof value === 'string') {
-        const jsonStart = value.indexOf('{');
-
-        // status 没有 JSON 起始符时，保持原始文本。
-        if (jsonStart < 0) {
-          return value;
-        }
-
-        const prefix = value.slice(0, jsonStart);
-        const candidate = value.slice(jsonStart).trim();
-
-        try {
-          const parsed = JSON.parse(candidate);
-
-          return `${prefix}${formatParsedStatus(parsed)}`;
-        } catch (error) {
-          // status 中的 JSON 解析失败时，保持整个 status 原样。
-          return value;
-        }
-      }
-
-      return formatParsedStatus(value);
-    };
-
     const normalizeMessage = value => {
       if (value === null || value === undefined) {
         return '';
       }
 
-      const rawMessage = String(value);
-      let message;
+      let message = value;
+      let rawMessage = '';
 
-      // msg 本身由 json.Marshal(msgMp) 生成，只解析这一层。
-      try {
-        message = JSON.parse(rawMessage);
-      } catch (error) {
-        // 外层 msg 解析失败时，直接展示原始内容。
-        return rawMessage;
+      if (typeof value === 'string') {
+        rawMessage = value;
+
+        // 旧接口的 msg 是 JSON 字符串；解析失败时保留原文。
+        try {
+          message = JSON.parse(rawMessage);
+        } catch (error) {
+          return rawMessage;
+        }
       }
 
       if (
         !message ||
         typeof message !== 'object' ||
         Array.isArray(message) ||
-        !Object.prototype.hasOwnProperty.call(message, 'desc') ||
-        !Object.prototype.hasOwnProperty.call(message, 'status')
+        !Object.prototype.hasOwnProperty.call(message, 'description')
       ) {
-        return rawMessage;
+        return typeof value === 'string'
+          ? rawMessage
+          : String(value);
       }
 
-      // desc 不做任何 JSON 解析或内容清洗。
-      const desc =
-        message.desc === null || message.desc === undefined
+      // status 是结构体，当前只显示 description，不展开或格式化 status。
+      const description =
+        message.description === null || message.description === undefined
           ? ''
-          : String(message.desc);
+          : String(message.description);
 
-      const status = formatStatus(message.status);
-
-      return [desc, status]
-        .filter(text => text !== '')
-        .join(' | ');
+      return description;
     };
 
     const normalizeRecord = item => {
@@ -443,30 +340,37 @@ export default {
         throw new Error('排行榜记录格式不正确');
       }
 
+      // 新接口把原来的排行字段放进 rankinfo，msg/avatar 保持在外层。
+      // 保留旧的平铺字段读取方式，便于接口灰度期间兼容旧数据。
+      const rankInfo =
+        item.rankinfo && typeof item.rankinfo === 'object'
+          ? item.rankinfo
+          : item;
+
       if (
-        typeof item.id !== 'string' ||
-        !item.id.trim()
+        typeof rankInfo.id !== 'string' ||
+        !rankInfo.id.trim()
       ) {
         throw new Error(
           '排行榜记录 id 格式不正确'
         );
       }
 
-      if (typeof item.win !== 'boolean') {
+      if (typeof rankInfo.win !== 'boolean') {
         throw new Error(
           '排行榜记录 win 格式不正确'
         );
       }
 
-      if (!Number.isSafeInteger(item.score)) {
+      if (!Number.isSafeInteger(rankInfo.score)) {
         throw new Error(
           '排行榜记录 score 格式不正确'
         );
       }
 
       if (
-        !Number.isSafeInteger(item.frame) ||
-        item.frame < 0
+        !Number.isSafeInteger(rankInfo.frame) ||
+        rankInfo.frame < 0
       ) {
         throw new Error(
           '排行榜记录 frame 格式不正确'
@@ -474,14 +378,14 @@ export default {
       }
 
       return {
-        id: item.id,
+        id: rankInfo.id,
         avatar: String(item.avatar ?? '').trim(),
-        win: item.win,
-        score: item.score,
-        frame: item.frame,
+        win: rankInfo.win,
+        score: rankInfo.score,
+        frame: rankInfo.frame,
         submittime:
-          item.submittime ?? '',
-        msg: normalizeMessage(item.msg)
+          rankInfo.submittime ?? '',
+        msg: normalizeMessage(item.msg ?? rankInfo.msg)
       };
     };
 
@@ -619,9 +523,14 @@ export default {
               requestController.signal
           }
         );
-        let data=await response.json();
-          if (!response.ok || !data.status) {
-          throw new Error(data.msg || "运行失败");
+        const data = await response.json();
+
+        // 接口通常返回 { status, data }；如果直接返回数组，也允许直接使用。
+        if (
+          !response.ok ||
+          (!Array.isArray(data) && !data?.status)
+        ) {
+          throw new Error(data?.msg || '运行失败');
         }
 
 
@@ -637,7 +546,9 @@ export default {
          * }
          */
         // fetch 的 JSON 可能直接是数组，也兼容 { data: [...] } 包装形式。
-        const nextData =data?.data || [];
+        const nextData = Array.isArray(data)
+          ? data
+          : data?.data || [];
 
         console.log(
           '[排行榜] 主接口返回：',
