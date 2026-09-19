@@ -24,6 +24,13 @@
             >
               学生统计
             </router-link>
+            <router-link
+              to="/home/manager/feedback"
+              class="text-gray-600 hover:text-blue-600 transition-colors"
+              active-class="text-blue-600 font-medium"
+            >
+              反馈记录
+            </router-link>
           </nav>
         </header>
 

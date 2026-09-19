@@ -68,6 +68,11 @@ const routes = [
                 requestParams: { student_id: studentId }
               }
             }
+          },
+          {
+            path: 'feedback',
+            name: 'ManagerFeedback',
+            component: () => import('./components/FeedbackRecords.vue')
           }
         ]
       }

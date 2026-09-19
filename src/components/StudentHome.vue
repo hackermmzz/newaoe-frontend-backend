@@ -225,7 +225,7 @@ export default {
             ElMessage.success('正在上传头像，请稍候...');
             // 发送上传请求获取上传链接
             const response = await fetch(`${config.avatarUpdate_url}`, {
-                method: 'POST',
+                method: 'GET',
                 // 上传文件时不要手动设置Content-Type，浏览器会自动处理
                 credentials: 'include' // 若需要携带cookie（如身份验证）
             });
@@ -236,7 +236,7 @@ export default {
                 throw new Error(result.msg || '上传失败，请重试');
             }
             // 上传到指定链接
-            const uploadUrl=result.data.urls[0];
+            const uploadUrl=result.data.url;
             const resp=await axios.put(uploadUrl,file,{
               headers:{
                 'Content-Type':file.type
@@ -244,18 +244,6 @@ export default {
             })
             if (!resp.status){
               throw new Error('上传失败，请重试',resp.status);
-            }
-            //告诉服务器上传成功了
-            const resp0=await fetch(`${config.uploadConfirm_url}/avatar`,{
-              method: 'POST',
-              credentials: 'include',
-              body:JSON.stringify({
-                urls:[uploadUrl]
-              })
-            });
-            const resp00=await resp0.json()
-            if (!resp0.ok || !resp00.status){
-              throw new Error(resp00.msg || '上传失败，请重试');
             }
             //
             ElMessage.success('头像上传成功！');

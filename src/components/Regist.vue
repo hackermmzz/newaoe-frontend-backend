@@ -611,3 +611,74 @@ export default {
   color: #1890ff;
 }
 </style>
+
+<style>
+html[data-theme='dark'] .register-container {
+  background-color: #0b1120 !important;
+}
+
+html[data-theme='effect'] .register-container {
+  background-color: transparent !important;
+}
+
+html[data-theme='dark'] .register-bg {
+  background: radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.2), transparent 55%);
+  opacity: 1;
+}
+
+html[data-theme='effect'] .register-bg {
+  background: transparent;
+  opacity: 0;
+}
+
+html[data-theme='dark'] .register-card,
+html[data-theme='effect'] .register-card {
+  background: rgba(15, 23, 42, 0.9) !important;
+  border: 1px solid rgba(125, 211, 252, 0.24);
+  box-shadow: 0 18px 60px rgba(2, 8, 23, 0.45);
+  backdrop-filter: blur(16px);
+}
+
+html[data-theme='dark'] .register-title,
+html[data-theme='effect'] .register-title,
+html[data-theme='dark'] .form-label,
+html[data-theme='effect'] .form-label {
+  color: #f1f5f9;
+}
+
+html[data-theme='dark'] .register-desc,
+html[data-theme='effect'] .register-desc,
+html[data-theme='dark'] .login-section,
+html[data-theme='effect'] .login-section {
+  color: #cbd5e1;
+}
+
+html[data-theme='dark'] .register-container .form-input,
+html[data-theme='effect'] .register-container .form-input {
+  color: #f8fafc;
+  background: rgba(15, 23, 42, 0.82);
+  border-color: rgba(148, 163, 184, 0.42);
+}
+
+html[data-theme='dark'] .register-container .form-input::placeholder,
+html[data-theme='effect'] .register-container .form-input::placeholder {
+  color: #94a3b8;
+}
+
+html[data-theme='dark'] .register-container .input-icon,
+html[data-theme='effect'] .register-container .input-icon,
+html[data-theme='dark'] .register-container .input-action,
+html[data-theme='effect'] .register-container .input-action {
+  color: #94a3b8;
+}
+
+html[data-theme='effect'] .register-container .register-button {
+  background: linear-gradient(135deg, #0891b2, #4f46e5);
+  box-shadow: 0 8px 24px rgba(14, 165, 233, 0.24);
+}
+
+html[data-theme='effect'] .register-container .register-button:disabled {
+  background: rgba(71, 85, 105, 0.72);
+  box-shadow: none;
+}
+</style>

@@ -440,8 +440,8 @@ const statusLabels = {
   [config.Code_Status_Compile_Success]: '编译成功',
   [config.Code_Status_Compile_Fail]: '编译失败',
   [config.Code_Status_Running]: '运行中',
-  [config.Code_Status_Success]: '运行成功',
-  [config.Code_Status_Fail]: '运行失败',
+  [config.Code_Status_Success]: '游戏胜利',
+  [config.Code_Status_Fail]: '游戏失败',
   [config.Code_Status_Crash]: '游戏崩溃',
 };
 

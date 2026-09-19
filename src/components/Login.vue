@@ -409,4 +409,77 @@ export default {
 .register-button:hover {
   color: #1890ff;
 }
+
+</style>
+
+<style>
+/* 主题适配：登录页原有的局部样式优先级较高，因此在这里显式接入全局主题。 */
+html[data-theme='dark'] .login-container {
+  background-color: #0b1120 !important;
+}
+
+html[data-theme='effect'] .login-container {
+  background-color: transparent !important;
+}
+
+html[data-theme='dark'] .login-bg {
+  background: radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.2), transparent 55%);
+  opacity: 1;
+}
+
+html[data-theme='effect'] .login-bg {
+  background: transparent;
+  opacity: 0;
+}
+
+html[data-theme='dark'] .login-card,
+html[data-theme='effect'] .login-card {
+  background: rgba(15, 23, 42, 0.9) !important;
+  border: 1px solid rgba(125, 211, 252, 0.24);
+  box-shadow: 0 18px 60px rgba(2, 8, 23, 0.45);
+  backdrop-filter: blur(16px);
+}
+
+html[data-theme='dark'] .login-title,
+html[data-theme='effect'] .login-title,
+html[data-theme='dark'] .form-label,
+html[data-theme='effect'] .form-label {
+  color: #f1f5f9;
+}
+
+html[data-theme='dark'] .login-desc,
+html[data-theme='effect'] .login-desc,
+html[data-theme='dark'] .remember-me,
+html[data-theme='effect'] .remember-me,
+html[data-theme='dark'] .register-section,
+html[data-theme='effect'] .register-section {
+  color: #cbd5e1;
+}
+
+html[data-theme='dark'] .form-input,
+html[data-theme='effect'] .form-input {
+  color: #f8fafc;
+  background: rgba(15, 23, 42, 0.82);
+  border-color: rgba(148, 163, 184, 0.42);
+}
+
+html[data-theme='dark'] .form-input::placeholder,
+html[data-theme='effect'] .form-input::placeholder {
+  color: #94a3b8;
+}
+
+html[data-theme='dark'] .input-icon,
+html[data-theme='effect'] .input-icon {
+  color: #94a3b8;
+}
+
+html[data-theme='effect'] .login-button {
+  background: linear-gradient(135deg, #0891b2, #4f46e5);
+  box-shadow: 0 8px 24px rgba(14, 165, 233, 0.24);
+}
+
+html[data-theme='effect'] .login-button:disabled {
+  background: rgba(71, 85, 105, 0.72);
+  box-shadow: none;
+}
 </style>

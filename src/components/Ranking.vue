@@ -48,6 +48,39 @@
         </p>
       </div>
 
+      <!-- 分页控件放在榜单上方，便于直接翻页。 -->
+      <div
+        class="p-4 border-b border-gray-100 flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+      >
+        <p class="text-sm text-gray-500">
+          第 {{ currentPage }} 页，本页 {{ records.length }} 条
+        </p>
+
+        <div class="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            class="ranking-button border border-gray-300 hover:bg-gray-50"
+            :disabled="isLoading || currentPage <= 1"
+            @click="loadRanking(currentPage - 1)"
+          >
+            上一页
+          </button>
+
+          <span class="text-sm text-gray-600">
+            第 {{ currentPage }} 页
+          </span>
+
+          <button
+            type="button"
+            class="ranking-button border border-gray-300 hover:bg-gray-50"
+            :disabled="isLoading || !hasNextPage"
+            @click="loadRanking(currentPage + 1)"
+          >
+            下一页
+          </button>
+        </div>
+      </div>
+
       <!-- 加载状态 -->
       <div
         v-if="isLoading"
@@ -188,38 +221,6 @@
         </table>
       </div>
 
-      <!-- 分页 -->
-      <div
-        class="p-4 border-t border-gray-100 flex flex-col lg:flex-row lg:items-center justify-between gap-4"
-      >
-        <p class="text-sm text-gray-500">
-          第 {{ currentPage }} 页，本页 {{ records.length }} 条
-        </p>
-
-        <div class="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            class="ranking-button border border-gray-300 hover:bg-gray-50"
-            :disabled="isLoading || currentPage <= 1"
-            @click="loadRanking(currentPage - 1)"
-          >
-            上一页
-          </button>
-
-          <span class="text-sm text-gray-600">
-            第 {{ currentPage }} 页
-          </span>
-
-          <button
-            type="button"
-            class="ranking-button border border-gray-300 hover:bg-gray-50"
-            :disabled="isLoading || !hasNextPage"
-            @click="loadRanking(currentPage + 1)"
-          >
-            下一页
-          </button>
-        </div>
-      </div>
     </div>
   </section>
 </template>

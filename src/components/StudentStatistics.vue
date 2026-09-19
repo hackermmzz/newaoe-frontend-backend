@@ -29,48 +29,10 @@
       {{ errorMessage }}
     </div>
 
-    <div v-if="isLoading" class="py-16 text-center text-gray-500">
-      正在加载学生信息...
-    </div>
-
-    <div v-else-if="!students.length" class="py-16 text-center text-gray-500">
-      暂无学生数据
-    </div>
-
-    <div v-else class="grid grid-cols-1 gap-4">
-      <button
-        v-for="student in students"
-        :key="student.id"
-        type="button"
-        class="bg-white rounded-xl border border-gray-200 p-5 text-left shadow-sm hover:shadow-md hover:border-blue-300 transition-all"
-        @click="openStudentHistory(student.id)"
-      >
-        <div class="flex items-center gap-4">
-          <img
-            v-if="student.avatarUrl"
-            :src="student.avatarUrl"
-            :alt="`${student.id} 的头像`"
-            class="w-16 h-16 rounded-full object-cover border border-gray-200 bg-gray-50"
-          >
-          <div
-            v-else
-            class="w-16 h-16 rounded-full flex items-center justify-center bg-gray-100 text-gray-400"
-            aria-hidden="true"
-          >
-            <i class="fa fa-user text-2xl"></i>
-          </div>
-          <div class="min-w-0">
-            <p class="font-semibold text-gray-800 truncate">{{ student.id }}</p>
-            <p class="mt-1 text-sm text-gray-500">注册时间</p>
-            <p class="text-sm text-gray-600 truncate">{{ formatDate(student.registDate) }}</p>
-          </div>
-        </div>
-      </button>
-    </div>
-
+    <!-- 分页控件放在学生列表上方，便于直接翻页。 -->
     <div
       v-if="students.length && !isLoading"
-      class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-gray-200 pt-4"
+      class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-y border-gray-200 py-4"
     >
       <p class="text-sm text-gray-500">
         第 {{ currentPage }} 页，本页 {{ students.length }} 条
@@ -114,6 +76,46 @@
         </button>
       </div>
     </div>
+
+    <div v-if="isLoading" class="py-16 text-center text-gray-500">
+      正在加载学生信息...
+    </div>
+
+    <div v-else-if="!students.length" class="py-16 text-center text-gray-500">
+      暂无学生数据
+    </div>
+
+    <div v-else class="grid grid-cols-1 gap-4">
+      <button
+        v-for="student in students"
+        :key="student.id"
+        type="button"
+        class="bg-white rounded-xl border border-gray-200 p-5 text-left shadow-sm hover:shadow-md hover:border-blue-300 transition-all"
+        @click="openStudentHistory(student.id)"
+      >
+        <div class="flex items-center gap-4">
+          <img
+            v-if="student.avatarUrl"
+            :src="student.avatarUrl"
+            :alt="`${student.id} 的头像`"
+            class="w-16 h-16 rounded-full object-cover border border-gray-200 bg-gray-50"
+          >
+          <div
+            v-else
+            class="w-16 h-16 rounded-full flex items-center justify-center bg-gray-100 text-gray-400"
+            aria-hidden="true"
+          >
+            <i class="fa fa-user text-2xl"></i>
+          </div>
+          <div class="min-w-0">
+            <p class="font-semibold text-gray-800 truncate">{{ student.id }}</p>
+            <p class="mt-1 text-sm text-gray-500">注册时间</p>
+            <p class="text-sm text-gray-600 truncate">{{ formatDate(student.registDate) }}</p>
+          </div>
+        </div>
+      </button>
+    </div>
+
   </section>
 </template>
 

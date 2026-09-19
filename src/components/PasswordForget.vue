@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8 overflow-hidden relative">
+  <div class="password-forget-page min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8 overflow-hidden relative">
     <!-- 背景装饰元素：增加深度感和现代感 -->
     <div class="absolute top-10 left-10 w-40 h-40 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob"></div>
     <div class="absolute top-10 right-10 w-40 h-40 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-2000"></div>
@@ -367,8 +367,8 @@ export default {
         });
         
         const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.message || '注册失败，请稍后重试');
+        if (!response.ok || !data.status) {
+          throw new Error(data.msg || '修改失败，请稍后重试');
         }
         
         // 注册成功：提示 + 跳转登录
@@ -448,5 +448,40 @@ export default {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
+}
+</style>
+
+<style>
+html[data-theme='dark'] .password-forget-page,
+html[data-theme='effect'] .password-forget-page {
+  background-image: none !important;
+  background-color: transparent !important;
+}
+
+html[data-theme='dark'] .password-forget-page > .relative.z-10,
+html[data-theme='effect'] .password-forget-page > .relative.z-10 {
+  background-color: rgba(15, 23, 42, 0.9) !important;
+  border: 1px solid rgba(125, 211, 252, 0.24);
+  box-shadow: 0 18px 60px rgba(2, 8, 23, 0.45);
+  backdrop-filter: blur(16px);
+}
+
+html[data-theme='dark'] .password-forget-page input,
+html[data-theme='effect'] .password-forget-page input {
+  color: #f8fafc;
+  background-color: rgba(15, 23, 42, 0.82);
+  border-color: rgba(148, 163, 184, 0.42);
+}
+
+html[data-theme='dark'] .password-forget-page input::placeholder,
+html[data-theme='effect'] .password-forget-page input::placeholder {
+  color: #94a3b8;
+}
+
+html[data-theme='dark'] .password-forget-page label,
+html[data-theme='effect'] .password-forget-page label,
+html[data-theme='dark'] .password-forget-page h2,
+html[data-theme='effect'] .password-forget-page h2 {
+  color: #f1f5f9 !important;
 }
 </style>

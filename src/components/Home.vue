@@ -77,7 +77,7 @@ export default {
         },
         {
           name: '管理平台',
-          description: '查看所有学生信息及提交历史',
+          description: '查看学生信息、提交历史及反馈记录',
           path: '/home/manager',
           requiresVip: true
         },
