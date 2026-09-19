@@ -43,18 +43,7 @@ func UploadFileWithCachePath(id string, filePath []string, expireDuration time.D
 }
 
 // 根据ctx字段里面的key解析获取得到文件的数组(不会发送消息)
-func UploadParseAndDelKey(body []byte, keyName string, id string) []string {
-	//解析Post请求体
-	postMap := make(map[string]string)
-	if !util.JsonBytes(body, &postMap) {
-		return nil
-	}
-	//从redis里面获取信息
-	key, exist := postMap[keyName]
-	if !exist {
-		util.DebugError("UploadParseKey:数据格式错误!")
-		return nil
-	}
+func UploadParseAndDelKey(key string) []string {
 	byte_data, exist := redis.RedisGet(context.Background(), key)
 	if !exist {
 		util.DebugError("UploadParseKey:redis key不存在!")

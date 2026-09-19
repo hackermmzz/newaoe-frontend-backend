@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net/url"
@@ -94,7 +95,7 @@ func RandomString(n int) string {
 }
 
 // 生成cookie的tooken(jwt格式)
-func GenerateCookieToken(ctx *gin.Context, expire_time int, secretKey []byte, info map[string]interface{}) string {
+func GenerateCookieToken(ip string, expire_time int, secretKey []byte, info map[string]interface{}) string {
 	//
 	expireTime := UTC_Time().Add(time.Duration(expire_time) * time.Second)
 	data := jwt.MapClaims{}
@@ -104,7 +105,7 @@ func GenerateCookieToken(ctx *gin.Context, expire_time int, secretKey []byte, in
 	//添加一些额外数据
 	data["wlh_to_you"] = "为什么不玩原神?!"
 	data["random"] = RandomString(32)
-	data["ip"] = ctx.ClientIP()
+	data["ip"] = ip
 	data["expire_time"] = expireTime
 	data["login_time"] = UTC_Time()
 	//
@@ -386,4 +387,16 @@ func GetTimeNanoStr() string {
 // 判断target是否为base前缀
 func IsPrefix(s string, prefix string) bool {
 	return strings.HasPrefix(s, prefix)
+}
+
+func NewError(args ...interface{}) error {
+	final_err := ""
+	for i, v := range args {
+		if i == 0 {
+			final_err = fmt.Sprintf("%v", v)
+		} else {
+			final_err = fmt.Sprintf("%s %v", final_err, v)
+		}
+	}
+	return errors.New(final_err)
 }

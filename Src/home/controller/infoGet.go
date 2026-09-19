@@ -16,6 +16,6 @@ func StudentInfoGet(ctx *gin.Context) {
 	//获取id
 	id := dt["id"].(string)
 	//返回数据
-	usr := dao.UserGet(id)
+	usr := dao.UserGet(nil, id)
 	util.ResponseACK_MSG(ctx, "获取成功!", usr)
 }

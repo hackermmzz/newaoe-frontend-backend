@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"newaoe/Src/user/dao"
 	"newaoe/Src/user/service"
 	"newaoe/Src/util"
 
@@ -20,19 +19,19 @@ func UserLogin(c *gin.Context) {
 		util.ResponseNAK_MSG(c, "数据报文错误", "")
 		return
 	}
-	//获取用户密码
-	correct_password := dao.UserGetPassword(dt.Id)
-	if !util.CheckPasswordSame(correct_password, dt.Password) {
-		util.ResponseNAK_MSG(c, "账号或者密码错误!", "")
+	//登陆
+	if err := service.UserCanLogin(dt.Id, dt.Password); err != nil {
+		util.Debug("UserLogin:", err)
+		util.ResponseNAK_MSG(c, err.Error(), nil)
+	}
+	//设置cookie
+	cookie, err := service.UserGenCookie(dt.Id, c.ClientIP())
+	if err != nil {
+		util.DebugError("生成cookie失败:", err)
+		util.ResponseNAK_MSG(c, "服务器异常!", "")
 		return
 	}
-	//创建cookie
-	token := service.UserSetCookie(c, dt.Id)
-	//写入数据库
-	if token == "" {
-		util.ResponseNAK_MSG(c, "服务器异常", "")
-		return
-	}
+	c.Header("set-cookie", cookie)
 	//
 	util.ResponseACK_MSG(c, "登陆成功", "")
 }

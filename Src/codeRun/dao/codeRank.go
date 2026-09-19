@@ -2,6 +2,7 @@ package dao
 
 import (
 	"newaoe/Src/codeRun/model"
+	database "newaoe/Src/databse"
 	"newaoe/Src/util"
 
 	"xorm.io/xorm"
@@ -9,6 +10,12 @@ import (
 
 // end不包括
 func RankGetByRange(session *xorm.Session, beg int, end int) []model.RankInfo {
+	//
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
+	//
 	var ranks []model.RankInfo
 	if beg < 0 || end <= beg {
 		return ranks
@@ -22,6 +29,12 @@ func RankGetByRange(session *xorm.Session, beg int, end int) []model.RankInfo {
 }
 
 func RankUpdateOrInsert(session *xorm.Session, rank *model.RankInfo) bool {
+	//
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
+	//
 	affected, err := session.Where("id = ?", rank.ID).AllCols().Update(rank)
 
 	if err != nil {
@@ -42,6 +55,12 @@ func RankUpdateOrInsert(session *xorm.Session, rank *model.RankInfo) bool {
 }
 
 func RankBatchUpdateOrInsert(session *xorm.Session, ranks []model.RankInfo) bool {
+	//
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
+	//
 	if len(ranks) == 0 {
 		return true
 	}
@@ -93,6 +112,12 @@ func RankBatchUpdateOrInsert(session *xorm.Session, ranks []model.RankInfo) bool
 }
 
 func RankBatchUpdateOrInsertIfBetter(session *xorm.Session, ranks []model.RankInfo) bool {
+	//
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
+	//
 	if len(ranks) == 0 {
 		return true
 	}
@@ -163,6 +188,12 @@ func RankBatchUpdateOrInsertIfBetter(session *xorm.Session, ranks []model.RankIn
 }
 
 func RankGetCount(session *xorm.Session) int {
+	//
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
+	//
 	count, err := session.Count(&model.RankInfo{})
 	if err != nil {
 		util.DebugError("RankGetCount:", err)

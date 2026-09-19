@@ -9,6 +9,10 @@ import (
 )
 
 func CodeCommonInfoAdd(session *xorm.Session, data model.CodeCommonInfo) int64 {
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
 	_, err := session.Insert(&data)
 	if err != nil {
 		util.DebugError("CodeCommonInfoAdd:", err)
@@ -17,18 +21,26 @@ func CodeCommonInfoAdd(session *xorm.Session, data model.CodeCommonInfo) int64 {
 	return int64(data.Indices)
 }
 
-func CodeCommonGetByIndices(indices int) *model.CodeCommonInfo {
+func CodeCommonGetByIndices(session *xorm.Session, indices int) *model.CodeCommonInfo {
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
 	var ret model.CodeCommonInfo
-	has, err := database.DB.Where("indices=?", indices).Get(&ret)
+	has, err := session.Where("indices=?", indices).Get(&ret)
 	if err != nil || !has {
 		util.DebugError("CodeCommonGetByIndices:", err, indices)
 		return nil
 	}
 	return &ret
 }
-func CodeCommonGetByID(id string) []model.CodeCommonInfo {
+func CodeCommonGetByID(session *xorm.Session, id string) []model.CodeCommonInfo {
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
 	var ret []model.CodeCommonInfo
-	err := database.DB.Where("id = ?", id).Find(&ret)
+	err := session.Where("id = ?", id).Find(&ret)
 	if err != nil {
 		util.DebugError("CodeCommonGetByID:", err)
 		return nil

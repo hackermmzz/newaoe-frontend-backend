@@ -9,9 +9,16 @@ import (
 	"newaoe/Src/util"
 
 	RD "github.com/go-redis/redis/v8"
+	"xorm.io/xorm"
 )
 
-func TeacherGetAll() []model.Teacher {
+func TeacherGetAll(session *xorm.Session) []model.Teacher {
+	//
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
+	//
 	key := "teacherAll"
 	//先从redis缓存拿数据
 	ctx := context.Background()
@@ -23,7 +30,7 @@ func TeacherGetAll() []model.Teacher {
 	}
 	//从数据库查询数据
 	var teachers []model.Teacher
-	err := database.DB.Find(&teachers)
+	err := session.Find(&teachers)
 	if err != nil {
 		util.DebugError("TeacherGetAll:", err)
 		return nil
@@ -35,8 +42,13 @@ func TeacherGetAll() []model.Teacher {
 	return teachers
 }
 
-func TeacherExist(name string) bool {
-	teacher := TeacherGetAll()
+func TeacherExist(session *xorm.Session, name string) bool {
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
+	//
+	teacher := TeacherGetAll(session)
 	if len(teacher) == 0 {
 		return false
 	}

@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"newaoe/Src/codeRun/controller"
+	"newaoe/Src/codeRun/service"
 	"newaoe/Src/util"
 	"strconv"
 	"strings"
@@ -26,7 +26,12 @@ func GetStudentHistory(ctx *gin.Context) {
 	//获取查寻的id
 	student_id := ctx.Query("student_id")
 	//获取历史记录
-	submitRecords := controller.GetHistoryRangeById(student_id, beg, end)
+	submitRecords, err := service.GetHistoryRangeById(student_id, beg, end)
+	if err != nil {
+		util.DebugError("GetStudentHistory", err)
+		util.ResponseNAK_MSG(ctx, err.Error(), nil)
+		return
+	}
 	//
 	util.ResponseACK_MSG(ctx, "历史记录获取成功", submitRecords)
 }

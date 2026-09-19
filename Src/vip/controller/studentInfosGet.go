@@ -24,7 +24,7 @@ func StudentInfosGet(ctx *gin.Context) {
 		return
 	}
 	//获取数据
-	dt := dao.UserGetByRangeOrderByRegistData(beg, end+1)
+	dt := dao.UserGetByRangeOrderByRegistData(nil, beg, end+1)
 	//
 	util.ResponseACK_MSG(ctx, "获取成功!", dt)
 }

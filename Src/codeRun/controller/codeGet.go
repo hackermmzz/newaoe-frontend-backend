@@ -2,14 +2,9 @@ package controller
 
 import (
 	"context"
-	"encoding/json"
-	"newaoe/Src/codeRun/dao"
 	"newaoe/Src/codeRun/grpc/grpc_api"
-	"newaoe/Src/codeRun/model"
-	"newaoe/Src/config"
-	database "newaoe/Src/databse"
+	"newaoe/Src/codeRun/service"
 	"newaoe/Src/oss"
-	"newaoe/Src/redis"
 	"newaoe/Src/util"
 	"time"
 )
@@ -25,14 +20,16 @@ func (server *GrpcCodeServer) GetCode(ctx context.Context, req *grpc_api.CodeReq
 		return nil, nil
 	}
 	//获取一份代码
-	info := GetOneCodeTask()
-	if info == nil {
+	codeinfo, err := service.GetOneCodeTask()
+	if err != nil {
+		util.DebugError(err)
+	}
+	if codeinfo == nil {
 		return &grpc_api.CodeReply{
 			Ok:  false,
 			Msg: "代码队列为空!",
 		}, nil
 	}
-	codeinfo := info.(model.CodeRunInfo)
 	id := codeinfo.ID
 	indices := codeinfo.Indices
 	source_dir := codeinfo.Source
@@ -58,32 +55,6 @@ func (server *GrpcCodeServer) GetCode(ctx context.Context, req *grpc_api.CodeReq
 		Msg:       "获取成功!",
 	}
 	return data, nil
-}
-
-func GetOneCodeTask() interface{} {
-	session := database.NewSession()
-	defer session.Close()
-	var codeinfo model.CodeRunInfo
-	//这里要做幂等，防止这个消息已经被消费过了
-	for i := 0; i < 10; i += 1 {
-		data, success := redis.RedisListPop(context.Background(), config.Conf.Code.CodeWaitForRunQueueTopic)
-		if !success {
-			return nil
-		}
-		err := json.Unmarshal([]byte(data), &codeinfo)
-		if err != nil {
-			util.DebugError("GetOneCodeTask JsonUnmarshal err:", err)
-			return nil
-		}
-		//判断是否已经处理过了(只有CodeRunning表里面没有，且CodeRun表有才算成功跑结束，取反就是下面这个)
-		if dao.CodeRunningExist(session, codeinfo.Indices) || !dao.CodeRunExist(session, codeinfo.Indices) {
-			//
-			util.DebugSuccess("OJ successfully get one code!")
-			return codeinfo
-		}
-	}
-	//
-	return nil
 }
 
 // 鉴权使用

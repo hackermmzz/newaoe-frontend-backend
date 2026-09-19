@@ -9,6 +9,10 @@ import (
 )
 
 func CodeAssessmentAdd(session *xorm.Session, data model.CodeAssessmentInfo) int64 {
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
 	_, err := session.Insert(&data)
 	if err != nil {
 		util.DebugError("CodeAssessmentAdd:", err)
@@ -17,9 +21,13 @@ func CodeAssessmentAdd(session *xorm.Session, data model.CodeAssessmentInfo) int
 	return int64(data.Indices)
 }
 
-func CodeAssessmentGetByID(id string) []model.CodeAssessmentInfo {
+func CodeAssessmentGetByID(session *xorm.Session, id string) []model.CodeAssessmentInfo {
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
 	var ret []model.CodeAssessmentInfo
-	err := database.DB.Where("id = ?", id).Find(&ret)
+	err := session.Where("id = ?", id).Find(&ret)
 	if err != nil {
 		util.DebugError("CodeAssessmentAddGetByID:", err)
 		return nil
@@ -27,9 +35,13 @@ func CodeAssessmentGetByID(id string) []model.CodeAssessmentInfo {
 	return ret
 }
 
-func CodeAssessmentGetByIndices(indices int) *model.CodeAssessmentInfo {
+func CodeAssessmentGetByIndices(session *xorm.Session, indices int) *model.CodeAssessmentInfo {
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
 	var ret model.CodeAssessmentInfo
-	has, err := database.DB.Where("indices = ?", indices).Get(&ret)
+	has, err := session.Where("indices = ?", indices).Get(&ret)
 	if err != nil {
 		util.DebugError("CodeAssessmentGetByIndices:", err)
 		return nil

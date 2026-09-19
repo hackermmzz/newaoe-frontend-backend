@@ -20,7 +20,7 @@ func registerSuperUser() {
 		return
 	}
 	for _, userId := range config.Conf.Other.SuperUser {
-		if !dao.UserExist(userId) {
+		if !dao.UserExist(nil, userId) {
 			for i := 0; i < 3; i++ {
 				session := database.NewSession()
 				defer session.Rollback()

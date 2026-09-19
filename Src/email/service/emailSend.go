@@ -86,7 +86,7 @@ func EmailSendServiceInit() {
 // 发送邮件(推送到消息队列)
 func SendEmail(email EmailMsg) {
 	//写入数据库
-	session := database.DB.NewSession()
+	session := database.NewSession()
 	if err := session.Begin(); err != nil {
 		util.DebugError("数据库异常!")
 		return

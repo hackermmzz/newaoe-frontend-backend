@@ -2,13 +2,35 @@ package dao
 
 import (
 	"newaoe/Src/codeRun/model"
+	database "newaoe/Src/databse"
 	"newaoe/Src/util"
 	"time"
 
 	"xorm.io/xorm"
 )
 
+func CodeRunningExist(session *xorm.Session, indices int) (bool, error) {
+	//
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
+	//
+	var info model.CodeRunningInfo
+	has, err := session.ID(indices).Get(&info)
+	if err != nil {
+		return false, err
+	}
+	return has, nil
+}
+
 func CodeRunningInsert(session *xorm.Session, data model.CodeRunningInfo) bool {
+	//
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
+	//
 	_, err := session.Insert(data)
 	if err != nil {
 		util.DebugError("CodeRunningInsert:", err)
@@ -18,6 +40,12 @@ func CodeRunningInsert(session *xorm.Session, data model.CodeRunningInfo) bool {
 }
 
 func CodeRunningUpdate(session *xorm.Session, info model.CodeRunningInfo) bool {
+	//
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
+	//
 	affected, err := session.ID(info.Indices).Update(info)
 	if err != nil {
 		util.DebugError("CodeRunningUpdate:", err)
@@ -27,6 +55,12 @@ func CodeRunningUpdate(session *xorm.Session, info model.CodeRunningInfo) bool {
 }
 
 func CodeRunningRemove(session *xorm.Session, indices int) bool {
+	//
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
+	//
 	d := &model.CodeRunningInfo{
 		Indices: indices,
 	}
@@ -39,6 +73,12 @@ func CodeRunningRemove(session *xorm.Session, indices int) bool {
 }
 
 func CodeRunningBatchRemove(session *xorm.Session, indices []int) bool {
+	//
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
+	//
 	if len(indices) == 0 {
 		return true
 	}
@@ -52,6 +92,12 @@ func CodeRunningBatchRemove(session *xorm.Session, indices []int) bool {
 }
 
 func CodeRunningGetExpireTime(session *xorm.Session, expireDuration time.Duration, number int) []model.CodeRunningInfo {
+	//
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
+	//
 	var result []model.CodeRunningInfo
 	// 当前时间减去超时时间
 	expireTime := time.Now().Add(-expireDuration)
@@ -64,13 +110,4 @@ func CodeRunningGetExpireTime(session *xorm.Session, expireDuration time.Duratio
 		return nil
 	}
 	return result
-}
-
-func CodeRunningExist(session *xorm.Session, indices int) bool {
-	exists, err := session.Where("indices = ?", indices).Exist(&model.CodeRunningInfo{})
-	if err != nil {
-		util.Debug("CodeRunningExist err:", err)
-		return false
-	}
-	return exists
 }

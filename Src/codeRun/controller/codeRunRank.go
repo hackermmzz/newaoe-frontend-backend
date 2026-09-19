@@ -1,10 +1,7 @@
 package controller
 
 import (
-	"newaoe/Src/codeRun/dao"
-	"newaoe/Src/codeRun/model"
-	database "newaoe/Src/databse"
-	UserDao "newaoe/Src/user/dao"
+	"newaoe/Src/codeRun/service"
 	"newaoe/Src/util"
 
 	"strconv"
@@ -28,42 +25,12 @@ func FetchRank(ctx *gin.Context) {
 		return
 	}
 	//获取beg到end的排行数据
-	session := database.NewSession()
-	defer session.Rollback()
-	err := session.Begin()
+	data, err := service.RankFetch(beg, end+1)
 	if err != nil {
-		util.ResponseNAK_MSG(ctx, "服务器异常", "")
+		util.DebugError("FetchRank", err)
+		util.ResponseNAK_MSG(ctx, err.Error(), nil)
 		return
-	}
-	info := dao.RankGetByRange(session, beg, end+1)
-	if info == nil {
-		info = make([]model.RankInfo, 0)
-	}
-	//获取人物头像
-	ids := make([]string, len(info))
-	for i, d := range info {
-		ids[i] = d.ID
-	}
-	avatars := UserDao.UserGetByIDs(ids)
-	if len(avatars) != len(info) {
-		util.ResponseNAK_MSG(ctx, "服务器异常", "")
-		return
-	}
-	idToAvatar := make(map[string]string)
-	for _, d := range avatars {
-		idToAvatar[d.Id] = d.Avatar
-	}
-	//处理一下数据
-	type FinalDataInfo struct {
-		model.RankInfo
-		Avatar string `json:"avatar"`
-	}
-	finaldata := make([]FinalDataInfo, len(info))
-
-	for i, d := range info {
-		finaldata[i].Avatar = idToAvatar[d.ID]
-		finaldata[i].RankInfo = d
 	}
 	//返回结果
-	util.ResponseACK_MSG(ctx, "获取排行成功", finaldata)
+	util.ResponseACK_MSG(ctx, "获取排行成功", data)
 }
