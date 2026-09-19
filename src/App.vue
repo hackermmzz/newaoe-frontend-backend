@@ -12,8 +12,16 @@
       >
         {{ mode.label }}
       </button>
+      <label v-if="theme === 'effect'" class="effect-picker">
+        <span class="effect-picker__label">背景</span>
+        <select v-model="effect" aria-label="选择特效背景" @change="changeEffect">
+          <option v-for="item in effectModes" :key="item.id" :value="item.id">
+            {{ item.label }}
+          </option>
+        </select>
+      </label>
     </div>
-    <EffectTheme v-if="theme === 'effect'" />
+    <EffectTheme v-if="theme === 'effect'" :key="effect" :effect="effect" />
     <!-- 路由出口：所有匹配的路由组件会在这里渲染 -->
     <router-view />
     <FloatingBall />
@@ -25,6 +33,20 @@
 import FloatingBall from '@/components/FloatingBall'
 import EffectTheme from '@/components/EffectTheme.vue';
 import { applyTheme, getInitialTheme, THEME_MODES } from '@/utils/theme';
+
+const EFFECT_STORAGE_KEY = 'aoe-effect';
+const EFFECT_MODES = [
+  { id: 'thunder', label: '雷雨' },
+  { id: 'snow', label: '冬雪' },
+  { id: 'blackhole', label: '黑洞' }
+];
+
+const getInitialEffect = () => {
+  if (typeof window === 'undefined') return EFFECT_MODES[0].id;
+  const storedEffect = window.localStorage.getItem(EFFECT_STORAGE_KEY);
+  return EFFECT_MODES.some(effect => effect.id === storedEffect) ? storedEffect : EFFECT_MODES[0].id;
+};
+
 export default {
   name: 'App',
   components: {
@@ -34,12 +56,17 @@ export default {
   data() {
     return {
       theme: getInitialTheme(),
-      themeModes: THEME_MODES
+      themeModes: THEME_MODES,
+      effectModes: EFFECT_MODES,
+      effect: getInitialEffect()
     };
   },
   methods: {
     changeTheme(theme) {
       this.theme = applyTheme(theme);
+    },
+    changeEffect() {
+      window.localStorage.setItem(EFFECT_STORAGE_KEY, this.effect);
     }
   },
   mounted() {
@@ -125,6 +152,31 @@ html[data-theme='effect'] {
 .theme-switcher__button--active {
   color: #ffffff;
   background: #2563eb;
+}
+
+.effect-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 2px;
+  padding-left: 6px;
+  border-left: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.effect-picker__label {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.effect-picker select {
+  max-width: 86px;
+  border: 0;
+  outline: none;
+  color: #64748b;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
 }
 
 /* 深色模式：保留现有 Tailwind 页面结构，只统一基础色。 */
@@ -214,6 +266,24 @@ html[data-theme='effect'] .theme-switcher__label {
   color: #94a3b8;
 }
 
+html[data-theme='dark'] .effect-picker,
+html[data-theme='effect'] .effect-picker {
+  border-left-color: rgba(125, 211, 252, 0.35);
+}
+
+html[data-theme='dark'] .effect-picker__label,
+html[data-theme='effect'] .effect-picker__label,
+html[data-theme='dark'] .effect-picker select,
+html[data-theme='effect'] .effect-picker select {
+  color: #cbd5e1;
+}
+
+html[data-theme='dark'] .effect-picker option,
+html[data-theme='effect'] .effect-picker option {
+  color: #e5e7eb;
+  background: #0f172a;
+}
+
 @media (max-width: 640px) {
   .theme-switcher {
     top: 8px;
@@ -221,6 +291,10 @@ html[data-theme='effect'] .theme-switcher__label {
   }
 
   .theme-switcher__label {
+    display: none;
+  }
+
+  .effect-picker__label {
     display: none;
   }
 }
