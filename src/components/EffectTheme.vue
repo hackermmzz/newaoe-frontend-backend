@@ -4,9 +4,14 @@
 </template>
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue';
-import vertexShaderSource from '!!raw-loader!@/assets/black_hole/effect.vert.glsl'
-import fragmentShaderSource from '!!raw-loader!@/assets/black_hole/effect.frag.glsl'
+import fragmentShaderSource from '!!raw-loader!@/assets/effects/thunder/effect.frag.glsl'
 
+const vertexShaderSource = `
+attribute vec2 a_position;
+void main() {
+  gl_Position = vec4(a_position, 0.0, 1.0);
+}
+`
 
 
 const canvas = ref(null);
