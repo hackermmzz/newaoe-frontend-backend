@@ -21,8 +21,9 @@ func UserLogin(c *gin.Context) {
 	}
 	//登陆
 	if err := service.UserCanLogin(dt.Id, dt.Password); err != nil {
-		util.Debug("UserLogin:", err)
+		util.DebugError("UserLogin:", err)
 		util.ResponseNAK_MSG(c, err.Error(), nil)
+		return
 	}
 	//设置cookie
 	cookie, err := service.UserGenCookie(dt.Id, c.ClientIP())

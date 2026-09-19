@@ -16,14 +16,14 @@ func FeedbackGetDownloadLink(indices int, html string) (string, error) {
 	//获取反馈的基础路径
 	feedbackinfo := dao.FeedbackGetByIndices(nil, indices)
 	if feedbackinfo == nil {
-		return "", util.NewError("数据库获取反馈记录失败!")
+		return "", util.NewError("数据库获取反馈记录失败!", indices)
 	}
 	//上传html数据
 	htmlpath := path.Join(feedbackinfo.BaseFolder, "feedback.html")
 	if !oss.OssUploadFileData(htmlpath, []byte(html), "text/html; charset=utf-8") {
 		return "", util.NewError("上传html失败!")
 	}
-	//获取链接
+	//获取链接(设置永不过期)
 	url := oss.OssGetDownloadFileUrl(htmlpath, time.Duration(7*24)*time.Hour, false)
 	if url == "" {
 		return "", util.NewError("获取html下载链接失败!")
@@ -88,6 +88,16 @@ func FeedbackGetUploadUrls(id string, images []string, files []string, videos []
 	}
 	if err := session.Commit(); err != nil {
 		return nil, util.NewError("服务器异常!", err)
+	}
+	//
+	ret = FeedbackUploadLinkInfo{
+		Indices:           indices,
+		UploadImageUrls:   imagesurl,
+		UploadFileUrls:    filesurl,
+		UploadVideoUrls:   videosurl,
+		DownloadImageUrls: imagesDownloadurls,
+		DownloadFileUrls:  filesDownloadUrls,
+		DownloadVideoUrls: videosDownloadUrls,
 	}
 	return &ret, nil
 }

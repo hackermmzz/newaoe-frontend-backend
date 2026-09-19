@@ -26,7 +26,7 @@ func FetchFeedbackRecord(beg int, end int) ([]FeedbackRecordForManagerInfo, erro
 		htmlFilePath := filepath.Join(v.BaseFolder, "feedback.html")
 		//获取下载链接
 		expire_time := time.Duration(24) * time.Hour
-		url := oss.OssGetDownloadFileUrl(htmlFilePath, expire_time, true)
+		url := oss.OssGetDownloadFileUrl(htmlFilePath, expire_time, false)
 		if url == "" {
 			util.DebugError("获取下载链接失败!", htmlFilePath)
 			continue
