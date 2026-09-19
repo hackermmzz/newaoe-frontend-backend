@@ -460,7 +460,7 @@ html[data-theme='effect'] .password-forget-page {
 
 html[data-theme='dark'] .password-forget-page > .relative.z-10,
 html[data-theme='effect'] .password-forget-page > .relative.z-10 {
-  background-color: rgba(15, 23, 42, 0.9) !important;
+  background-color: rgba(15, 23, 42, var(--theme-surface-alpha)) !important;
   border: 1px solid rgba(125, 211, 252, 0.24);
   box-shadow: 0 18px 60px rgba(2, 8, 23, 0.45);
   backdrop-filter: blur(16px);

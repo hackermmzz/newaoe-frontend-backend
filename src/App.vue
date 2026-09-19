@@ -60,6 +60,19 @@ body {
   transition: background-color 0.35s ease, color 0.35s ease;
 }
 
+/* 全局背景透明度：调整特效模式下页面卡片对 WebGL 背景的遮挡程度。 */
+html {
+  --theme-surface-alpha: 1;
+}
+
+html[data-theme='dark'] {
+  --theme-surface-alpha: 0.92;
+}
+
+html[data-theme='effect'] {
+  --theme-surface-alpha: 0.38;
+}
+
 #app {
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -127,7 +140,7 @@ html[data-theme='effect'] #app {
 
 html[data-theme='dark'] .bg-white,
 html[data-theme='effect'] .bg-white {
-  background-color: rgba(17, 24, 39, 0.92) !important;
+  background-color: rgba(17, 24, 39, var(--theme-surface-alpha)) !important;
 }
 
 html[data-theme='dark'] .bg-gray-50,
