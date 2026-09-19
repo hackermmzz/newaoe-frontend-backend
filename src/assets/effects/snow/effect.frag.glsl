@@ -44,7 +44,6 @@ float randomValue(float index) {
 }
 
 float randomSeed() {
-    // The host replaces these values every ten seconds, giving each snowfall cycle a new layout.
     return randomValue(0.0) * 3.7
         + randomValue(1.0) * 5.3
         + randomValue(2.0) * 7.1
