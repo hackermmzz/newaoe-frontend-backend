@@ -1,7 +1,6 @@
 package service
 
 import (
-	"errors"
 	"fmt"
 	"newaoe/Src/config"
 	"newaoe/Src/email/service"
@@ -13,7 +12,7 @@ func PasswordResetCodeSend(id string, email string) error {
 	//判断是否可以发送验证码
 	ttl := dao.PasswordForgetVerifyCodeCanSendTTL(id)
 	if ttl > 0 {
-		return errors.New(fmt.Sprintf("请等待%v秒后重试!", ttl))
+		return util.NewError(fmt.Sprintf("请等待%v秒后重试!", ttl))
 	}
 	//发送验证码
 	code := util.GenerateVerifyCode(config.Conf.PasswordForgetVerifyCode.Length)
