@@ -10,7 +10,7 @@ import (
 func UserLogin(c *gin.Context) {
 	//数据结构体
 	type DataInfo struct {
-		Id       string `json:"id"`
+		Id       string `json:"id"` //前端传过来的可能是id也可能是邮箱，这里统一叫id
 		Password string `json:"password"`
 	}
 	//
@@ -19,6 +19,14 @@ func UserLogin(c *gin.Context) {
 		util.ResponseNAK_MSG(c, "数据报文错误", "")
 		return
 	}
+	//根据传入的账号/邮箱获取学生的id
+	id, err := service.StudentIDGetByEmailOrID(dt.Id)
+	if err != nil {
+		util.DebugError("UserLogin:", err)
+		util.ResponseNAK_MSG(c, err.Error(), nil)
+		return
+	}
+	dt.Id = id
 	//登陆
 	if err := service.UserCanLogin(dt.Id, dt.Password); err != nil {
 		util.DebugError("UserLogin:", err)

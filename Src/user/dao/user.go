@@ -57,7 +57,7 @@ func EmailExist(session *xorm.Session, email string) bool {
 }
 
 // 添加用户
-func UserAdd(session *xorm.Session, id string, password string, email string) bool {
+func UserAdd(session *xorm.Session, userInfo model.Student) bool {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -65,9 +65,10 @@ func UserAdd(session *xorm.Session, id string, password string, email string) bo
 	}
 	//
 	data := &model.Student{
-		Id:         id,
-		Password:   password,
-		Email:      email,
+		Id:         userInfo.Id,
+		Password:   userInfo.Password,
+		Email:      userInfo.Email,
+		Vip:        userInfo.Vip,
 		RegistDate: util.UTC_Time(),
 		Avatar:     util.GetRandomAvatar(),
 	}
@@ -123,6 +124,40 @@ func UserGet(session *xorm.Session, id string) *model.Student {
 	has, err := session.Where("id = ? ", id).Get(&user)
 	if err != nil || !has {
 		util.DebugError("UserGet:", err)
+		return nil
+	}
+	return &user
+}
+
+// 获取指定用户的数据
+func UserGetByEmail(session *xorm.Session, email string) *model.Student {
+	//
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
+	//
+	var user model.Student
+	has, err := session.Where("email = ? ", email).Get(&user)
+	if err != nil || !has {
+		util.DebugError("UserGetByEmail:", err)
+		return nil
+	}
+	return &user
+}
+
+// 获取指定用户的数据
+func UserGetByIdOrEmail(session *xorm.Session, id_or_email string) *model.Student {
+	//
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
+	//
+	var user model.Student
+	has, err := session.Where("id = ? OR email = ?", id_or_email, id_or_email).Get(&user)
+	if err != nil || !has {
+		util.DebugError("UserGetByEmail:", err)
 		return nil
 	}
 	return &user
@@ -192,7 +227,6 @@ func UserGetAll(session *xorm.Session) []model.Student {
 	}
 	return list
 }
-
 
 // 获取用户密码(编码后的密码)
 func UserGetPassword(session *xorm.Session, id string) string {

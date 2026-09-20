@@ -4,8 +4,9 @@ import "time"
 
 // VIP等级
 var (
-	VIP_NONE  = 0 //没有特权
-	VIP_SUPER = 1 //特权用户
+	VIP_TOURIST = -1 //游客用户(只看查看，不可提交)
+	VIP_NONE    = 0  //没有特权
+	VIP_SUPER   = 1  //特权用户
 )
 
 type Student struct {

@@ -4,10 +4,11 @@ import (
 	"errors"
 	database "newaoe/Src/databse"
 	"newaoe/Src/user/dao"
+	"newaoe/Src/user/model"
 	"newaoe/Src/util"
 )
 
-func UserRegist(id string, password string, email string, verifyCode string) error {
+func UserRegist(id string, password string, email string, vip_class int, verifyCode string) error {
 	session := database.NewSession()
 	defer session.Close()
 	if err := session.Begin(); err != nil {
@@ -39,7 +40,12 @@ func UserRegist(id string, password string, email string, verifyCode string) err
 	if err != nil {
 		return errors.New("密码格式不合规则!")
 	}
-	if !dao.UserAdd(session, id, password, email) {
+	if !dao.UserAdd(session, model.Student{
+		Id:       id,
+		Email:    email,
+		Password: password,
+		Vip:      vip_class,
+	}) {
 		return errors.New("注册失败")
 	}
 
@@ -47,6 +53,14 @@ func UserRegist(id string, password string, email string, verifyCode string) err
 		return errors.New("服务器异常!")
 	}
 	return nil
+}
+
+func UserRegistTouristUser(id string, password string, email string, verifyCode string) error {
+	return UserRegist(id, password, email, model.VIP_TOURIST, verifyCode)
+}
+
+func UserRegistRegularUser(id string, password string, email string, verifyCode string) error {
+	return UserRegist(id, password, email, model.VIP_NONE, verifyCode)
 }
 
 // 判断密码是否合法

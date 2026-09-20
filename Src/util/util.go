@@ -349,6 +349,15 @@ func TruncateString(s string, maxLen int) string {
 	return string(runes[:maxLen])
 }
 
+// 截断邮箱@前面的字符串
+func TruncateStringForEmail(email string) string {
+	atIndex := strings.Index(email, "@")
+	if atIndex == -1 {
+		return email
+	}
+	return email[:atIndex]
+}
+
 // 获取文件所在的文件夹
 // GetFileFolder 获取文件所在目录
 func GetFileFolder(file string) string {

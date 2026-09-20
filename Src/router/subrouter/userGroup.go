@@ -17,8 +17,10 @@ func UserGroup_Init(api_group *gin.RouterGroup) {
 func routeConfig_User(group *gin.RouterGroup) {
 	//登陆
 	group.POST("login", controller.UserLogin)
-	//注册
+	//普通用户注册
 	group.POST("regist", controller.UserRegist)
+	//游客注册
+	group.POST("touristregist", controller.TouristUserRegist)
 	//发送注册验证码
 	group.POST("registCode", controller.UserRegistCodeSend)
 	//重置密码

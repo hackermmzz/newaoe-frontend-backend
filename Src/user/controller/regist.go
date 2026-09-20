@@ -7,16 +7,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// 数据结构体
+type registDataInfo struct {
+	Id         string `json:"id"`
+	Password   string `json:"password"`
+	Email      string `json:"email"`
+	Verifycode string `json:"verifycode"`
+}
+
 func UserRegist(c *gin.Context) {
-	//数据结构体
-	type DataInfo struct {
-		Id         string `json:"id"`
-		Password   string `json:"password"`
-		Email      string `json:"email"`
-		Verifycode string `json:"verifycode"`
-	}
 	//
-	var dt DataInfo
+	var dt registDataInfo
 	if !util.JsonCtx(c, &dt) {
 		util.ResponseNAK_MSG(c, "数据报文错误", "")
 		return
@@ -24,7 +25,7 @@ func UserRegist(c *gin.Context) {
 	//处理邮箱
 	dt.Email = userEmailProcess(dt.Id, dt.Email)
 	//注册
-	err := service.UserRegist(dt.Id, dt.Password, dt.Email, dt.Verifycode)
+	err := service.UserRegistRegularUser(dt.Id, dt.Password, dt.Email, dt.Verifycode)
 	if err != nil {
 		util.DebugError("UserRegist:", err)
 		util.ResponseNAK_MSG(c, err.Error(), nil)
