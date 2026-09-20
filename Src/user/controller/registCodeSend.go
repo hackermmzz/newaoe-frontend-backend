@@ -12,7 +12,7 @@ type registCodeSendDataInfo struct {
 	Email string `json:"email"`
 }
 
-// 发送注册码
+// 常规注册 发送注册码
 func UserRegistCodeSend(ctx *gin.Context) {
 	//
 	var dt registCodeSendDataInfo
