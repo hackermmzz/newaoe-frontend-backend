@@ -12,17 +12,17 @@ const (
 
 // Define the VerifyCode struct
 type VerifyCode struct {
-	Code  string
-	Id    string
-	Class int8
+	Code  string `json:"code"`
+	KeyID string `json:"keyid"`
+	Class int8   `json:"class"`
 }
 
 // 用于检查验证码是否存在
 func (v VerifyCode) String() string {
-	return fmt.Sprintf("VerifyCode:%v:ID:%v:Class:%v", v.Code, v.Id, v.Class)
+	return fmt.Sprintf("VerifyCode:%v:ID:%v:Class:%v", v.Code, v.KeyID, v.Class)
 }
 
 // 用于检查验证码是否可以重发
 func (v VerifyCode) Tag() string {
-	return fmt.Sprintf("VerifyCode::ID:%v:Class:%v", v.Id, v.Class)
+	return fmt.Sprintf("VerifyCode::ID:%v:Class:%v", v.KeyID, v.Class)
 }

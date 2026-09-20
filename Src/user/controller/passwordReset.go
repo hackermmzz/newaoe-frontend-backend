@@ -21,8 +21,6 @@ func UserResetPassword(ctx *gin.Context) {
 		return
 	}
 	//
-	dt.Email = userEmailProcess(dt.Id, dt.Email)
-	//
 	err := service.PasswordReset(dt.Id, dt.Email, dt.Password, dt.Verifycode)
 	if err != nil {
 		util.DebugError("重置密码失败:", err)

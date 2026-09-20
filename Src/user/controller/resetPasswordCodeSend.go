@@ -19,8 +19,6 @@ func UserPasswordForgetCodeSend(ctx *gin.Context) {
 		util.ResponseNAK_MSG(ctx, "数据报文错误", "")
 		return
 	}
-	//处理邮箱
-	dt.Email = userEmailProcess(dt.Id, dt.Email)
 	//发送验证码
 	err := service.PasswordResetCodeSend(dt.Id, dt.Email)
 	if err != nil {
@@ -29,5 +27,5 @@ func UserPasswordForgetCodeSend(ctx *gin.Context) {
 		return
 	}
 	//
-	util.ResponseACK_MSG(ctx, "验证码发送成功", "")
+	util.ResponseACK_MSG(ctx, "验证码发送成功", map[string]interface{}{"email": dt.Email})
 }

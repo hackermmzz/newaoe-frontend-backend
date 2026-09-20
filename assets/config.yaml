@@ -104,8 +104,8 @@ other:
   avatarUploadUrlExpireTime: 180        #头像上传链接过期时间
   codeCommonSubmitUrlExpireTime:  180     #普通代码文件上传链接过期时间
   assessmentCodeSubmitUrlExpireTime:  180   #考核代码文件上传链接过期时间
-  privateFileDownloadUrlExpireTime: 600   #私有文件下载链接过期时间
-  publicFileDownloadUrlExpireTime: 600  #公有文件下载链接过期时间
+  privateFileDownloadUrlExpireTime: 3   #私有文件下载链接过期时间(分钟)
+  publicFileDownloadUrlExpireTime: 30  #公有文件下载链接过期时间(分钟)
   superUser: ["923106840429","BJS9006210"]  #超级用户，通常为管理员（wlh和娄震）
   unlimitUser: ["925106840129"]     #不限制提交用户(这类用户通常给予了判题机资源)
   superUserPassword: "newaoe"  #超级用户密码

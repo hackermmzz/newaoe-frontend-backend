@@ -29,7 +29,7 @@ func TouristUserRegist(c *gin.Context) {
 		util.ResponseNAK_MSG(c, "请输入正确的邮箱!", nil)
 		return
 	}
-	id := fmt.Sprintf("tourist_20080118_%v", rid)
+	id := fmt.Sprintf("tourist_20080128_%v", rid)
 	//注册
 	err := service.UserRegistTouristUser(id, dt.Password, dt.Email, dt.Verifycode)
 	if err != nil {

@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func VerifyCodeAdd(id string, code string, class int8) bool {
+func VerifyCodeAdd(keyID string, code string, class int8) bool {
 	var expire_time time.Duration
 	var resend_time time.Duration
 	switch class {
@@ -21,7 +21,7 @@ func VerifyCodeAdd(id string, code string, class int8) bool {
 	}
 
 	data := model.VerifyCode{
-		Id:    id,
+		KeyID: keyID,
 		Code:  code,
 		Class: class,
 	}
@@ -38,9 +38,9 @@ func VerifyCodeAdd(id string, code string, class int8) bool {
 	return true
 }
 
-func VerifyCodeExist(id string, code string, class int8) bool {
+func VerifyCodeExist(keyID string, code string, class int8) bool {
 	data := model.VerifyCode{
-		Id:    id,
+		KeyID: keyID,
 		Code:  code,
 		Class: class,
 	}
@@ -52,9 +52,9 @@ func VerifyCodeExist(id string, code string, class int8) bool {
 	return exist == 1
 }
 
-func VerifyCodeCanSend(id string, class int8) bool {
+func VerifyCodeCanSend(keyID string, class int8) bool {
 	data := model.VerifyCode{
-		Id:    id,
+		KeyID: keyID,
 		Class: class,
 	}
 	exist, err := redis.RDB.Exists(redis.RDB.Context(), data.Tag()).Result()
@@ -65,9 +65,9 @@ func VerifyCodeCanSend(id string, class int8) bool {
 	return exist == 1
 }
 
-func VerifyCodeCanSendTTL(id string, class int8) int64 {
+func VerifyCodeCanSendTTL(keyID string, class int8) int64 {
 	data := model.VerifyCode{
-		Id:    id,
+		KeyID: keyID,
 		Class: class,
 	}
 	ttl, err := redis.RDB.TTL(redis.RDB.Context(), data.Tag()).Result()
@@ -79,33 +79,33 @@ func VerifyCodeCanSendTTL(id string, class int8) int64 {
 }
 
 // 注册
-func RegistVerifyCodeAdd(id_or_email string, code string) bool {
-	return VerifyCodeAdd(id_or_email, code, model.VerifyCode_Class_Regist)
+func RegistVerifyCodeAdd(keyID string, code string) bool {
+	return VerifyCodeAdd(keyID, code, model.VerifyCode_Class_Regist)
 }
 
-func RegistVerifyCodeExist(id string, code string) bool {
-	return VerifyCodeExist(id, code, model.VerifyCode_Class_Regist)
+func RegistVerifyCodeExist(keyID string, code string) bool {
+	return VerifyCodeExist(keyID, code, model.VerifyCode_Class_Regist)
 }
 
-func RegistVerifyCodeCanSend(id string) bool {
-	return VerifyCodeCanSend(id, model.VerifyCode_Class_Regist)
+func RegistVerifyCodeCanSend(keyID string) bool {
+	return VerifyCodeCanSend(keyID, model.VerifyCode_Class_Regist)
 }
-func RegistVerifyCodeCanSendTTL(id string) int64 {
-	return VerifyCodeCanSendTTL(id, model.VerifyCode_Class_Regist)
+func RegistVerifyCodeCanSendTTL(keyID string) int64 {
+	return VerifyCodeCanSendTTL(keyID, model.VerifyCode_Class_Regist)
 }
 
 // 忘记密码重置验证码
-func PasswordForgetVerifyCodeAdd(id string, code string) bool {
-	return VerifyCodeAdd(id, code, model.VerifyCode_Class_PasswordForget)
+func PasswordForgetVerifyCodeAdd(keyID string, code string) bool {
+	return VerifyCodeAdd(keyID, code, model.VerifyCode_Class_PasswordForget)
 }
 
-func PasswordForgetVerifyCodeExist(id string, code string) bool {
-	return VerifyCodeExist(id, code, model.VerifyCode_Class_PasswordForget)
+func PasswordForgetVerifyCodeExist(keyID string, code string) bool {
+	return VerifyCodeExist(keyID, code, model.VerifyCode_Class_PasswordForget)
 }
 
-func PasswordForgetVerifyCodeCanSend(id string) bool {
-	return VerifyCodeCanSend(id, model.VerifyCode_Class_PasswordForget)
+func PasswordForgetVerifyCodeCanSend(keyID string) bool {
+	return VerifyCodeCanSend(keyID, model.VerifyCode_Class_PasswordForget)
 }
-func PasswordForgetVerifyCodeCanSendTTL(id string) int64 {
-	return VerifyCodeCanSendTTL(id, model.VerifyCode_Class_PasswordForget)
+func PasswordForgetVerifyCodeCanSendTTL(keyID string) int64 {
+	return VerifyCodeCanSendTTL(keyID, model.VerifyCode_Class_PasswordForget)
 }

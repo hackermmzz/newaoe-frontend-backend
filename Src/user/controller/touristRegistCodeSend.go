@@ -25,5 +25,5 @@ func TouristRegistCodeSend(ctx *gin.Context) {
 		return
 	}
 	//
-	util.ResponseACK_MSG(ctx, "验证码发送成功", "")
+	util.ResponseACK_MSG(ctx, "验证码发送成功", map[string]interface{}{"email": dt.Email})
 }

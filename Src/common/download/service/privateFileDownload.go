@@ -16,7 +16,7 @@ func PrivateFileDownload(filepath string, userInfo map[string]interface{}, attac
 		return ""
 	}
 	//
-	return DownloadFile(filepath, time.Duration(config.Conf.Other.PrivateFileDownloadUrlExpireTime)*time.Second, attachment)
+	return DownloadFile(filepath, time.Duration(config.Conf.Other.PrivateFileDownloadUrlExpireTime)*time.Minute, attachment)
 }
 
 // 私人资源下载鉴权(目前只不允许看别人的代码)

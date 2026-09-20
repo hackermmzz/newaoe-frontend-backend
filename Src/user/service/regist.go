@@ -8,7 +8,7 @@ import (
 	"newaoe/Src/util"
 )
 
-func UserRegist(id string, password string, email string, vip_class int, verifyCode string) error {
+func UserRegist(id string, password string, email string, vip_class int, verifyCode string, keyID string) error {
 	session := database.NewSession()
 	defer session.Close()
 	if err := session.Begin(); err != nil {
@@ -20,7 +20,7 @@ func UserRegist(id string, password string, email string, vip_class int, verifyC
 		return errors.New("密码格式错误!")
 	}
 	//检查验证码是否正确
-	if !dao.RegistVerifyCodeExist(id, verifyCode) {
+	if !dao.RegistVerifyCodeExist(keyID, verifyCode) {
 		return errors.New("验证码错误")
 	}
 	//查询用是否允许注册
@@ -56,11 +56,11 @@ func UserRegist(id string, password string, email string, vip_class int, verifyC
 }
 
 func UserRegistTouristUser(id string, password string, email string, verifyCode string) error {
-	return UserRegist(id, password, email, model.VIP_TOURIST, verifyCode)
+	return UserRegist(id, password, email, model.VIP_TOURIST, verifyCode, email)
 }
 
 func UserRegistRegularUser(id string, password string, email string, verifyCode string) error {
-	return UserRegist(id, password, email, model.VIP_NONE, verifyCode)
+	return UserRegist(id, password, email, model.VIP_NONE, verifyCode, id)
 }
 
 // 判断密码是否合法

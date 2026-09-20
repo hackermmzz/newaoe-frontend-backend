@@ -14,7 +14,7 @@ func PublicFileDownload(filepath string, userInfo map[string]interface{}, attach
 		return ""
 	}
 	//
-	return DownloadFile(filepath, time.Duration(config.Conf.Other.PublicFileDownloadUrlExpireTime)*time.Second, attachment)
+	return DownloadFile(filepath, time.Duration(config.Conf.Other.PublicFileDownloadUrlExpireTime)*time.Minute, attachment)
 }
 
 // 公共资源下载鉴权(目前没有什么鉴权,后续可以添加一些访问频率限制之类的)
