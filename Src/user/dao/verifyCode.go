@@ -79,8 +79,8 @@ func VerifyCodeCanSendTTL(id string, class int8) int64 {
 }
 
 // 注册
-func RegistVerifyCodeAdd(id string, code string) bool {
-	return VerifyCodeAdd(id, code, model.VerifyCode_Class_Regist)
+func RegistVerifyCodeAdd(id_or_email string, code string) bool {
+	return VerifyCodeAdd(id_or_email, code, model.VerifyCode_Class_Regist)
 }
 
 func RegistVerifyCodeExist(id string, code string) bool {

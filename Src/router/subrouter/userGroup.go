@@ -23,6 +23,8 @@ func routeConfig_User(group *gin.RouterGroup) {
 	group.POST("touristregist", controller.TouristUserRegist)
 	//发送注册验证码
 	group.POST("registCode", controller.UserRegistCodeSend)
+	//发送游客注册验证码
+	group.POST("touristregistCode", controller.TouristRegistCodeSend)
 	//重置密码
 	group.POST("resetPassword", controller.UserResetPassword)
 	//发送重置密码验证码

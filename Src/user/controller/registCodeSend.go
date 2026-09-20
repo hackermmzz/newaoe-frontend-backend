@@ -7,14 +7,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type registCodeSendDataInfo struct {
+	Id    string `json:"id"`
+	Email string `json:"email"`
+}
+
 // 发送注册码
 func UserRegistCodeSend(ctx *gin.Context) {
-	type DataInfo struct {
-		Id    string `json:"id"`
-		Email string `json:"email"`
-	}
 	//
-	var dt DataInfo
+	var dt registCodeSendDataInfo
 	if !util.JsonCtx(ctx, &dt) {
 		util.ResponseNAK_MSG(ctx, "数据报文错误", "")
 		return

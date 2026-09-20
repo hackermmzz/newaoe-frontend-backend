@@ -8,9 +8,9 @@ import (
 	"newaoe/Src/util"
 )
 
-func SendRegistCode(id string, email string) error {
+func SendRegistCode(id_or_email string, email string) error {
 	//判断是否可以发送验证码
-	ttl := dao.RegistVerifyCodeCanSendTTL(id)
+	ttl := dao.RegistVerifyCodeCanSendTTL(id_or_email)
 	if ttl > 0 {
 		return util.NewError(fmt.Sprintf("请等待%v秒后重试!", ttl))
 	}
@@ -24,7 +24,7 @@ func SendRegistCode(id string, email string) error {
 	}
 	service.SendEmail(emailMsg)
 	//插入Redis
-	dao.RegistVerifyCodeAdd(id, code)
+	dao.RegistVerifyCodeAdd(id_or_email, code)
 	//
 	return nil
 }
