@@ -7,13 +7,13 @@
     <div class="login-card">
       <div class="login-header">
         <h2 class="login-title">欢迎来到提瓦特大陆</h2>
-        <p class="login-desc">请使用您的学号和密码登录</p>
+        <p class="login-desc">请使用您的账号和密码登录</p>
       </div>
 
       <form class="login-form" @submit.prevent="handleLogin">
-        <!-- 学号输入 -->
+        <!-- 账号输入 -->
         <div class="form-group">
-          <label for="studentId" class="form-label">学号</label>
+          <label for="studentId" class="form-label">账号</label>
           <div class="input-wrapper">
             <span class="input-icon">
               <i class="fas fa-id-card"></i>
@@ -23,8 +23,8 @@
               type="text"
               v-model="studentId"
               @input="validateStudentId"
-              maxlength="20"
-              placeholder="请输入学号"
+              maxlength="50"
+              placeholder="请输入账号/邮箱"
               class="form-input"
               :class="{ 'input-error': studentIdError }"
             >
@@ -113,23 +113,23 @@ export default {
     const isLoading = ref(false);
     const studentIdError = ref('');
 
-    // 验证学号格式（数字+字母组合，20位以内）
+    // 验证账号格式：支持英文、数字及账号常用符号
     const validateStudentId = () => {
-      if (!studentId.value) {
-        studentIdError.value = '请输入学号';
+      const account = studentId.value.trim();
+      if (!account) {
+        studentIdError.value = '请输入账号';
         return false;
       }
       
       // 检查长度
-      if (studentId.value.length > 20) {
-        studentIdError.value = '学号长度不能超过20位';
+      if (account.length > 50) {
+        studentIdError.value = '账号长度不能超过50位';
         return false;
       }
       
-      // 新增：验证数字+字母组合（可选，根据需求调整）
-      const reg = /^[A-Za-z0-9]+$/;
-      if (!reg.test(studentId.value)) {
-        studentIdError.value = '学号仅支持数字和字母组合';
+      const reg = /^[A-Za-z0-9._@-]+$/;
+      if (!reg.test(account)) {
+        studentIdError.value = '账号仅支持英文、数字及 . _ @ - 符号';
         return false;
       }
       
@@ -157,7 +157,7 @@ export default {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            id: studentId.value,
+            id: studentId.value.trim(),
             password: password.value,
           }),
           credentials: 'include'
@@ -165,7 +165,7 @@ export default {
 
         const data = await response.json();
         if (!response.ok ||!data.status) {
-          throw new Error(data.msg || '登录失败，请检查学号和密码');
+          throw new Error(data.msg || '登录失败，请检查账号和密码');
         }
 
         // 登录成功处理

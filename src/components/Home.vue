@@ -40,7 +40,7 @@
       </div>
       <div class="bg-white p-6 shadow-sm min-h-[calc(100vh-10rem)]">
         <!-- 子路由组件会显示在这里 -->
-        <router-view></router-view>
+        <router-view v-if="userVip !== null"></router-view>
       </div>
     </main>
   </div>
@@ -93,8 +93,19 @@ export default {
     isVipUser() {
       return Number(this.userVip) >= Number(config.VIP_SUPER);
     },
+    isTouristOrLower() {
+      return this.userVip !== null
+        && Number(this.userVip) <= Number(config.VIP_TOURIST);
+    },
     visibleMenuItems() {
-      return this.menuItems.filter(item => !item.requiresVip || this.isVipUser);
+      if (this.userVip === null) return [];
+      return this.menuItems.filter(item => {
+        if (item.requiresVip && !this.isVipUser) return false;
+        if (this.isTouristOrLower) {
+          return ['/home/student-home', '/home/ranking', '/home/settings'].includes(item.path);
+        }
+        return true;
+      });
     },
     currentMenu() {
       // 优先匹配当前路由，无匹配时默认取第一个菜单（双重保险）
@@ -106,14 +117,21 @@ export default {
   },
   mounted() {
     this.loadUserVip();
-    // 组件挂载后：若当前路由不是任何子路由（如仅进入父路由“/home”），自动跳转到第一个菜单
-    const isCurrentRouteValid = this.menuItems.some(item => this.$route.path === item.path
-      || this.$route.path.startsWith(`${item.path}/`));
-    if (!isCurrentRouteValid) {
-      this.$router.push(this.menuItems[0].path);
+  },
+  watch: {
+    '$route.path'() {
+      this.ensureAllowedRoute();
     }
   },
   methods: {
+    ensureAllowedRoute() {
+      if (this.userVip === null) return;
+      const isCurrentRouteValid = this.visibleMenuItems.some(item => this.$route.path === item.path
+        || this.$route.path.startsWith(`${item.path}/`));
+      if (!isCurrentRouteValid && this.visibleMenuItems.length) {
+        this.$router.push(this.visibleMenuItems[0].path);
+      }
+    },
     async loadUserVip() {
       try {
         const response = await fetch(`${config.base_url}/home/studentInfo`, {
@@ -126,8 +144,10 @@ export default {
         } else {
           this.userVip = 0;
         }
+        this.ensureAllowedRoute();
       } catch (error) {
         this.userVip = 0;
+        this.ensureAllowedRoute();
       }
     }
   }

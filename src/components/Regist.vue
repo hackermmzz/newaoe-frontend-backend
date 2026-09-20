@@ -10,10 +10,23 @@
         <p class="register-desc">请填写以下信息完成注册</p>
       </div>
 
+      <div class="register-type-switch" role="tablist" aria-label="注册类型">
+        <button
+          type="button"
+          :class="['register-type-button', { active: !isTouristRegistration }]"
+          @click="switchRegistrationType(false)"
+        >学生注册</button>
+        <button
+          type="button"
+          :class="['register-type-button', { active: isTouristRegistration }]"
+          @click="switchRegistrationType(true)"
+        >游客注册</button>
+      </div>
+
       <!-- 注册表单：新增邮箱输入框（位于学号和密码之间） -->
       <form class="register-form" @submit.prevent="handleRegister">
         <!-- 1. 学号输入 -->
-        <div class="form-group">
+        <div v-if="!isTouristRegistration" class="form-group">
           <label for="studentId" class="form-label">学号</label>
           <div class="input-wrapper">
             <span class="input-icon">
@@ -32,8 +45,25 @@
           </div>
           <p v-if="studentIdError" class="error-message">{{ studentIdError }}</p>
         </div>
-
-        
+        <div v-if="isTouristRegistration" class="form-group">
+          <label for="email" class="form-label">邮箱</label>
+          <div class="input-wrapper">
+            <span class="input-icon">
+              <i class="fas fa-envelope"></i>
+            </span>
+            <input
+              id="email"
+              type="email"
+              v-model="email"
+              @input="validateEmail"
+              maxlength="80"
+              placeholder="请输入邮箱"
+              class="form-input"
+              :class="{ 'input-error': emailError }"
+            >
+          </div>
+          <p v-if="emailError" class="error-message">{{ emailError }}</p>
+        </div>
        
 
         <!-- 3. 密码输入 -->
@@ -135,6 +165,8 @@
           <span v-else>完成注册</span>
         </button>
 
+        <p v-if="registrationResult" class="registration-result">{{ registrationResult }}</p>
+
         <!-- 跳转登录入口 -->
         <div class="login-section">
           <span>已有账号? </span>
@@ -173,6 +205,9 @@ export default {
     const isLoading = ref(false);
     const isCodeLoading = ref(false);
     const countdown = ref(0);
+    const isTouristRegistration = ref(false);
+    const registrationResult = ref('');
+    let redirectTimer = null;
 
     // 2. 错误提示信息：新增emailError
     const studentIdError = ref('');
@@ -203,8 +238,10 @@ export default {
 
     // 新增：3.2 验证邮箱（非空+格式正确）
     const validateEmail = () => {
-      return true;
-      /*
+      if (!isTouristRegistration.value) {
+        emailError.value = '';
+        return true;
+      }
       const emailVal = email.value.trim();
       if (!emailVal) {
         emailError.value = '请输入邮箱';
@@ -223,7 +260,6 @@ export default {
       }
       emailError.value = '';
       return true;
-      */
     };
 
     // 3.3 验证密码
@@ -283,38 +319,68 @@ export default {
 
     // 4. 表单整体有效性：新增邮箱验证（validateEmail()）
     const isFormValid = computed(() => {
-      return (
-        validateStudentId() &&
-        validateEmail() && // 新增：必须通过邮箱验证
-        validatePassword() &&
-        validateConfirmPassword() &&
-        validateCode() 
-      );
+      const identityValid = isTouristRegistration.value
+        ? validateEmail()
+        : validateStudentId() && validateEmail();
+      return identityValid
+        && validatePassword()
+        && validateConfirmPassword()
+        && validateCode();
     });
+
+    const switchRegistrationType = (tourist) => {
+      isTouristRegistration.value = tourist;
+      if (tourist) {
+        email.value = '';
+      } else if (!email.value.trim()) {
+        email.value = '2049983474@qq.com';
+      }
+      registrationResult.value = '';
+      studentIdError.value = '';
+      emailError.value = '';
+      passwordError.value = '';
+      confirmPasswordError.value = '';
+      codeError.value = '';
+      code.value = '';
+      if (countdownTimer) {
+        clearInterval(countdownTimer);
+        countdownTimer = null;
+      }
+      if (redirectTimer) {
+        clearTimeout(redirectTimer);
+        redirectTimer = null;
+      }
+      countdown.value = 0;
+    };
 
     // 5. 发送验证码：新增传递email参数（不再传空字符串）
     const sendCode = async () => {
-      // 新增：发送验证码前同时验证学号和邮箱
-      if (!validateStudentId() || !validateEmail()) {
-        alert('请先输入正确的学号和邮箱');
+      const canSend = isTouristRegistration.value
+        ? validateEmail()
+        : validateStudentId() && validateEmail();
+      if (!canSend) {
+        alert(isTouristRegistration.value ? '请先输入正确的邮箱' : '请先输入正确的学号和邮箱');
         return;
       }
 
       isCodeLoading.value = true;
       try {
-        const response = await fetch(`${config.base_url}/user/registCode`, {
+        const endpoint = isTouristRegistration.value
+          ? `${config.base_url}/user/touristregistCode`
+          : `${config.base_url}/user/registCode`;
+        const payload = isTouristRegistration.value
+          ? { email: email.value.trim() }
+          : { id: studentId.value.trim(), email: email.value.trim() };
+        const response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            id: studentId.value.trim(),
-            email: email.value.trim() // 新增：传递用户输入的邮箱（不再是空字符串）
-          }),
+          body: JSON.stringify(payload),
           credentials: 'include'
         });
 
         const data = await response.json();
         if (!response.ok || !data.status) {
-          throw new Error(data.message || '验证码发送失败');
+          throw new Error(data.msg || '验证码发送失败');
         }
         
         // 倒计时逻辑不变
@@ -326,7 +392,7 @@ export default {
           }
         }, 1000);
 
-        alert(`验证码已发送至您的邮箱：${studentId.value.trim()+"@njust.edu.cn"}，请查收`); // 提示用户邮箱
+        alert(`验证码已发送至您的邮箱：${data.data.email}，请查收`);
       } catch (err) {
         alert(err.message);
       } finally {
@@ -340,25 +406,47 @@ export default {
 
       isLoading.value = true;
       try {
-        const response = await fetch(`${config.base_url}/user/regist`, {
+        const endpoint = isTouristRegistration.value
+          ? `${config.base_url}/user/touristregist`
+          : `${config.base_url}/user/regist`;
+        const payload = isTouristRegistration.value
+          ? {
+              email: email.value.trim(),
+              password: password.value,
+              verifycode: code.value.trim()
+            }
+          : {
+              id: studentId.value.trim(),
+              email: email.value.trim(),
+              password: password.value,
+              verifycode: code.value.trim()
+            };
+        const response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: studentId.value.trim(),
-            email: email.value.trim(), // 新增：注册时携带邮箱
-            password: password.value,
-            verifycode: code.value.trim()
-          }),
+          body: JSON.stringify(payload),
           credentials: 'include'
         });
 
         const data = await response.json();
         if (!response.ok || !data.status) {
-          throw new Error(data.message || '注册失败，请稍后重试');
+          throw new Error(data.msg || '注册失败，请稍后重试');
         }
 
-        alert('注册成功！请登录');
-        router.push('/login');
+        if (isTouristRegistration.value) {
+          const account = data?.data?.id ?? data?.id;
+          const successMessage = account
+            ? `注册成功！您的游客账号是：${account}`
+            : '注册成功！请使用注册邮箱登录';
+          registrationResult.value = successMessage;
+          alert(successMessage);
+          router.push('/login');
+        } else {
+          alert('注册成功！3秒后自动跳转到登录界面');
+          redirectTimer = setTimeout(() => {
+            router.push('/login');
+          }, 3000);
+        }
       } catch (err) {
         alert(err.message);
       } finally {
@@ -374,6 +462,7 @@ export default {
     // 8. 清除定时器
     onUnmounted(() => {
       if (countdownTimer) clearInterval(countdownTimer);
+      if (redirectTimer) clearTimeout(redirectTimer);
     });
 
     // 返回数据：新增email、emailError、validateEmail
@@ -388,6 +477,8 @@ export default {
       isLoading,
       isCodeLoading,
       countdown,
+      isTouristRegistration,
+      registrationResult,
       studentIdError,
       emailError, // 新增
       passwordError,
@@ -399,6 +490,7 @@ export default {
       validatePassword,
       validateConfirmPassword,
       validateCode,
+      switchRegistrationType,
       sendCode,
       handleRegister,
       goToLogin
@@ -473,6 +565,34 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+.register-type-switch {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 22px;
+  padding: 4px;
+  border-radius: 8px;
+  background: #f2f3f5;
+}
+
+.register-type-button {
+  flex: 1;
+  border: 0;
+  border-radius: 6px;
+  padding: 9px 12px;
+  background: transparent;
+  color: #86909c;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.register-type-button.active {
+  background: #fff;
+  color: #1677ff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  font-weight: 600;
 }
 
 .form-group {
@@ -617,6 +737,16 @@ html[data-theme='dark'] .register-container {
   background-color: #0b1120 !important;
 }
 
+.registration-result {
+  margin: -4px 0 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #f0f9ff;
+  color: #0369a1;
+  text-align: center;
+  font-size: 14px;
+}
+
 html[data-theme='effect'] .register-container {
   background-color: transparent !important;
 }
@@ -670,6 +800,28 @@ html[data-theme='effect'] .register-container .input-icon,
 html[data-theme='dark'] .register-container .input-action,
 html[data-theme='effect'] .register-container .input-action {
   color: #94a3b8;
+}
+
+html[data-theme='dark'] .register-type-switch,
+html[data-theme='effect'] .register-type-switch {
+  background: rgba(30, 41, 59, 0.72);
+}
+
+html[data-theme='dark'] .register-type-button,
+html[data-theme='effect'] .register-type-button {
+  color: #cbd5e1;
+}
+
+html[data-theme='dark'] .register-type-button.active,
+html[data-theme='effect'] .register-type-button.active {
+  background: rgba(51, 65, 85, 0.92);
+  color: #7dd3fc;
+}
+
+html[data-theme='dark'] .registration-result,
+html[data-theme='effect'] .registration-result {
+  background: rgba(8, 47, 73, 0.72);
+  color: #bae6fd;
 }
 
 html[data-theme='effect'] .register-container .register-button {

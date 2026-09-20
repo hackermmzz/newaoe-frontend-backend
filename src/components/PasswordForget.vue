@@ -35,19 +35,19 @@
 
         <!-- 注册字段：仅保留核心字段 -->
         <div class="space-y-5 animate-slideIn">
-          <!-- 学号输入 -->
+          <!-- 账号输入 -->
           <div class="relative group">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-all duration-300 group-focus-within:text-blue-500">
               <i class="fa fa-id-card text-gray-400"></i>
             </div>
-            <label for="studentId" class="block text-sm font-medium text-gray-700 mb-1">学号</label>
+            <label for="studentId" class="block text-sm font-medium text-gray-700 mb-1">账号或邮箱</label>
             <input
               id="studentId"
               v-model="studentId"
               type="text"
               required
               class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
-              placeholder="请输入您的学号"
+              placeholder="请输入账号或邮箱"
               @input="clearMessages"
             />
           </div>
@@ -211,8 +211,7 @@ export default {
   data() {
     return {
       // 仅保留核心注册字段
-      studentId: '',   // 学号
-      email: '2049983474@qq.com',       // 绑定邮箱
+      studentId: '',   // 账号
       captcha: '',     // 验证码
       password: '',    // 密码
       confirmPassword: '', // 确认密码
@@ -276,30 +275,28 @@ export default {
       this.successMessage = '';
     },
 
-    // 发送注册验证码（仅保留学号+邮箱验证，未改动逻辑）
+    // 发送密码修改验证码：账号或邮箱统一作为 id 提交
     async sendCaptcha() {
       this.clearMessages();
       
-      // 前置验证：仅验证学号和绑定邮箱
       if (!this.studentId.trim()) {
-        return this.errorMessage = '请先输入学号';
+        return this.errorMessage = '请先输入账号或邮箱';
       }
-      if (!this.email.trim() || !this.email.includes('@')) {
-        return this.errorMessage = '请输入有效邮箱（用于接收验证码）';
+      if (!/^[A-Za-z0-9._@-]+$/.test(this.studentId.trim())) {
+        return this.errorMessage = '账号或邮箱格式不正确';
       }
       
       try {
         this.isLoading = true;
         
-        // 调用发送验证码接口（参数仅保留学号和邮箱）
+        // 账号和邮箱都通过 id 字段提交
         const response = await fetch(`${config.base_url}/user/resetPasswordCode`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            id: this.studentId,
-            email: this.email
+            id: this.studentId.trim()
           })
         });
         
@@ -328,14 +325,14 @@ export default {
       }
     },
 
-    // 处理注册提交（移除用户名相关验证和参数）
+    // 处理密码修改提交
     async handleRegister() {
       this.clearMessages();
       
-      // 表单验证：仅验证核心字段
+      // 表单验证：账号或邮箱统一作为 id
       const validate = () => {
-        if (!this.studentId.trim()) return '请输入学号';
-        if (!this.email.trim() || !this.email.includes('@')) return '请输入有效邮箱';
+        if (!this.studentId.trim()) return '请输入账号或邮箱';
+        if (!/^[A-Za-z0-9._@-]+$/.test(this.studentId.trim())) return '账号或邮箱格式不正确';
         if (!this.captcha.trim()) return '请输入邮箱验证码';
         if (!this.password.trim()) return '请设置密码';
         if (this.password.length < 6) return '密码长度不能少于6位';
@@ -352,15 +349,14 @@ export default {
       try {
         this.isLoading = true;
         
-        // 调用注册接口（参数仅保留核心字段，移除用户名）
+        // 账号和邮箱都通过 id 字段提交
         const response = await fetch(`${config.base_url}/user/resetPassword`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            id: this.studentId,
-            email: this.email,
+            id: this.studentId.trim(),
             verifycode: this.captcha,
             password: this.password // 实际项目需加密传输（如bcrypt）
           })

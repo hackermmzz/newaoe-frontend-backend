@@ -18,71 +18,55 @@
           type="button"
           class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           :disabled="isLoading"
-          @click="loadStudents(currentPage)"
+          @click="refreshStudents"
         >
           {{ isLoading ? '加载中...' : '刷新列表' }}
         </button>
       </div>
     </div>
 
+    <form
+      class="flex flex-col sm:flex-row gap-2"
+      role="search"
+      @submit.prevent="searchStudent"
+    >
+      <label for="student-search-id" class="sr-only">按学生 ID 搜索</label>
+      <input
+        id="student-search-id"
+        v-model="searchId"
+        type="text"
+        autocomplete="off"
+        placeholder="请输入学生 ID"
+        class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      >
+      <button
+        type="submit"
+        class="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        :disabled="isLoading"
+      >
+        {{ isLoading ? '搜索中...' : '搜索' }}
+      </button>
+      <button
+        v-if="activeSearchId"
+        type="button"
+        class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        :disabled="isLoading"
+        @click="clearSearch"
+      >
+        清除搜索
+      </button>
+    </form>
+
     <div v-if="errorMessage" class="rounded-lg bg-red-50 p-4 text-sm text-red-700" role="alert">
       {{ errorMessage }}
     </div>
 
-    <!-- 分页控件放在学生列表上方，便于直接翻页。 -->
-    <div
-      v-if="students.length && !isLoading"
-      class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-y border-gray-200 py-4"
-    >
-      <p class="text-sm text-gray-500">
-        第 {{ currentPage }} 页，本页 {{ students.length }} 条
-      </p>
-
-      <div class="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          class="px-3 py-1.5 border border-gray-300 rounded-md text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          :disabled="isLoading || currentPage <= 1"
-          @click="handlePrevPage"
-        >
-          上一页
-        </button>
-
-        <div class="flex items-center gap-1">
-          <input
-            v-model.number="targetPage"
-            type="number"
-            :min="1"
-            class="w-16 px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-            aria-label="跳转页码"
-          >
-          <button
-            type="button"
-            class="px-2 py-1.5 border border-gray-300 rounded-md text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            :disabled="isLoading"
-            @click="handlePageJump"
-          >
-            跳转
-          </button>
-        </div>
-
-        <button
-          type="button"
-          class="px-3 py-1.5 border border-gray-300 rounded-md text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          :disabled="isLoading || !hasNextPage"
-          @click="handleNextPage"
-        >
-          下一页
-        </button>
-      </div>
-    </div>
-
-    <div v-if="isLoading" class="py-16 text-center text-gray-500">
+    <div v-if="isLoading && !students.length" class="py-16 text-center text-gray-500">
       正在加载学生信息...
     </div>
 
     <div v-else-if="!students.length" class="py-16 text-center text-gray-500">
-      暂无学生数据
+      {{ activeSearchId ? '未找到该学生' : '暂无学生数据' }}
     </div>
 
     <div v-else class="grid grid-cols-1 gap-4">
@@ -116,11 +100,20 @@
       </button>
     </div>
 
+    <div
+      ref="loadMoreTrigger"
+      v-show="!activeSearchId && hasNextPage"
+      class="py-5 text-center text-sm text-gray-500"
+      aria-live="polite"
+    >
+      {{ isLoading ? '正在加载更多学生...' : '下滑加载更多' }}
+    </div>
+
   </section>
 </template>
 
 <script>
-import { onMounted, ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import config from '../config';
@@ -136,8 +129,11 @@ export default {
     const isExporting = ref(false);
     const errorMessage = ref('');
     const currentPage = ref(1);
-    const targetPage = ref(1);
     const hasNextPage = ref(true);
+    const searchId = ref('');
+    const activeSearchId = ref('');
+    const loadMoreTrigger = ref(null);
+    let loadMoreObserver = null;
     const pageSize = config.ManagerStudentRecordPerPage || 10;
 
     const formatDate = value => {
@@ -155,7 +151,7 @@ export default {
       avatarUrl: ''
     });
 
-    const loadStudents = async (page = currentPage.value) => {
+    const loadStudents = async (page = currentPage.value, append = false) => {
       if (isLoading.value || !Number.isInteger(page) || page < 1) return;
       isLoading.value = true;
       errorMessage.value = '';
@@ -180,10 +176,7 @@ export default {
         const payload = data.data;
 
         if (payload.length === 0 && page > 1) {
-          if (page === currentPage.value + 1) {
-            hasNextPage.value = false;
-          }
-          targetPage.value = currentPage.value;
+          hasNextPage.value = false;
           return;
         }
 
@@ -203,17 +196,93 @@ export default {
           }
         }));
 
-        students.value = nextStudents;
+        students.value = append
+          ? [...students.value, ...nextStudents]
+          : nextStudents;
         currentPage.value = page;
-        targetPage.value = page;
         hasNextPage.value = payload.length >= pageSize;
       } catch (error) {
-        targetPage.value = currentPage.value;
         errorMessage.value = error?.message || '加载学生信息失败';
         ElMessage.error(errorMessage.value);
       } finally {
         isLoading.value = false;
       }
+    };
+
+    const searchStudent = async () => {
+      const studentId = String(searchId.value ?? '').trim();
+      if (!studentId) {
+        clearSearch();
+        return;
+      }
+      if (isLoading.value) return;
+
+      isLoading.value = true;
+      errorMessage.value = '';
+      try {
+        const requestUrl = new URL(config.manager_student_search_url);
+        requestUrl.searchParams.set('id', studentId);
+        const response = await fetch(requestUrl.toString(), {
+          method: 'GET',
+          credentials: 'include'
+        });
+        const data = await response.json();
+        if (!response.ok || !data?.status) {
+          throw new Error(data?.msg || `搜索学生失败（HTTP ${response.status}）`);
+        }
+
+        if (!data?.data) {
+          throw new Error('学生不存在或暂无信息');
+        }
+
+        const student = normalizeStudent(data.data);
+        if (!student.id) {
+          throw new Error('未找到该学生');
+        }
+        if (student.avatar) {
+          try {
+            student.avatarUrl = await getDownloadUrl(student.avatar);
+          } catch (error) {
+            // 头像下载失败不影响学生信息展示。
+          }
+        }
+
+        students.value = [student];
+        activeSearchId.value = studentId;
+        currentPage.value = 1;
+        hasNextPage.value = false;
+      } catch (error) {
+        students.value = [];
+        activeSearchId.value = studentId;
+        errorMessage.value = error?.message || '搜索学生失败';
+        ElMessage.error(errorMessage.value);
+      } finally {
+        isLoading.value = false;
+      }
+    };
+
+    const clearSearch = () => {
+      if (isLoading.value) return;
+      searchId.value = '';
+      activeSearchId.value = '';
+      currentPage.value = 1;
+      hasNextPage.value = true;
+      loadStudents(1);
+    };
+
+    const refreshStudents = () => {
+      if (activeSearchId.value) {
+        searchStudent();
+        return;
+      }
+      currentPage.value = 1;
+      hasNextPage.value = true;
+      loadStudents(1);
+    };
+
+    const loadNextStudents = () => {
+      if (activeSearchId.value || !hasNextPage.value || isLoading.value) return;
+      loadStudents(currentPage.value + 1, true);
     };
 
     const openStudentHistory = async id => {
@@ -288,40 +357,41 @@ export default {
       }
     };
 
-    const handlePrevPage = () => {
-      if (currentPage.value > 1) loadStudents(currentPage.value - 1);
-    };
-
-    const handleNextPage = () => {
-      if (hasNextPage.value) loadStudents(currentPage.value + 1);
-    };
-
-    const handlePageJump = () => {
-      const page = Number(targetPage.value);
-      if (!Number.isInteger(page) || page < 1) {
-        errorMessage.value = '请输入合法的页码';
-        targetPage.value = currentPage.value;
-        return;
+    onMounted(() => {
+      loadMoreObserver = new IntersectionObserver(
+        entries => {
+          if (entries.some(entry => entry.isIntersecting)) {
+            loadNextStudents();
+          }
+        },
+        { rootMargin: '240px 0px' }
+      );
+      if (loadMoreTrigger.value) {
+        loadMoreObserver.observe(loadMoreTrigger.value);
       }
-      if (page !== currentPage.value) loadStudents(page);
-    };
+      loadStudents(1);
+    });
 
-    onMounted(loadStudents);
+    onBeforeUnmount(() => {
+      loadMoreObserver?.disconnect();
+    });
 
     return {
       errorMessage,
+      activeSearchId,
       currentPage,
       exportStudentInfo,
       formatDate,
-      handleNextPage,
-      handlePageJump,
-      handlePrevPage,
       hasNextPage,
       isLoading,
       isExporting,
       loadStudents,
       openStudentHistory,
-      targetPage,
+      refreshStudents,
+      searchId,
+      searchStudent,
+      clearSearch,
+      loadMoreTrigger,
       students
     };
   }

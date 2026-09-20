@@ -13,9 +13,9 @@
         </div>
       </div>
       
-      <!-- 2. 学号展示（紧跟头像下方） -->
+      <!-- 2. 账号展示（紧跟头像下方） -->
       <div class="mb-8 bg-gray-50 p-6 rounded-lg text-center">
-        <p class="text-gray-500 text-sm mb-1">学号</p>
+        <p class="text-gray-500 text-sm mb-1">账号</p>
         <p class="font-medium text-xl">{{ userInfo.studentId }}</p>
       </div>
       
@@ -39,7 +39,7 @@
         </router-link>
       </div>
       
-      <!-- 5. 反馈建议模块 -->
+      <!-- 5. 反馈建议模块（游客也可以提交反馈） -->
       <div>
         <h3 class="text-xl font-semibold mb-4 text-center">反馈与建议</h3>
         <div class="bg-gray-50 p-6 rounded-lg">
@@ -161,7 +161,7 @@ export default {
     // 使用reactive创建响应式的用户信息对象
     const userInfo = reactive({
       avatar: '', // 默认头像
-      studentId: '', // 学号将通过网络请求获取
+      studentId: '', // 账号将通过网络请求获取
       email: '', // 邮箱将通过网络请求获取
       registDate: '',// 注册日期将通过网络请求获取,
       vip: 0,

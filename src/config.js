@@ -11,6 +11,7 @@ let Code_Status_Fail            = 7 //游戏失败
 let Code_Status_Crash           = 8 //游戏崩溃
 
 //特权配置
+let VIP_TOURIST = -1 //游客用户(只看查看，不可提交)
 let VIP_NONE  = 0 //没有特权
 let VIP_SUPER = 1 //特权用户
 
@@ -57,6 +58,7 @@ module.exports = {
     manager_url,
     teacherFetch_url,
     manager_student_url: manager_url + "/fetchStudentInfos",
+    manager_student_search_url: manager_url + "/searchstudentbyid",
     manager_history_url: manager_url + "/getstudenthistory",
     manager_feedback_url: manager_url + "/fetchfeedback",
     manager_info_export_url: manager_url + "/infoExport",
@@ -64,6 +66,7 @@ module.exports = {
     ManagerFeedbackRecordPerPage: 10,
     RankingRecordPerPage: 10,
     VIP_NONE,
+    VIP_TOURIST,
     VIP_SUPER,
     avatarUpdate_url,
     codeSubmit_url,

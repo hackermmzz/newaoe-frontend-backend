@@ -12,7 +12,7 @@
         type="button"
         class="ranking-button bg-blue-600 text-white hover:bg-blue-700"
         :disabled="isLoading"
-        @click="loadRanking(currentPage)"
+        @click="refreshRanking"
       >
         {{ isLoading ? '加载中...' : '刷新榜单' }}
       </button>
@@ -30,7 +30,7 @@
         type="button"
         class="ml-3 underline"
         :disabled="isLoading"
-        @click="loadRanking(requestedPage)"
+        @click="refreshRanking"
       >
         重新加载
       </button>
@@ -48,42 +48,34 @@
         </p>
       </div>
 
-      <!-- 分页控件放在榜单上方，便于直接翻页。 -->
       <div
         class="p-4 border-b border-gray-100 flex flex-col lg:flex-row lg:items-center justify-between gap-4"
       >
         <p class="text-sm text-gray-500">
-          第 {{ currentPage }} 页，本页 {{ records.length }} 条
+          已加载 {{ records.length }} 条
         </p>
+      </div>
 
-        <div class="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            class="ranking-button border border-gray-300 hover:bg-gray-50"
-            :disabled="isLoading || currentPage <= 1"
-            @click="loadRanking(currentPage - 1)"
-          >
-            上一页
-          </button>
-
-          <span class="text-sm text-gray-600">
-            第 {{ currentPage }} 页
-          </span>
-
-          <button
-            type="button"
-            class="ranking-button border border-gray-300 hover:bg-gray-50"
-            :disabled="isLoading || !hasNextPage"
-            @click="loadRanking(currentPage + 1)"
-          >
-            下一页
-          </button>
+      <div v-if="championRecord" class="champion-card">
+        <img
+          v-if="championRecord.avatarUrl"
+          :src="championRecord.avatarUrl"
+          :alt="`${championRecord.id} 的头像`"
+          class="champion-avatar"
+        >
+        <div v-else class="champion-avatar champion-avatar-placeholder" aria-hidden="true">
+          <i class="fa fa-user"></i>
         </div>
+        <span class="champion-card-title">🏆 冠军</span>
+        <span class="champion-card-id">ID：{{ championRecord.id }}</span>
+        <span class="champion-card-description" :title="championRecord.msg || '暂无描述'">
+          描述：{{ championRecord.msg || '暂无描述' }}
+        </span>
       </div>
 
       <!-- 加载状态 -->
       <div
-        v-if="isLoading"
+        v-if="isLoading && !rankedRecords.length"
         class="py-16 text-center text-gray-500"
         role="status"
       >
@@ -92,7 +84,7 @@
         ></div>
 
         <p class="mt-3">
-          正在加载第 {{ requestedPage }} 页...
+          正在加载排行榜...
         </p>
       </div>
 
@@ -170,12 +162,26 @@
 
               <!-- 全局排名 -->
               <td class="px-5 py-4 font-semibold text-gray-700 whitespace-nowrap">
-                {{ (currentPage - 1) * pageSize + index + 1 }}
+                <div class="flex items-center gap-2">
+                  <span class="rank-medal" :aria-label="getMedalLabel(getRank(index))">
+                    {{ getMedal(getRank(index)) }}
+                  </span>
+                  <span v-if="getRank(index) <= 3" class="medal-title">
+                    {{ getMedalLabel(getRank(index)) }}
+                  </span>
+                  <span>{{ getRank(index) }}</span>
+                  <span v-if="getStars(getRank(index))" class="rank-stars" aria-label="荣誉星级">
+                    {{ getStars(getRank(index)) }}
+                  </span>
+                </div>
               </td>
 
               <!-- 学生 ID -->
               <td class="px-5 py-4 font-medium text-gray-800 whitespace-nowrap">
                 {{ student.id }}
+                <span v-if="getRank(index) === 1" class="champion-logo" title="冠军">
+                  🏆 冠军
+                </span>
               </td>
 
               <!-- 胜负 -->
@@ -221,6 +227,15 @@
         </table>
       </div>
 
+      <div
+        ref="loadMoreTrigger"
+        v-show="hasNextPage"
+        class="py-5 text-center text-sm text-gray-500"
+        aria-live="polite"
+      >
+        {{ isLoading ? '正在加载更多排行记录...' : '下滑加载更多' }}
+      </div>
+
     </div>
   </section>
 </template>
@@ -251,9 +266,11 @@ export default {
 
     const currentPage = ref(1);
 
-    const requestedPage = ref(1);
-
     const hasNextPage = ref(true);
+
+    const loadMoreTrigger = ref(null);
+
+    let loadMoreObserver = null;
 
     const pageSize =
       config.RankingRecordPerPage || 10;
@@ -278,6 +295,31 @@ export default {
     const rankedRecords = computed(() => {
       return records.value;
     });
+
+    const championRecord = computed(() => rankedRecords.value[0] || null);
+
+    const getRank = index => index + 1;
+
+    const getMedal = rank => {
+      if (rank === 1) return '🥇';
+      if (rank === 2) return '🥈';
+      if (rank === 3) return '🥉';
+      return '';
+    };
+
+    const getMedalLabel = rank => {
+      if (rank === 1) return '金牌';
+      if (rank === 2) return '银牌';
+      if (rank === 3) return '铜牌';
+      return `第 ${rank} 名`;
+    };
+
+    const getStars = rank => {
+      if (rank <= 10) return '★★★';
+      if (rank <= 20) return '★★';
+      if (rank <= 30) return '★';
+      return '';
+    };
 
     /*
      * 检查并规范后端返回的数据。
@@ -444,7 +486,8 @@ export default {
      * 获取排行榜。
      */
     const loadRanking = async (
-      page = currentPage.value
+      page = currentPage.value,
+      append = false
     ) => {
       if (
         isLoading.value ||
@@ -456,8 +499,6 @@ export default {
       }
 
       isLoading.value = true;
-
-      requestedPage.value = page;
 
       errorMessage.value = '';
 
@@ -591,14 +632,14 @@ export default {
           return;
         }
 
-        records.value =
-          recordsWithAvatarUrls;
+        records.value = append
+          ? [...records.value, ...recordsWithAvatarUrls]
+          : recordsWithAvatarUrls;
 
         currentPage.value =
           page;
 
-        // 是否存在下一页由下一次请求的空数组决定，不能根据本页条数推断。
-        hasNextPage.value = true;
+        hasNextPage.value = nextData.length >= pageSize;
 
         /*
          * 更新时间。
@@ -647,6 +688,18 @@ export default {
       }
     };
 
+    const loadNextRanking = () => {
+      if (isLoading.value || disposed || !hasNextPage.value) return;
+      loadRanking(currentPage.value + 1, true);
+    };
+
+    const refreshRanking = () => {
+      if (isLoading.value) return;
+      currentPage.value = 1;
+      hasNextPage.value = true;
+      loadRanking(1);
+    };
+
     /*
      * 格式化后端时间。
      */
@@ -682,6 +735,13 @@ export default {
      * 页面加载时获取第一页。
      */
     onMounted(() => {
+      loadMoreObserver = new IntersectionObserver(
+        entries => {
+          if (entries.some(entry => entry.isIntersecting)) loadNextRanking();
+        },
+        { rootMargin: '240px 0px' }
+      );
+      if (loadMoreTrigger.value) loadMoreObserver.observe(loadMoreTrigger.value);
       loadRanking(1);
     });
 
@@ -692,12 +752,15 @@ export default {
       disposed = true;
 
       controller?.abort();
+      loadMoreObserver?.disconnect();
     });
 
     return {
       records,
 
       rankedRecords,
+
+      championRecord,
 
       isLoading,
 
@@ -707,13 +770,23 @@ export default {
 
       currentPage,
 
-      requestedPage,
-
       hasNextPage,
 
       pageSize,
 
       loadRanking,
+
+      refreshRanking,
+
+      loadMoreTrigger,
+
+      getRank,
+
+      getMedal,
+
+      getMedalLabel,
+
+      getStars,
 
       formatTime
     };
@@ -747,5 +820,121 @@ export default {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.champion-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: nowrap;
+  margin: 1rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.75rem;
+  background: #fff;
+  overflow: hidden;
+}
+
+.champion-avatar {
+  width: 3.5rem;
+  height: 3.5rem;
+  flex: 0 0 auto;
+  border-radius: 9999px;
+  object-fit: cover;
+  border: 1px solid #d1d5db;
+  background: #f3f4f6;
+}
+
+.champion-avatar-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  font-size: 1.25rem;
+}
+
+.champion-card-title {
+  color: #facc15;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.champion-card-id {
+  margin-top: 0.1rem;
+  color: #1f2937;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.champion-card-description {
+  max-width: 42rem;
+  margin-top: 0.15rem;
+  overflow: hidden;
+  flex: 1 1 auto;
+  min-width: 0;
+  color: #4b5563;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rank-medal {
+  display: inline-flex;
+  width: 1.5rem;
+  justify-content: center;
+  font-size: 1.25rem;
+}
+
+.rank-stars {
+  color: #f59e0b;
+  letter-spacing: 0.08em;
+  font-size: 0.8rem;
+}
+
+.medal-title {
+  color: #92400e;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.champion-logo {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.25rem;
+  color: #facc15;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+:global(html[data-theme='dark'] .medal-title),
+:global(html[data-theme='effect'] .medal-title) {
+  color: #e5e7eb;
+}
+
+:global(html[data-theme='dark'] .champion-logo),
+:global(html[data-theme='effect'] .champion-logo) {
+  color: #facc15;
+}
+
+:global(html[data-theme='dark'] .champion-card),
+:global(html[data-theme='effect'] .champion-card) {
+  border-color: rgba(148, 163, 184, 0.3);
+  background: rgba(17, 24, 39, var(--theme-surface-alpha));
+}
+
+:global(html[data-theme='dark'] .champion-card-title),
+:global(html[data-theme='effect'] .champion-card-title) {
+  color: #facc15;
+}
+
+:global(html[data-theme='dark'] .champion-card-id),
+:global(html[data-theme='effect'] .champion-card-id) {
+  color: #fff;
+}
+
+:global(html[data-theme='dark'] .champion-card-description),
+:global(html[data-theme='effect'] .champion-card-description) {
+  color: #fff;
 }
 </style>
