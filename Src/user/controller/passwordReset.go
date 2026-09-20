@@ -7,21 +7,30 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type passwordResetDataInfo struct {
+	Id         string `json:"id"`
+	Password   string `json:"password"`
+	Email      string `json:"email"`
+	Verifycode string `json:"verifycode"`
+}
+
 // 重置密码
 func UserResetPassword(ctx *gin.Context) {
-	type DataInfo struct {
-		Id         string `json:"id"`
-		Password   string `json:"password"`
-		Email      string `json:"email"`
-		Verifycode string `json:"verifycode"`
-	}
-	var dt DataInfo
+
+	var dt passwordResetDataInfo
 	if !util.JsonCtx(ctx, &dt) {
 		util.ResponseNAK_MSG(ctx, "数据报文错误", "")
 		return
 	}
+	//获取用户信息
+	info, err := service.StudentInfoGetByEmailOrID(dt.Id)
+	if err != nil {
+		util.DebugError("重置密码失败:", err)
+		util.ResponseNAK_MSG(ctx, err.Error(), nil)
+		return
+	}
 	//
-	err := service.PasswordReset(dt.Id, dt.Email, dt.Password, dt.Verifycode)
+	err = service.PasswordReset(info.Id, info.Email, dt.Password, dt.Verifycode)
 	if err != nil {
 		util.DebugError("重置密码失败:", err)
 		util.ResponseNAK_MSG(ctx, err.Error(), nil)

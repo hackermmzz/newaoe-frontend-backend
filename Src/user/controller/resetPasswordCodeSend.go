@@ -19,8 +19,15 @@ func UserPasswordForgetCodeSend(ctx *gin.Context) {
 		util.ResponseNAK_MSG(ctx, "数据报文错误", "")
 		return
 	}
+	//获取用户信息
+	info, err := service.StudentInfoGetByEmailOrID(dt.Id)
+	if err != nil {
+		util.DebugError("重置密码失败:", err)
+		util.ResponseNAK_MSG(ctx, err.Error(), nil)
+		return
+	}
 	//发送验证码
-	err := service.PasswordResetCodeSend(dt.Id, dt.Email)
+	err = service.PasswordResetCodeSend(info.Id, info.Email)
 	if err != nil {
 		util.DebugError("密码重置验证码发送失败!")
 		util.ResponseNAK_MSG(ctx, err.Error(), nil)

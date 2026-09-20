@@ -3,12 +3,13 @@ package service
 import (
 	"errors"
 	"newaoe/Src/user/dao"
+	"newaoe/Src/user/model"
 )
 
-func StudentIDGetByEmailOrID(id_or_emial string) (string, error) {
+func StudentInfoGetByEmailOrID(id_or_emial string) (*model.Student, error) {
 	info := dao.UserGetByIdOrEmail(nil, id_or_emial)
 	if info == nil {
-		return "", errors.New("查无此账号!")
+		return nil, errors.New("查无此账号!")
 	}
-	return info.Id, nil
+	return info, nil
 }

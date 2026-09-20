@@ -20,21 +20,20 @@ func UserLogin(c *gin.Context) {
 		return
 	}
 	//根据传入的账号/邮箱获取学生的id
-	id, err := service.StudentIDGetByEmailOrID(dt.Id)
+	info, err := service.StudentInfoGetByEmailOrID(dt.Id)
 	if err != nil {
 		util.DebugError("UserLogin:", err)
 		util.ResponseNAK_MSG(c, err.Error(), nil)
 		return
 	}
-	dt.Id = id
 	//登陆
-	if err := service.UserCanLogin(dt.Id, dt.Password); err != nil {
+	if err := service.UserCanLogin(info.Id, dt.Password); err != nil {
 		util.DebugError("UserLogin:", err)
 		util.ResponseNAK_MSG(c, err.Error(), nil)
 		return
 	}
 	//设置cookie
-	cookie, err := service.UserGenCookie(dt.Id, c.ClientIP())
+	cookie, err := service.UserGenCookie(info.Id, c.ClientIP())
 	if err != nil {
 		util.DebugError("生成cookie失败:", err)
 		util.ResponseNAK_MSG(c, "服务器异常!", "")
