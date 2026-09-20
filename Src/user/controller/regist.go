@@ -15,6 +15,7 @@ type registDataInfo struct {
 	Verifycode string `json:"verifycode"`
 }
 
+// 常规用户注册
 func UserRegist(c *gin.Context) {
 	//
 	var dt registDataInfo
