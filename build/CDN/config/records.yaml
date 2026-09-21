@@ -2,6 +2,10 @@ records:
   http:
     cache:
       http: 1
+      required_headers: 0
+      heuristic_min_lifetime: 3600
+      heuristic_max_lifetime: 86400
+      when_to_revalidate: 0
     server_ports: "80"
   reverse_proxy:
     enabled: 1
