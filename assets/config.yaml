@@ -89,7 +89,7 @@ oss:
   maxRetry: 3                       #最大尝试次数
 # CDN配置
 cdn:
-  host: "http://www.hackermmzz.site:9090/"    #CDN服务真实地址
+  host: "http://114.66.62.156:9090/"    #CDN服务真实地址(由于没备案，所以走ip)
   cdnSwitch: true #下载是否走CDN分发
 
 #Feedback配置

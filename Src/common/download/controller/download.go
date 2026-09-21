@@ -23,20 +23,24 @@ func FileDownload(ctx *gin.Context) {
 	}
 	//资源下载
 	url := ""
+	download_type := service.DownloadURLType_UnKnown
 	switch category {
 	//公共文件下载
 	case config.Conf.OSS.PublicBaseFolder:
-		url = service.PublicFileDownload(filePath, userInfo, attachment)
+		url, download_type = service.PublicFileDownload(filePath, userInfo, attachment)
 	//私人文件下载
 	case config.Conf.OSS.PrivateBaseFolder:
-		url = service.PrivateFileDownload(filePath, userInfo, attachment)
+		url, download_type = service.PrivateFileDownload(filePath, userInfo, attachment)
 	}
 	//返回下载链接
 	if url == "" {
 		util.ResponseNAK_MSG(ctx, "服务器异常!", nil)
 		return
 	}
-	util.ResponseACK_MSG(ctx, "获取下载链接成功!", map[string]interface{}{"url": url})
+	util.ResponseACK_MSG(ctx, "获取下载链接成功!", map[string]interface{}{
+		"url":           url,
+		"download_type": download_type,
+	})
 }
 
 // 获取路径的类别category

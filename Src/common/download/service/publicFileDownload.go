@@ -7,11 +7,11 @@ import (
 )
 
 // 下载公共资源
-func PublicFileDownload(filepath string, userInfo map[string]interface{}, attachment bool) string {
+func PublicFileDownload(filepath string, userInfo map[string]interface{}, attachment bool) (string, int) {
 	//鉴权
 	if !publicFileDownloadCheck(userInfo, filepath) {
 		util.DebugError(userInfo["id"].(string), "无权访问该资源!")
-		return ""
+		return "", DownloadURLType_UnKnown
 	}
 	//
 	return DownloadFile(filepath, time.Duration(config.Conf.Other.PublicFileDownloadUrlExpireTime)*time.Minute, attachment)

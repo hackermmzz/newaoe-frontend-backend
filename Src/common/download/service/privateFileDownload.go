@@ -9,11 +9,11 @@ import (
 )
 
 // 下载学生私有资源
-func PrivateFileDownload(filepath string, userInfo map[string]interface{}, attachment bool) string {
+func PrivateFileDownload(filepath string, userInfo map[string]interface{}, attachment bool) (string, int) {
 	//鉴权
 	if !privateDownloadCheck(userInfo, filepath) {
 		util.DebugError(userInfo["id"].(string), "无权访问该资源!")
-		return ""
+		return "", DownloadURLType_UnKnown
 	}
 	//
 	return DownloadFile(filepath, time.Duration(config.Conf.Other.PrivateFileDownloadUrlExpireTime)*time.Minute, attachment)
