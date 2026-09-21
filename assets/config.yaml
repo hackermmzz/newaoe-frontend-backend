@@ -110,4 +110,4 @@ other:
   unlimitUser: ["925106840129"]     #不限制提交用户(这类用户通常给予了判题机资源)
   superUserPassword: "newaoe"  #超级用户密码
   superUserEmail: "2049983474@qq.com"  #超级用户邮箱
-  
+  verifyCodeRetryCount: 5 #验证码最大可尝试次数

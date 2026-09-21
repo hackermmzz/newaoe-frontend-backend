@@ -20,9 +20,15 @@ func UserRegist(id string, password string, email string, vip_class int, verifyC
 		return errors.New("密码格式错误!")
 	}
 	//检查验证码是否正确
-	if !dao.RegistVerifyCodeExist(keyID, verifyCode) {
+	exist, err := dao.RegistVerifyCodeExist(keyID, verifyCode)
+	if err != nil {
+		return err
+	}
+	if !exist {
 		return errors.New("验证码错误")
 	}
+	//移除验证码
+	dao.RegistVerifyCodeRemove(id)
 	//查询用是否允许注册
 	if !userIdLegal(id) {
 		return errors.New("该用户不允许注册账号!")
@@ -36,7 +42,7 @@ func UserRegist(id string, password string, email string, vip_class int, verifyC
 		return errors.New("邮箱已经使用")
 	}
 	//添加用户
-	password, err := util.EncodePassword(password)
+	password, err = util.EncodePassword(password)
 	if err != nil {
 		return errors.New("密码格式不合规则!")
 	}

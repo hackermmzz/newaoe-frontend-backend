@@ -95,6 +95,16 @@ func RedisSet(ctx context.Context, key string, value any, expiration time.Durati
 	return true
 }
 
+// RedisChange,只改value
+func RedisChange(ctx context.Context, key string, value any) bool {
+	err := RDB.Set(ctx, key, value, redis.KeepTTL).Err()
+	if err != nil {
+		util.DebugError(fmt.Sprintf("[RedisChange] err: %v, key: %s", err, key))
+		return false
+	}
+	return true
+}
+
 // RedisDel 删除key
 func RedisDel(ctx context.Context, key string) bool {
 	err := RDB.Del(ctx, key).Err()

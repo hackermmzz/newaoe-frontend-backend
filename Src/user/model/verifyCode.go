@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"fmt"
 )
 
@@ -12,17 +13,28 @@ const (
 
 // Define the VerifyCode struct
 type VerifyCode struct {
-	Code  string `json:"code"`
 	KeyID string `json:"keyid"`
 	Class int8   `json:"class"`
 }
 
-// 用于检查验证码是否存在
-func (v VerifyCode) String() string {
-	return fmt.Sprintf("VerifyCode:%v:ID:%v:Class:%v", v.Code, v.KeyID, v.Class)
+// 存在redis里面的数据
+type VerifyCodeInRedis struct {
+	Code       string `json:"code"`
+	RetryCount int8   `json:"retrycount"`
 }
 
-// 用于检查验证码是否可以重发
+// 验证码的Key
+func (v VerifyCode) String() string {
+	return fmt.Sprintf("VerifyCode:KeyID:%v:Class:%v", v.KeyID, v.Class)
+}
+
+// 判断重发的Key
 func (v VerifyCode) Tag() string {
-	return fmt.Sprintf("VerifyCode::ID:%v:Class:%v", v.KeyID, v.Class)
+	return fmt.Sprintf("VerifyCodeRsend:KeyID:%v:Class:%v", v.KeyID, v.Class)
+}
+
+// 序列化
+func (v VerifyCodeInRedis) Marshal() []byte {
+	dt, _ := json.Marshal(v)
+	return dt
 }
