@@ -1,0 +1,10 @@
+records:
+  http:
+    cache:
+      http: 1
+    server_ports: "80"
+  reverse_proxy:
+    enabled: 1
+  url_remap:
+    pristine_host_hdr: 0
+    remap_required: 1

@@ -33,7 +33,8 @@ type GRPCConfig struct {
 	Port int `yaml:"port"`
 }
 type CDNConfig struct {
-	Host string `yaml:"host"` //CDN的地址
+	Host      string `yaml:"host"`      //CDN的地址
+	CDNSwitch bool   `yaml:"cdnSwitch"` //cdn开关，下载是否走cdn，不然就走oss
 }
 type MySqlConfig struct {
 	Username          string `yaml:"username"`          // 用户名
@@ -142,6 +143,7 @@ type OtherConfig struct {
 	SuperUserEmail                    string   `yaml:"superUserEmail"`                    //超级用户邮箱
 	UnlimitUser                       []string `yaml:"unlimitUser"`                       //不限制提交用户(这类用户通常给予了判题机资源)
 	VerifyCodeRetryCount              int      `yaml:"verifyCodeRetryCount"`              //验证码最大可重试次数
+
 }
 
 var (
