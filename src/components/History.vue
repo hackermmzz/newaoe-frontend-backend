@@ -663,7 +663,7 @@ const handleRun = async (item) => {
       body: JSON.stringify({ 
         indices:item.indices,
         class:config.Code_ReRunSubmit,
-        runType:config.Code_ReleaseRun
+        runtype:config.Code_ReleaseRun
       })
     });
 
@@ -785,7 +785,7 @@ const submitFiles = async () => {
       body:JSON.stringify({
         indices:dt.data.indices,
         class:config.Code_CommonSubmit,
-        runType: isDebugRun.value ? config.Code_DebugRun : config.Code_ReleaseRun
+        runtype: isDebugRun.value ? config.Code_DebugRun : config.Code_ReleaseRun
       })
     });
     const coderunData=await coderun.json()
