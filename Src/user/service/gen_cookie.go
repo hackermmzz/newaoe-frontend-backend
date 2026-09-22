@@ -40,7 +40,7 @@ func UserGenCookie(id string, ip string) (string, error) {
 		Name:   config.Conf.Cookie.TokenName,
 		Value:  tooken_value,
 		MaxAge: config.Conf.Cookie.ExpireTime,
-		Path:   "/api",
+		Path:   "/",
 		//Domain:   "example.com",
 		Secure:   false,
 		HttpOnly: true,

@@ -20,7 +20,7 @@ func FeedbackGetDownloadLink(indices int, html string) (string, error) {
 		return "", util.NewError("数据库获取反馈记录失败!", indices)
 	}
 	//上传html数据
-	htmlpath := path.Join(feedbackinfo.BaseFolder, fmt.Sprintf("feedback_%s.html", util.UUID()))
+	htmlpath := path.Join(feedbackinfo.BaseFolder, "feedback.html")
 	if !upload.UploadData(htmlpath, []byte(html), "text/html; charset=utf-8") {
 		return "", util.NewError("上传html失败!")
 	}

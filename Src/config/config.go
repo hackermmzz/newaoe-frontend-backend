@@ -118,7 +118,7 @@ type OSSConfig struct {
 	BucketName        string `yaml:"bucketName"`        // TOS桶名称
 	PublicBaseFolder  string `yaml:"PublicBaseFolder"`  // 公共数据存储目录
 	PrivateBaseFolder string `yaml:"PrivateBaseFolder"` // 私有用户数据目录
-	TmpBaseFolder     string `yaml:"TmpBaseFolder"`     //临时文件，可以随时删除
+	TmpBaseFolder     string `yaml:"TmpBaseFolder"`     //临时文件，可以随时删除(通常给超级用户存一些敏感数据)
 	MaxRetry          int    `yaml:"maxRetry"`          //最大尝试次数
 }
 

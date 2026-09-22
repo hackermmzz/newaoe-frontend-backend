@@ -164,7 +164,7 @@ func GetTokenInfo(signed_token string) map[string]interface{} {
 // 获取tooken解析数据
 func GetCtxTookenInfo(ctx *gin.Context) map[string]interface{} {
 	//注意这里我并没有采用sessionID的方式，因为我觉得没必要
-	//解析token
+	//解析
 	token, err := ctx.Cookie(config.Conf.Cookie.TokenName)
 	if err != nil || token == "" {
 		return nil
