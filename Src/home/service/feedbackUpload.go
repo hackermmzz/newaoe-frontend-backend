@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"newaoe/Src/common/upload"
 	"newaoe/Src/config"
 	database "newaoe/Src/databse"
 	"newaoe/Src/home/dao"
@@ -19,8 +20,8 @@ func FeedbackGetDownloadLink(indices int, html string) (string, error) {
 		return "", util.NewError("数据库获取反馈记录失败!", indices)
 	}
 	//上传html数据
-	htmlpath := path.Join(feedbackinfo.BaseFolder, "feedback.html")
-	if !oss.OssUploadFileData(htmlpath, []byte(html), "text/html; charset=utf-8") {
+	htmlpath := path.Join(feedbackinfo.BaseFolder, fmt.Sprintf("feedback_%s.html", util.UUID()))
+	if !upload.UploadData(htmlpath, []byte(html), "text/html; charset=utf-8") {
 		return "", util.NewError("上传html失败!")
 	}
 	//获取链接(设置永不过期)
@@ -44,25 +45,25 @@ type FeedbackUploadLinkInfo struct {
 func FeedbackGetUploadUrls(id string, images []string, files []string, videos []string) (*FeedbackUploadLinkInfo, error) {
 	var ret FeedbackUploadLinkInfo
 	//生成文件名
-	dirName := id + "_" + util.UTC_Time().Format("20060102_150405")
+	dirName := id + "_" + util.UUID()
 	dir := path.Join(config.Conf.OSS.PublicBaseFolder, config.Conf.Feedback.FeedbackFolder, dirName)
 	imagespath := make([]string, len(images))
 	filespath := make([]string, len(files))
 	videospath := make([]string, len(videos))
 	for i := range imagespath {
-		imagespath[i] = fmt.Sprintf("%v/image_%d_%s", dir, i, images[i])
+		imagespath[i] = fmt.Sprintf("%v/image_%d_%s_%s", dir, i, images[i], util.UUID())
 	}
 	for i := range filespath {
-		filespath[i] = fmt.Sprintf("%v/file_%d_%s", dir, i, files[i])
+		filespath[i] = fmt.Sprintf("%v/file_%d_%s_%s", dir, i, files[i], util.UUID())
 	}
 	for i := range videospath {
-		videospath[i] = fmt.Sprintf("%v/video_%d_%s", dir, i, videos[i])
+		videospath[i] = fmt.Sprintf("%v/video_%d_%s_%s", dir, i, videos[i], util.UUID())
 	}
 	//生成上传链接
 	expire_time := time.Duration(60) * time.Minute
-	imagesurl := oss.GetUploadFileUrls(imagespath, util.NewArray(len(images), expire_time))
-	filesurl := oss.GetUploadFileUrls(filespath, util.NewArray(len(files), expire_time))
-	videosurl := oss.GetUploadFileUrls(videospath, util.NewArray(len(videos), expire_time))
+	imagesurl := upload.UploadFiles(imagespath, util.NewArray(len(images), expire_time))
+	filesurl := upload.UploadFiles(filespath, util.NewArray(len(files), expire_time))
+	videosurl := upload.UploadFiles(videospath, util.NewArray(len(videos), expire_time))
 	//生成下载链接
 	downloadExpireTime := time.Duration(7*24) * time.Hour
 	imagesDownloadurls := oss.OssGetDownloadFileUrls(imagespath, downloadExpireTime, false)

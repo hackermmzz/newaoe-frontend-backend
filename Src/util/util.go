@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"uuid"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
@@ -92,6 +93,10 @@ func RandomString(n int) string {
 		result[i] = letters[rand.Intn(len(letters))]
 	}
 	return string(result)
+}
+
+func UUID() string {
+	return uuid.New().String()
 }
 
 // 生成cookie的tooken(jwt格式)

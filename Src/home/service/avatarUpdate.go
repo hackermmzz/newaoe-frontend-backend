@@ -2,9 +2,9 @@ package service
 
 import (
 	"fmt"
+	"newaoe/Src/common/upload"
 	"newaoe/Src/config"
 	database "newaoe/Src/databse"
-	"newaoe/Src/oss"
 	"newaoe/Src/user/dao"
 	"newaoe/Src/util"
 	"path"
@@ -12,9 +12,9 @@ import (
 )
 
 func AvatarUpdate(id string) (string, error) {
-	avatarname := fmt.Sprintf("avatar_%s.png", util.GetTimeNanoStr())
+	avatarname := fmt.Sprintf("avatar_%s.png", util.UUID())
 	avatarNewPath := path.Join(config.Conf.OSS.PrivateBaseFolder, id, config.Conf.User.UserAvatarFolder, avatarname)
-	url := oss.GetUploadFileUrl(avatarNewPath, time.Duration(30)*time.Minute) //30分钟过期
+	url := upload.UploadFile(avatarNewPath, time.Duration(30)*time.Minute) //30分钟过期
 	if url == "" {
 		return "", util.NewError("获取上传头像链接失败!")
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	CodeRunDao "newaoe/Src/codeRun/dao"
 	CodeRunModel "newaoe/Src/codeRun/model"
+	"newaoe/Src/common/upload"
 	"newaoe/Src/config"
 	database "newaoe/Src/databse"
 	"newaoe/Src/oss"
@@ -93,9 +94,9 @@ func ExcelInfoExport() (string, error) {
 		return "", util.NewError("数据库异常!", err)
 	}
 	//数据存入oss
-	filename := fmt.Sprintf("studentInfoExport_%v.xlsl", util.RandomString(10))
+	filename := fmt.Sprintf("studentInfoExport_%s.xlsl", util.UUID())
 	filePath := path.Join(config.Conf.OSS.TmpBaseFolder, filename)
-	if !oss.OssUploadFileData(filePath, buf.Bytes(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") {
+	if !upload.UploadData(filePath, buf.Bytes(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") {
 		return "", util.NewError("保存到oss失败!")
 	}
 	//获取下载链接

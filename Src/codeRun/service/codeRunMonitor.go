@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"newaoe/Src/codeRun/grpc/grpc_api"
 	"newaoe/Src/codeRun/model"
+	"newaoe/Src/common/upload"
 	"newaoe/Src/config"
 	"newaoe/Src/mq"
-	"newaoe/Src/oss"
 	"newaoe/Src/redis"
 	"newaoe/Src/util"
 	"path"
@@ -52,7 +52,7 @@ func processCodeRunStatus(indices int, id string, codeRunstatus *model.CodeRunSt
 	dtMap := make(map[string]interface{})
 	switch status {
 	case model.Code_Status_Compile_Fail:
-		fileName := fmt.Sprintf("compile_%d_%d.log", indices, util.UTC_Time().Nanosecond())
+		fileName := fmt.Sprintf("compile_%d_%s.log", indices, util.UUID())
 		fp = path.Join(config.Conf.OSS.PrivateBaseFolder, id, config.Conf.User.UserOtherFolder, fileName)
 		dtMap["compile_error_log"] = fp
 	case model.Code_Status_Crash:
@@ -60,7 +60,7 @@ func processCodeRunStatus(indices int, id string, codeRunstatus *model.CodeRunSt
 		mp := make(map[string]interface{})
 		json.Unmarshal([]byte(codeRunstatus.Data), &mp)
 		if needlog, ok := mp["needlog"].(bool); ok && needlog {
-			fileName := fmt.Sprintf("crash_%d_%d.log", indices, util.UTC_Time().Nanosecond())
+			fileName := fmt.Sprintf("crash_%d_%s.log", indices, util.UUID())
 			fp = path.Join(config.Conf.OSS.PrivateBaseFolder, id, config.Conf.User.UserCrashFolder, fileName)
 		}
 		if crash_reason, ok := mp["crash_reason"].(string); ok {
@@ -70,11 +70,11 @@ func processCodeRunStatus(indices int, id string, codeRunstatus *model.CodeRunSt
 		}
 		dtMap["crash_log_file"] = fp
 	case model.Code_Status_Fail:
-		fileName := fmt.Sprintf("video_fail_%d_%d.video", indices, util.UTC_Time().Nanosecond())
+		fileName := fmt.Sprintf("video_fail_%d_%s.video", indices, util.UUID())
 		fp = path.Join(config.Conf.OSS.PrivateBaseFolder, id, config.Conf.User.UserVideoFolder, fileName)
 		dtMap["video_file"] = fp
 	case model.Code_Status_Success:
-		fileName := fmt.Sprintf("video_success_%d_%d.video", indices, util.UTC_Time().Nanosecond())
+		fileName := fmt.Sprintf("video_success_%d_%s.video", indices, util.UUID())
 		fp = path.Join(config.Conf.OSS.PrivateBaseFolder, id, config.Conf.User.UserVideoFolder, fileName)
 		dtMap["video_file"] = fp
 	}
@@ -87,9 +87,9 @@ func processCodeRunStatus(indices int, id string, codeRunstatus *model.CodeRunSt
 		//尝试3次
 		for i := 0; i < 3; i += 1 {
 			expire_dur := time.Duration(60) * time.Minute
-			url := oss.GetUploadFileUrls([]string{fp}, []time.Duration{expire_dur})
+			url := upload.UploadFile(fp, expire_dur)
 			if len(url) == 1 {
-				return &grpc_api.StatusUpdateReply{Data: url[0]}
+				return &grpc_api.StatusUpdateReply{Data: url}
 			}
 		}
 	}

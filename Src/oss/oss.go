@@ -240,6 +240,63 @@ func OssGetDownloadFileUrl(filePath string, expireDuration time.Duration, attach
 	return ""
 }
 
+// 批量获取下载链接（并发）
+func OssGetDownloadFileUrls(filePaths []string, expireDuration time.Duration, attachment bool) []string {
+
+	urls := make([]string, len(filePaths))
+	var reqParams url.Values
+	if attachment {
+		reqParams = make(url.Values)
+		reqParams.Set("response-content-disposition", "attachment")
+	}
+	var wg sync.WaitGroup
+	// 限制并发数量
+	sem := make(chan struct{}, 20)
+	for index, filePath := range filePaths {
+		wg.Add(1)
+		go func(i int, path string) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() {
+				<-sem
+			}()
+			var lastErr error
+			for retry := 0; retry < config.Conf.OSS.MaxRetry; retry++ {
+				ctx, cancel := context.WithTimeout(
+					context.Background(),
+					2*time.Second,
+				)
+				u, err := OssClient.PresignedGetObject(
+					ctx,
+					config.Conf.OSS.BucketName,
+					path,
+					expireDuration,
+					reqParams,
+				)
+				cancel()
+				if err == nil {
+					urls[i] = u.String()
+					return
+				}
+				lastErr = err
+				if !isRetryable(err) {
+					break
+				}
+				backoff(retry)
+			}
+			util.DebugError(
+				"OssGetDownloadFileUrl:",
+				path,
+				lastErr,
+			)
+			// 失败保持空字符串
+			urls[i] = ""
+		}(index, filePath)
+	}
+	wg.Wait()
+	return urls
+}
+
 // 文件上传接口(返回上传链接) 批量获取上传链接（并发）
 func GetUploadFileUrls(filePath []string, expireDuration []time.Duration) []string {
 	if len(filePath) != len(expireDuration) {
@@ -320,63 +377,6 @@ func GetUploadFileUrl(filePath string, expireDuration time.Duration) string {
 		backoff(j)
 	}
 	return ""
-}
-
-// 批量获取下载链接（并发）
-func OssGetDownloadFileUrls(filePaths []string, expireDuration time.Duration, attachment bool) []string {
-
-	urls := make([]string, len(filePaths))
-	var reqParams url.Values
-	if attachment {
-		reqParams = make(url.Values)
-		reqParams.Set("response-content-disposition", "attachment")
-	}
-	var wg sync.WaitGroup
-	// 限制并发数量
-	sem := make(chan struct{}, 20)
-	for index, filePath := range filePaths {
-		wg.Add(1)
-		go func(i int, path string) {
-			defer wg.Done()
-			sem <- struct{}{}
-			defer func() {
-				<-sem
-			}()
-			var lastErr error
-			for retry := 0; retry < config.Conf.OSS.MaxRetry; retry++ {
-				ctx, cancel := context.WithTimeout(
-					context.Background(),
-					2*time.Second,
-				)
-				u, err := OssClient.PresignedGetObject(
-					ctx,
-					config.Conf.OSS.BucketName,
-					path,
-					expireDuration,
-					reqParams,
-				)
-				cancel()
-				if err == nil {
-					urls[i] = u.String()
-					return
-				}
-				lastErr = err
-				if !isRetryable(err) {
-					break
-				}
-				backoff(retry)
-			}
-			util.DebugError(
-				"OssGetDownloadFileUrl:",
-				path,
-				lastErr,
-			)
-			// 失败保持空字符串
-			urls[i] = ""
-		}(index, filePath)
-	}
-	wg.Wait()
-	return urls
 }
 
 // OssUploadFileData 上传文件数据到OSS

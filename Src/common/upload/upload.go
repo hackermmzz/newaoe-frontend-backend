@@ -10,14 +10,29 @@ import (
 	"time"
 )
 
+// 数据上传
+func UploadData(filePath string, data []byte, contentType string) bool {
+	return oss.OssUploadFileData(filePath, data, contentType)
+}
+
+// 单文件上传接口
+func UploadFile(filePath string, expireDuration time.Duration) string {
+	url := oss.GetUploadFileUrl(filePath, expireDuration)
+	if url == "" {
+		util.DebugError("UploadFile:生成上传链接失败")
+		return ""
+	}
+	return url
+}
+
 // 文件上传接口(返回上传链接)
-func UploadFile(filePath []string, expireDuration []time.Duration) bool {
+func UploadFiles(filePath []string, expireDuration []time.Duration) []string {
 	urls := oss.GetUploadFileUrls(filePath, expireDuration)
 	if urls == nil {
 		util.DebugError("UploadFile:生成上传链接失败")
-		return false
+		return nil
 	}
-	return true
+	return urls
 }
 
 // 文件上传接口(带Redis缓存文件路径)

@@ -10,7 +10,7 @@ import (
 )
 
 func CodeCommonSubmit(id string) ([]string, string, error) {
-	prefix := util.UTC_Time().Format("2006_01_02_150405000")
+	prefix := util.UUID()
 	base_dir := path.Join(config.Conf.OSS.PrivateBaseFolder, id, config.Conf.User.UserCodeFolder, prefix)
 	header := path.Join(base_dir, "mmzz.h")
 	source := path.Join(base_dir, "mmzz.cpp")

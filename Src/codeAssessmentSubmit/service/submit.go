@@ -11,7 +11,7 @@ import (
 
 // 返回生成的URL和key
 func AssessmentSubmit(id string) ([]string, string, error) {
-	prefix := "AssessmentSubmission" + "_" + util.UTC_Time().Format("2006_01_02_150405000")
+	prefix := "AssessmentSubmission" + "_" + util.UUID()
 	base_dir := path.Join(config.Conf.OSS.PrivateBaseFolder, id, config.Conf.User.UserCodeFolder, prefix)
 	//
 	header := path.Join(base_dir, "mmzz.h")
