@@ -16,7 +16,7 @@ export const getDownloadUrl = async (
   fileIdentifier,
   { signal, forceDownload = false } = {}
 ) => {
-  const identifier = normalizeIdentifier(fileIdentifier);
+  let identifier = normalizeIdentifier(fileIdentifier);
   const requestUrl = new URL(`${config.download_url}/${identifier}`);
   if (forceDownload) {
     requestUrl.searchParams.set('attachment', 'true');
@@ -42,20 +42,37 @@ export const getDownloadUrl = async (
   const url = typeof result?.data?.url === 'string'
     ? result.data.url.trim()
     : '';
+  const download_type=result?.data?.download_type??config.DownloadURLType_UnKnown;
   if (!url) {
     throw new Error(`下载链接无效：${result?.msg || '未知错误'}`);
   }
-  return url;
+  //
+  return {
+    url: url,
+    download_type: download_type,
+    toString() {
+      return this.url;
+    },
+    valueOf() {
+      return this.url;
+    }
+  };
 };
 
 /**
  * 获取真实地址并触发浏览器下载。
  */
 export const downloadFile = async (fileIdentifier, options = {}) => {
-  const url = await getDownloadUrl(fileIdentifier, {
+  let result = await getDownloadUrl(fileIdentifier, {
     ...options,
     forceDownload: true
   });
+  let url=result.url;
+  if (result.download_type===config.DownloadURLType_CDN) {
+    const urlObj = new URL(url);
+    urlObj.searchParams.set('attachment', 'true');
+    url=urlObj.toString();
+  }
   const fileName = url.split('?')[0].split('/').pop() || 'download';
   const link = document.createElement('a');
   link.href = url;

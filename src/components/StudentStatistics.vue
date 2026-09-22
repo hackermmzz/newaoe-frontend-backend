@@ -3,7 +3,7 @@
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
         <h2 class="text-2xl font-semibold text-gray-800">学生统计</h2>
-        <p class="mt-1 text-sm text-gray-500">点击学生可查看该学生的提交历史记录。</p>
+        <p class="mt-1 text-sm text-gray-500">点击学生信息可查看提交历史或重置普通提交次数。</p>
       </div>
       <div class="flex items-center gap-2">
         <button
@@ -17,10 +17,18 @@
         <button
           type="button"
           class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          :disabled="isLoading"
+          :disabled="isLoading || isResettingAll"
           @click="refreshStudents"
         >
           {{ isLoading ? '加载中...' : '刷新列表' }}
+        </button>
+        <button
+          type="button"
+          class="px-4 py-2 rounded-lg bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          :disabled="isResettingAll || isLoading"
+          @click="resetAllCommonSubmitTime"
+        >
+          {{ isResettingAll ? '重置中...' : '重置所有人次数' }}
         </button>
       </div>
     </div>
@@ -75,7 +83,7 @@
         :key="student.id"
         type="button"
         class="bg-white rounded-xl border border-gray-200 p-5 text-left shadow-sm hover:shadow-md hover:border-blue-300 transition-all"
-        @click="openStudentHistory(student.id)"
+        @click="openStudentActions(student)"
       >
         <div class="flex items-center gap-4">
           <img
@@ -101,6 +109,58 @@
     </div>
 
     <div
+      v-if="selectedStudent"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      role="presentation"
+      @click.self="closeStudentActions"
+    >
+      <div
+        class="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
+        role="dialog"
+        aria-modal="true"
+        :aria-labelledby="`student-actions-title-${selectedStudent.id}`"
+      >
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h3
+              :id="`student-actions-title-${selectedStudent.id}`"
+              class="text-lg font-semibold text-gray-800"
+            >
+              {{ selectedStudent.id }}
+            </h3>
+            <p class="mt-1 text-sm text-gray-500">请选择要执行的操作</p>
+          </div>
+          <button
+            type="button"
+            class="text-2xl leading-none text-gray-400 hover:text-gray-600"
+            aria-label="关闭"
+            @click="closeStudentActions"
+          >
+            &times;
+          </button>
+        </div>
+        <div class="mt-6 grid gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            class="rounded-lg bg-blue-600 px-4 py-3 font-medium text-white hover:bg-blue-700 transition-colors"
+            :disabled="isResettingStudent"
+            @click="openSelectedStudentHistory"
+          >
+            进入历史记录
+          </button>
+          <button
+            type="button"
+            class="rounded-lg bg-rose-600 px-4 py-3 font-medium text-white hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            :disabled="isResettingStudent"
+            @click="resetSelectedStudentCommonSubmitTime"
+          >
+            {{ isResettingStudent ? '重置中...' : '重置次数' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
       ref="loadMoreTrigger"
       v-show="!activeSearchId && hasNextPage"
       class="py-5 text-center text-sm text-gray-500"
@@ -115,7 +175,7 @@
 <script>
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import config from '../config';
 import { getDownloadUrl } from '../utils/download';
 
@@ -127,6 +187,9 @@ export default {
     const students = ref([]);
     const isLoading = ref(false);
     const isExporting = ref(false);
+    const isResettingStudent = ref(false);
+    const isResettingAll = ref(false);
+    const selectedStudent = ref(null);
     const errorMessage = ref('');
     const currentPage = ref(1);
     const hasNextPage = ref(true);
@@ -281,8 +344,18 @@ export default {
     };
 
     const loadNextStudents = () => {
-      if (activeSearchId.value || !hasNextPage.value || isLoading.value) return;
+      if (activeSearchId.value || !hasNextPage.value || isLoading.value || isResettingAll.value) return;
       loadStudents(currentPage.value + 1, true);
+    };
+
+    const openStudentActions = student => {
+      if (isResettingStudent.value || isResettingAll.value) return;
+      selectedStudent.value = student;
+    };
+
+    const closeStudentActions = () => {
+      if (isResettingStudent.value) return;
+      selectedStudent.value = null;
     };
 
     const openStudentHistory = async id => {
@@ -299,6 +372,123 @@ export default {
         });
       } catch (error) {
         ElMessage.error('不可跳转');
+      }
+    };
+
+    const openSelectedStudentHistory = () => {
+      const studentId = selectedStudent.value?.id;
+      selectedStudent.value = null;
+      openStudentHistory(studentId);
+    };
+
+    const requestReset = async studentIds => {
+      const ids = studentIds
+        .map(id => String(id ?? '').trim())
+        .filter(Boolean);
+      if (!ids.length) {
+        throw new Error('没有可重置的学生');
+      }
+
+      const response = await fetch(config.manager_reset_common_submit_time_url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ studentIDs: ids })
+      });
+      const data = await response.json();
+      if (!response.ok || !data?.status) {
+        throw new Error(data?.msg || `重置失败（HTTP ${response.status}）`);
+      }
+    };
+
+    const fetchAllStudentIds = async () => {
+      const studentIds = [];
+      let page = 1;
+      let hasMore = true;
+
+      while (hasMore) {
+        const beg = (page - 1) * pageSize;
+        const end = beg + pageSize - 1;
+        const requestUrl = new URL(config.manager_student_url);
+        requestUrl.searchParams.set('range', `${beg}:${end}`);
+        const response = await fetch(requestUrl.toString(), {
+          method: 'GET',
+          credentials: 'include'
+        });
+        const data = await response.json();
+        if (!response.ok || !data?.status || !Array.isArray(data?.data)) {
+          throw new Error(data?.msg || `获取学生列表失败（HTTP ${response.status}）`);
+        }
+
+        const pageIds = data.data
+          .map(normalizeStudent)
+          .map(student => student.id)
+          .filter(Boolean);
+        studentIds.push(...pageIds);
+        hasMore = data.data.length >= pageSize;
+        if (hasMore) page += 1;
+      }
+
+      return [...new Set(studentIds)];
+    };
+
+    const resetSelectedStudentCommonSubmitTime = async () => {
+      const studentId = String(selectedStudent.value?.id ?? '').trim();
+      if (!studentId || isResettingStudent.value) return;
+
+      try {
+        await ElMessageBox.confirm(
+          `确定要重置 ${studentId} 的普通提交次数吗？`,
+          '确认重置',
+          { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
+        );
+      } catch (error) {
+        return;
+      }
+
+      isResettingStudent.value = true;
+      try {
+        await requestReset([studentId]);
+        ElMessage.success(`${studentId} 的普通提交次数已重置`);
+        selectedStudent.value = null;
+      } catch (error) {
+        ElMessage.error(error?.message || '重置次数失败');
+      } finally {
+        isResettingStudent.value = false;
+      }
+    };
+
+    const resetAllCommonSubmitTime = async () => {
+      if (isResettingAll.value) return;
+
+      try {
+        await ElMessageBox.confirm(
+          '确定要重置所有人的普通提交次数吗？',
+          '确认重置',
+          { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
+        );
+      } catch (error) {
+        return;
+      }
+
+      isResettingAll.value = true;
+      try {
+        const studentIds = await fetchAllStudentIds();
+        const batchSize = Math.max(1, Number(config.resetcommonsubmitTimeBatch) || 100);
+        for (let index = 0; index < studentIds.length; index += batchSize) {
+          await requestReset(studentIds.slice(index, index + batchSize));
+        }
+        ElMessage.success(
+          studentIds.length
+            ? `所有人的普通提交次数已重置（共 ${studentIds.length} 人）`
+            : '暂无学生可重置'
+        );
+      } catch (error) {
+        ElMessage.error(error?.message || '重置所有人次数失败');
+      } finally {
+        isResettingAll.value = false;
       }
     };
 
@@ -385,14 +575,22 @@ export default {
       hasNextPage,
       isLoading,
       isExporting,
+      isResettingStudent,
+      isResettingAll,
       loadStudents,
+      openStudentActions,
       openStudentHistory,
+      openSelectedStudentHistory,
+      closeStudentActions,
+      resetSelectedStudentCommonSubmitTime,
+      resetAllCommonSubmitTime,
       refreshStudents,
       searchId,
       searchStudent,
       clearSearch,
       loadMoreTrigger,
-      students
+      students,
+      selectedStudent
     };
   }
 };

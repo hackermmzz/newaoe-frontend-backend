@@ -1,4 +1,13 @@
 
+// 运行类型（Release运行或者重度Debug运行）
+let	Code_ReleaseRun = 0 //release版本运行
+let	Code_DebugRun   = 1 //重度调试模式运行
+
+//下载链接类型
+let DownloadURLType_UnKnown = 0 //未知
+let DownloadURLType_OSS     = 1 //oss下载
+let DownloadURLType_CDN     = 2 //cdn下载
+
 // 代码运行状态配置
 let Code_Status_Error           = 0 //服务器异常
 let Code_Status_Wait            = 1 //在等待队列里面
@@ -51,6 +60,11 @@ avatarUpdate_url=base_url+"/home/avatarUpdate"
 teacherFetch_url=base_url+"/codesubmit/fetchteacher"
 // 导出配置
 module.exports = {
+    Code_ReleaseRun,
+    Code_DebugRun,
+    DownloadURLType_UnKnown,
+    DownloadURLType_OSS,
+    DownloadURLType_CDN,
     Code_CommonSubmit,
     Code_AssessmentSubmit,
     Code_ReRunSubmit,
@@ -62,6 +76,8 @@ module.exports = {
     manager_history_url: manager_url + "/getstudenthistory",
     manager_feedback_url: manager_url + "/fetchfeedback",
     manager_info_export_url: manager_url + "/infoExport",
+    manager_reset_common_submit_time_url: manager_url + "/resetcommonsubmittime",
+    resetcommonsubmitTimeBatch: 200,
     ManagerStudentRecordPerPage: 10,
     ManagerFeedbackRecordPerPage: 10,
     RankingRecordPerPage: 10,

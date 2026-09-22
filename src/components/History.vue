@@ -80,6 +80,18 @@
                 placeholder="请输入本次提交的描述..."
               ></textarea>
             </div>
+
+            <label class="mb-4 flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+              <input
+                v-model="isDebugRun"
+                type="checkbox"
+                class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              >
+              <span>
+                <span class="block font-medium text-gray-700">开启Debug模式运行</span>
+                <span class="block text-sm text-gray-500">未勾选时默认使用 Release 模式</span>
+              </span>
+            </label>
             
             <div class="flex justify-end gap-3">
               <button 
@@ -347,6 +359,7 @@ const showUploadForm = ref(false);
 const headerFile = ref(null);
 const sourceFile = ref(null);
 const description = ref('');
+const isDebugRun = ref(false);
 const isSubmitting = ref(false);
 const isLoading = ref(true);
 const historyList = ref([]);
@@ -649,7 +662,8 @@ const handleRun = async (item) => {
       credentials: 'include',
       body: JSON.stringify({ 
         indices:item.indices,
-        class:config.Code_ReRunSubmit
+        class:config.Code_ReRunSubmit,
+        runType:config.Code_ReleaseRun
       })
     });
 
@@ -684,6 +698,7 @@ const toggleUploadForm = () => {
     headerFile.value = null;
     sourceFile.value = null;
     description.value = '';
+    isDebugRun.value = false;
     document.querySelectorAll('input[type="file"]').forEach(input => input.value = '');
   }
 };
@@ -769,7 +784,8 @@ const submitFiles = async () => {
       credentials: 'include',
       body:JSON.stringify({
         indices:dt.data.indices,
-        class:config.Code_CommonSubmit
+        class:config.Code_CommonSubmit,
+        runType: isDebugRun.value ? config.Code_DebugRun : config.Code_ReleaseRun
       })
     });
     const coderunData=await coderun.json()
