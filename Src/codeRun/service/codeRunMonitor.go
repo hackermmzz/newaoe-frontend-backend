@@ -88,7 +88,7 @@ func processCodeRunStatus(indices int, id string, codeRunstatus *model.CodeRunSt
 		for i := 0; i < 3; i += 1 {
 			expire_dur := time.Duration(60) * time.Minute
 			url := upload.UploadFile(fp, expire_dur)
-			if len(url) == 1 {
+			if len(url) > 0 {
 				return &grpc_api.StatusUpdateReply{Data: url}
 			}
 		}

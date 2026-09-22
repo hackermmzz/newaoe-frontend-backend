@@ -7,10 +7,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type CodeRunInfoFromPostBost struct {
+type codeRunInfoFromPostBody struct {
 	Indices int `json:"indices"`
 	Class   int `json:"class"`
-	RunType int `json:"runType"`
+	RunType int `json:"runtype"`
 }
 
 func CodeRun(ctx *gin.Context) {
@@ -18,7 +18,7 @@ func CodeRun(ctx *gin.Context) {
 	userInfo := util.GetCtxTookenInfo(ctx)
 	id := userInfo["id"].(string)
 	//解析数据
-	var info CodeRunInfoFromPostBost
+	var info codeRunInfoFromPostBody
 	if !util.JsonCtx(ctx, &info) {
 		util.DebugError("CodeRun解析数据失败!")
 		util.ResponseNAK_MSG(ctx, "服务器失败!", nil)

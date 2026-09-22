@@ -43,7 +43,11 @@ func CodeRun(indices int, id string, class int, runType int) error {
 		return errors.New("插入CodeRunAdd记录失败!")
 	}
 	//插入一条记录（以防止崩溃可以恢复）
-	if !dao.CodeRunningInsert(session, model.CodeRunningInfo{Indices: codeRunInfo.Indices, SubmitTime: codeRunInfo.SubmitTime, RunType: runType}) {
+	if !dao.CodeRunningInsert(session, model.CodeRunningInfo{
+		Indices:    codeRunInfo.Indices,
+		SubmitTime: codeRunInfo.SubmitTime,
+		RunType:    runType,
+	}) {
 		return errors.New("插入CodeRunningInsert记录失败!")
 	}
 	//提交事务
