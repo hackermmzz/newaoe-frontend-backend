@@ -35,7 +35,7 @@ if [ $DebugMode = true ]; then
     -I${{QTINCLUDE}}/QtNetwork &&
 
     # 链接公共 .o 文件
-    g++ UsrAI.o ../project/release/*.o \
+    g++ UsrAI.o ../project/debug/*.o \
         -Og \
         -g3 \
         -fno-omit-frame-pointer \
