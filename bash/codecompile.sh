@@ -18,11 +18,14 @@ fixcase -f ./ >/dev/null
 # 编译用户代码
 if [ $DebugMode = true ]; then
     g++ -c UsrAI.cpp \
-    -O1 \
-    -fPIC \
-    -fsanitize=address \
-    -g \
+    -Og \
+    -g3 \
     -fno-omit-frame-pointer \
+    -fno-optimize-sibling-calls \
+    -fPIC \
+    -fsanitize=address,undefined \
+    -Wall -Wextra -Wpedantic \
+    -D_GLIBCXX_ASSERTIONS \
     -I./ \
     -I${{QTINCLUDE}} \
     -I${{QTINCLUDE}}/QtCore \
@@ -33,10 +36,10 @@ if [ $DebugMode = true ]; then
 
     # 链接公共 .o 文件
     g++ UsrAI.o ../project/release/*.o \
-        -O1 \
-        -fsanitize=address \
-        -g \
+        -Og \
+        -g3 \
         -fno-omit-frame-pointer \
+        -fsanitize=address,undefined \
         -o newAOE \
         -L/opt/qt5.9.2/lib \
         -lQt5Widgets \
