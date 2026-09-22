@@ -16,7 +16,7 @@ cd newaoe_copy
 #修复大小写问题
 fixcase -f ./ >/dev/null
 # 编译用户代码
-if [ $DebugMode = "true" ]; then
+if [ $DebugMode = true ]; then
     g++ -c UsrAI.cpp \
     -O1 \
     -fPIC \
