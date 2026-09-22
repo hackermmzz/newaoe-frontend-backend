@@ -1,6 +1,7 @@
-export PATH="$PATH:/opt/qt5.9.2/bin/" &&
-export QT="/opt/qt5.9.2" &&
-export QTINCLUDE="/opt/qt5.9.2/include" &&
+export PATH="$PATH:/opt/qt5.9.2/bin/" 
+export QT="/opt/qt5.9.2" 
+export QTINCLUDE="/opt/qt5.9.2/include" 
+export DebugMode={DebugMode}
 #先copy一下newaoe_copy目录
 mkdir -p newaoe_copy
 cd project
@@ -15,7 +16,36 @@ cd newaoe_copy
 #修复大小写问题
 fixcase -f ./ >/dev/null
 # 编译用户代码
-g++ -c UsrAI.cpp \
+if [ $DebugMode = "true" ]; then
+    g++ -c UsrAI.cpp \
+    -O1 \
+    -fPIC \
+    -fsanitize=address \
+    -g \
+    -fno-omit-frame-pointer \
+    -I./ \
+    -I${{QTINCLUDE}} \
+    -I${{QTINCLUDE}}/QtCore \
+    -I${{QTINCLUDE}}/QtMultimedia \
+    -I${{QTINCLUDE}}/QtWidgets \
+    -I${{QTINCLUDE}}/QtGui \
+    -I${{QTINCLUDE}}/QtNetwork &&
+
+    # 链接公共 .o 文件
+    g++ UsrAI.o ../project/release/*.o \
+        -O1 \
+        -fsanitize=address \
+        -g \
+        -fno-omit-frame-pointer \
+        -o newAOE \
+        -L/opt/qt5.9.2/lib \
+        -lQt5Widgets \
+        -lQt5Gui \
+        -lQt5Core \
+        -lQt5Multimedia \
+        -lQt5Network
+else
+    g++ -c UsrAI.cpp \
     -O2 \
     -fPIC \
     -g \
@@ -28,17 +58,19 @@ g++ -c UsrAI.cpp \
     -I${{QTINCLUDE}}/QtGui \
     -I${{QTINCLUDE}}/QtNetwork &&
 
-# 链接公共 .o 文件
-g++ UsrAI.o ../project/release/*.o \
-    -O2 \
-    -g \
-    -fno-omit-frame-pointer \
-    -o newAOE \
-    -L/opt/qt5.9.2/lib \
-    -lQt5Widgets \
-    -lQt5Gui \
-    -lQt5Core \
-    -lQt5Multimedia \
-    -lQt5Network
+    # 链接公共 .o 文件
+    g++ UsrAI.o ../project/release/*.o \
+        -O2 \
+        -g \
+        -fno-omit-frame-pointer \
+        -o newAOE \
+        -L/opt/qt5.9.2/lib \
+        -lQt5Widgets \
+        -lQt5Gui \
+        -lQt5Core \
+        -lQt5Multimedia \
+        -lQt5Network
+fi
+
 #把newAOE copy回buildDir目录下
 cp newAOE ../build/  >/dev/null

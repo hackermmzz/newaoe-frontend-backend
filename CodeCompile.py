@@ -4,10 +4,10 @@ import os
 from config import *
 import threading
 import Util
-
+import config
 compileLock=threading.Lock()
 
-def CodeCompile(buildDir: str, logfile: str) -> tuple[bool, str]:
+def CodeCompile(buildDir: str, logfile: str,runtype:int) -> tuple[bool, str]:
     """
     编译用户代码。
 
@@ -19,6 +19,7 @@ def CodeCompile(buildDir: str, logfile: str) -> tuple[bool, str]:
         bashScript = f.read()
     bashScript = bashScript.format(
                 buildDir=buildDir,
+                DebugMode=runtype==config.CodeRunTypeEnum.CodeRunType_DebugRun.value,
                 ).strip()
     
     docker_cmd = [

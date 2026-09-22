@@ -45,6 +45,7 @@ def TaskProcess():
     #告诉服务器处于编译状态
     id=res0["id"]
     indices=res0["indices"]
+    runtype=res0["runtype"]
     Log(f"{id}/{indices}/成功获取代码!")
     if not DebugLocal:
         PostRunStatus(server=server,data=protoc_pb2.CodeStatusUpdateRequest(
@@ -70,7 +71,7 @@ def TaskProcess():
         f.write(res0["source"])
     #编译代码
     logfile=f"{buildDir}/{CompileLogFileName}"
-    res1=CodeCompile(buildDir,logfile)
+    res1=CodeCompile(buildDir,logfile,runtype)
     compileError=not res1[0]
     if compileError:
         Log(f"{id}/{indices}/编译失败!")

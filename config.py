@@ -72,6 +72,11 @@ def Log(msg):
         LogFile.write(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Thread {threading.current_thread().ident}: {msg}"+"\n")
         LogFile.flush()
 ###########################################################
+class CodeRunTypeEnum(Enum):
+    CodeRunType_ReleaseRun = 0 #release版本运行
+    CodeRunType_DebugRun   = 1 #重度调试模式运行
+
+
 
 class PostRunStatusEnum(Enum):
     Code_Status_Wait            = 1 #在等待队列里面

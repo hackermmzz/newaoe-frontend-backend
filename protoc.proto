@@ -35,4 +35,6 @@ message CodeReply{
     int64 indices =4;      //代码编号
     bool ok =5;             //是否成功获取到源码
     string msg =6;          //消息
+    int64 runtype =7;     //运行类型Debug/Release
+    string data =8 ;    //多种用途
 }

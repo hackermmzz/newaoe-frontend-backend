@@ -7,6 +7,7 @@ if not DebugLocal:
 import sys
 import threading
 import Util
+import config
 LocalFiles=[]
 idx=0
 LocalFilesLock=threading.Lock()
@@ -41,6 +42,7 @@ def GetOneStudentCode(server:protoc_pb2_grpc.CodeStub)->map:
             #下载代码
             headerResp=requests.get(resp.headerUrl)
             sourceResp=requests.get(resp.sourceUrl)
+            runtype=resp.runtype
             #
             if headerResp.status_code !=200 or sourceResp.status_code!=200:
                 return {"ok":False,"msg":"下载文件失败!"}
@@ -51,7 +53,8 @@ def GetOneStudentCode(server:protoc_pb2_grpc.CodeStub)->map:
                     "header":headerContent,
                     "source":sourceContent,
                     "id":resp.id,
-                    "indices":resp.indices
+                    "indices":resp.indices,
+                    "runtype":runtype
                     }
         else:
             global LocalFiles,idx
@@ -69,6 +72,7 @@ def GetOneStudentCode(server:protoc_pb2_grpc.CodeStub)->map:
                     "header":headerContent,
                     "source":sourceContent,
                     "id":id,
-                    "indices":""
+                    "indices":"",
+                    "runtype":config.CodeRunTypeEnum.CodeRunType_ReleaseRun.value
                     }
                 

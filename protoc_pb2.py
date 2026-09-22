@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0cprotoc.proto\"\x1b\n\x0b\x43odeRequest\x12\x0c\n\x04\x61uth\x18\x01 \x01(\t\"b\n\x17\x43odeStatusUpdateRequest\x12\x0c\n\x04\x61uth\x18\x01 \x01(\t\x12\x0f\n\x07indices\x18\x02 \x01(\x03\x12\n\n\x02id\x18\x03 \x01(\t\x12\x0e\n\x06status\x18\x04 \x01(\x05\x12\x0c\n\x04\x64\x61ta\x18\x05 \x01(\t\"!\n\x11StatusUpdateReply\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\t\"g\n\tCodeReply\x12\x11\n\theaderUrl\x18\x01 \x01(\t\x12\x11\n\tsourceUrl\x18\x02 \x01(\t\x12\n\n\x02id\x18\x03 \x01(\t\x12\x0f\n\x07indices\x18\x04 \x01(\x03\x12\n\n\x02ok\x18\x05 \x01(\x08\x12\x0b\n\x03msg\x18\x06 \x01(\t2m\n\x04\x43ode\x12#\n\x07GetCode\x12\x0c.CodeRequest\x1a\n.CodeReply\x12@\n\x10\x43odeStatusUpdate\x12\x18.CodeStatusUpdateRequest\x1a\x12.StatusUpdateReplyB\x0cZ\n./grpc_apib\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0cprotoc.proto\"\x1b\n\x0b\x43odeRequest\x12\x0c\n\x04\x61uth\x18\x01 \x01(\t\"b\n\x17\x43odeStatusUpdateRequest\x12\x0c\n\x04\x61uth\x18\x01 \x01(\t\x12\x0f\n\x07indices\x18\x02 \x01(\x03\x12\n\n\x02id\x18\x03 \x01(\t\x12\x0e\n\x06status\x18\x04 \x01(\x05\x12\x0c\n\x04\x64\x61ta\x18\x05 \x01(\t\"!\n\x11StatusUpdateReply\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\t\"\x86\x01\n\tCodeReply\x12\x11\n\theaderUrl\x18\x01 \x01(\t\x12\x11\n\tsourceUrl\x18\x02 \x01(\t\x12\n\n\x02id\x18\x03 \x01(\t\x12\x0f\n\x07indices\x18\x04 \x01(\x03\x12\n\n\x02ok\x18\x05 \x01(\x08\x12\x0b\n\x03msg\x18\x06 \x01(\t\x12\x0f\n\x07runtype\x18\x07 \x01(\x03\x12\x0c\n\x04\x64\x61ta\x18\x08 \x01(\t2m\n\x04\x43ode\x12#\n\x07GetCode\x12\x0c.CodeRequest\x1a\n.CodeReply\x12@\n\x10\x43odeStatusUpdate\x12\x18.CodeStatusUpdateRequest\x1a\x12.StatusUpdateReplyB\x0cZ\n./grpc_apib\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -38,8 +38,8 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_CODESTATUSUPDATEREQUEST']._serialized_end=143
   _globals['_STATUSUPDATEREPLY']._serialized_start=145
   _globals['_STATUSUPDATEREPLY']._serialized_end=178
-  _globals['_CODEREPLY']._serialized_start=180
-  _globals['_CODEREPLY']._serialized_end=283
-  _globals['_CODE']._serialized_start=285
-  _globals['_CODE']._serialized_end=394
+  _globals['_CODEREPLY']._serialized_start=181
+  _globals['_CODEREPLY']._serialized_end=315
+  _globals['_CODE']._serialized_start=317
+  _globals['_CODE']._serialized_end=426
 # @@protoc_insertion_point(module_scope)
