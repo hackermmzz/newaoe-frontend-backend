@@ -1,9 +1,8 @@
 import requests
 import json
 from config import *
-if not DebugLocal:
-    import protoc_pb2_grpc
-    import protoc_pb2
+import protoc_pb2_grpc
+import protoc_pb2
 import sys
 import threading
 import Util
