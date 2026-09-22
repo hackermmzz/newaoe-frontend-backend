@@ -207,27 +207,26 @@ def CodeRun(
                         # =========================================
                         # 上传 Running 状态
                         # =========================================
-                        if not DebugLocal:
-                            PostRunStatus(
-                                server=server,
-                                data=protoc_pb2.CodeStatusUpdateRequest(
-                                    auth=GRPCAuth,
-                                    indices=indices,
-                                    id=id,
+                        PostRunStatus(
+                            server=server,
+                            data=protoc_pb2.CodeStatusUpdateRequest(
+                                auth=GRPCAuth,
+                                indices=indices,
+                                id=id,
+                                status=PostRunStatusEnum.Code_Status_Running.value,
+                                data=CodeRunStatusInfo(
                                     status=PostRunStatusEnum.Code_Status_Running.value,
-                                    data=CodeRunStatusInfo(
-                                        status=PostRunStatusEnum.Code_Status_Running.value,
-                                        gold=currentJson.get("gold", 0),
-                                        stone=currentJson.get("stone", 0),
-                                        wood=currentJson.get("wood", 0),
-                                        food=currentJson.get("food", 0),
-                                        frame=currentJson.get("frame", 0),
-                                        win=currentJson.get("win", False),
-                                        score=currentJson.get("score", 0),
-                                        data=last_post_data
-                                        ).tostr()
-                                )
-                            ).Response()
+                                    gold=currentJson.get("gold", 0),
+                                    stone=currentJson.get("stone", 0),
+                                    wood=currentJson.get("wood", 0),
+                                    food=currentJson.get("food", 0),
+                                    frame=currentJson.get("frame", 0),
+                                    win=currentJson.get("win", False),
+                                    score=currentJson.get("score", 0),
+                                    data=last_post_data
+                                    ).tostr()
+                            )
+                        ).Response()
 
                 # =================================================
                 # 判断 Docker 是否已经退出
@@ -235,10 +234,7 @@ def CodeRun(
                 if process.returncode is not None:
                     break
 
-                if DebugLocal:
-                    await asyncio.sleep(0.05)
-                else:
-                    await asyncio.sleep(CodeRunStatusUploadInterval)
+                await asyncio.sleep(CodeRunStatusUploadInterval)
 
             # ====================================================
             # Docker 已退出
@@ -315,35 +311,34 @@ def CodeRun(
                     returncode={returnCode}, \
                     reason={crashReason}")
                 # 上传 Crash
-                if not DebugLocal:
-                    resp=PostRunStatus(
-                        server=server,
-                        data=protoc_pb2.CodeStatusUpdateRequest(
-                            auth=GRPCAuth,
-                            indices=indices,
-                            id=id,
+                resp=PostRunStatus(
+                    server=server,
+                    data=protoc_pb2.CodeStatusUpdateRequest(
+                        auth=GRPCAuth,
+                        indices=indices,
+                        id=id,
+                        status=PostRunStatusEnum.Code_Status_Crash.value,
+                        data=CodeRunStatusInfo(
                             status=PostRunStatusEnum.Code_Status_Crash.value,
-                            data=CodeRunStatusInfo(
-                                status=PostRunStatusEnum.Code_Status_Crash.value,
-                                gold=finalJson.get("gold", 0),
-                                stone=finalJson.get("stone", 0),
-                                wood=finalJson.get("wood", 0),
-                                food=finalJson.get("food", 0),
-                                frame=finalJson.get("frame", 0),
-                                win=finalJson.get("win", False),
-                                score=finalJson.get("score", 0),
-                                data=json.dumps(
-                                    {
-                                        "crash_reason": crashReason,
-                                        "needlog": need_Log
-                                    }, 
-                                    ensure_ascii=False
-                                    )
-                            ).tostr()
-                        )
-                    ).Response()
-                    if need_Log and resp:
-                        Util.UploadData(resp.data.encode(), Util.read_any_text(f"{crashDir}/{crashLogFileName}"))
+                            gold=finalJson.get("gold", 0),
+                            stone=finalJson.get("stone", 0),
+                            wood=finalJson.get("wood", 0),
+                            food=finalJson.get("food", 0),
+                            frame=finalJson.get("frame", 0),
+                            win=finalJson.get("win", False),
+                            score=finalJson.get("score", 0),
+                            data=json.dumps(
+                                {
+                                    "crash_reason": crashReason,
+                                    "needlog": need_Log
+                                }, 
+                                ensure_ascii=False
+                                )
+                        ).tostr()
+                    )
+                ).Response()
+                if need_Log and resp:
+                    Util.UploadData(resp.data.encode(), Util.read_any_text(f"{crashDir}/{crashLogFileName}"))
                 else:
                     Log(f"上传CrashStatus失败，错误信息:{resp.error}")
                 return
@@ -358,29 +353,28 @@ def CodeRun(
                 status = PostRunStatusEnum.Code_Status_Fail
 
             # 上传最终正常结果
-            if not DebugLocal:
-                resp=PostRunStatus(
-                    server=server,
-                    data=protoc_pb2.CodeStatusUpdateRequest(
-                        auth=GRPCAuth,
-                        indices=indices,
-                        id=id,
+            resp=PostRunStatus(
+                server=server,
+                data=protoc_pb2.CodeStatusUpdateRequest(
+                    auth=GRPCAuth,
+                    indices=indices,
+                    id=id,
+                    status=status.value,
+                    data=CodeRunStatusInfo(
                         status=status.value,
-                        data=CodeRunStatusInfo(
-                            status=status.value,
-                            gold=finalJson.get("gold", 0),
-                            stone=finalJson.get("stone", 0),
-                            wood=finalJson.get("wood", 0),
-                            food=finalJson.get("food", 0),
-                            frame=finalJson.get("frame", 0),
-                            win=finalJson.get("win", False),
-                            score=finalJson.get("score", 0),
-                            data=""
-                        ).tostr()
-                    )
-                ).Response()
-                if resp :
-                    Util.UploadData(resp.data.encode(), Util.read_any_text(recordFile))
+                        gold=finalJson.get("gold", 0),
+                        stone=finalJson.get("stone", 0),
+                        wood=finalJson.get("wood", 0),
+                        food=finalJson.get("food", 0),
+                        frame=finalJson.get("frame", 0),
+                        win=finalJson.get("win", False),
+                        score=finalJson.get("score", 0),
+                        data=""
+                    ).tostr()
+                )
+            ).Response()
+            if resp :
+                Util.UploadData(resp.data.encode(), Util.read_any_text(recordFile))
     
     # ============================================================
     # 定时器，超时直接Crash
