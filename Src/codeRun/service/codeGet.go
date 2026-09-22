@@ -4,14 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"newaoe/Src/codeRun/dao"
-	"newaoe/Src/codeRun/model"
 	"newaoe/Src/config"
 	database "newaoe/Src/databse"
 	"newaoe/Src/redis"
 	"newaoe/Src/util"
 )
 
-func GetOneCodeTask() (*model.CodeRunInfo, error) {
+func GetOneCodeTask() (*CodeRunTaskInfo, error) {
 	session := database.NewSession()
 	defer session.Close()
 	if err := session.Begin(); err != nil {
@@ -19,7 +18,7 @@ func GetOneCodeTask() (*model.CodeRunInfo, error) {
 	}
 	defer session.Rollback()
 	//这里要做幂等，防止这个消息已经被消费过了
-	var codeinfo model.CodeRunInfo
+	var codeinfo CodeRunTaskInfo
 	for i := 0; i < 10; i += 1 {
 		data, success := redis.RedisListPop(context.Background(), config.Conf.Code.CodeWaitForRunQueueTopic)
 		if !success {

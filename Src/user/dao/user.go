@@ -282,3 +282,30 @@ func UserResetPassword(session *xorm.Session, id string, new_password string) bo
 		Password: new_password,
 	})
 }
+
+// 获取 [beg, end)，不包含 end
+func UserGetRangeIDs(session *xorm.Session, beg int, end int) []string {
+	if beg < 0 || end <= beg {
+		return nil
+	}
+
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
+
+	var ids []string
+	err := session.
+		Table(model.Student{}.TableName()).
+		Cols("id").
+		OrderBy("id ASC").
+		Limit(end-beg, beg).
+		Find(&ids)
+
+	if err != nil {
+		util.DebugError("UserGetRangeIDs:", err)
+		return nil
+	}
+
+	return ids
+}

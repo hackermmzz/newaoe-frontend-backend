@@ -143,7 +143,7 @@ type OtherConfig struct {
 	SuperUserEmail                    string   `yaml:"superUserEmail"`                    //超级用户邮箱
 	UnlimitUser                       []string `yaml:"unlimitUser"`                       //不限制提交用户(这类用户通常给予了判题机资源)
 	VerifyCodeRetryCount              int      `yaml:"verifyCodeRetryCount"`              //验证码最大可重试次数
-
+	ResetCommonSubmitBatch            int      `yaml:"resetCommonSubmitBatch"`            //单批次最多重置的学生普通提交次数的个数
 }
 
 var (

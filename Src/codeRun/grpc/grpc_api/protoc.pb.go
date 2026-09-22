@@ -195,6 +195,8 @@ type CodeReply struct {
 	Indices       int64                  `protobuf:"varint,4,opt,name=indices,proto3" json:"indices,omitempty"`    //代码编号
 	Ok            bool                   `protobuf:"varint,5,opt,name=ok,proto3" json:"ok,omitempty"`              //是否成功获取到源码
 	Msg           string                 `protobuf:"bytes,6,opt,name=msg,proto3" json:"msg,omitempty"`             //消息
+	Runtype       int64                  `protobuf:"varint,7,opt,name=runtype,proto3" json:"runtype,omitempty"`    //运行类型Debug/Release
+	Data          string                 `protobuf:"bytes,8,opt,name=data,proto3" json:"data,omitempty"`           //多种用途
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -271,6 +273,20 @@ func (x *CodeReply) GetMsg() string {
 	return ""
 }
 
+func (x *CodeReply) GetRuntype() int64 {
+	if x != nil {
+		return x.Runtype
+	}
+	return 0
+}
+
+func (x *CodeReply) GetData() string {
+	if x != nil {
+		return x.Data
+	}
+	return ""
+}
+
 var File_protoc_proto protoreflect.FileDescriptor
 
 const file_protoc_proto_rawDesc = "" +
@@ -285,14 +301,16 @@ const file_protoc_proto_rawDesc = "" +
 	"\x06status\x18\x04 \x01(\x05R\x06status\x12\x12\n" +
 	"\x04data\x18\x05 \x01(\tR\x04data\"'\n" +
 	"\x11StatusUpdateReply\x12\x12\n" +
-	"\x04data\x18\x01 \x01(\tR\x04data\"\x93\x01\n" +
+	"\x04data\x18\x01 \x01(\tR\x04data\"\xc1\x01\n" +
 	"\tCodeReply\x12\x1c\n" +
 	"\theaderUrl\x18\x01 \x01(\tR\theaderUrl\x12\x1c\n" +
 	"\tsourceUrl\x18\x02 \x01(\tR\tsourceUrl\x12\x0e\n" +
 	"\x02id\x18\x03 \x01(\tR\x02id\x12\x18\n" +
 	"\aindices\x18\x04 \x01(\x03R\aindices\x12\x0e\n" +
 	"\x02ok\x18\x05 \x01(\bR\x02ok\x12\x10\n" +
-	"\x03msg\x18\x06 \x01(\tR\x03msg2m\n" +
+	"\x03msg\x18\x06 \x01(\tR\x03msg\x12\x18\n" +
+	"\aruntype\x18\a \x01(\x03R\aruntype\x12\x12\n" +
+	"\x04data\x18\b \x01(\tR\x04data2m\n" +
 	"\x04Code\x12#\n" +
 	"\aGetCode\x12\f.CodeRequest\x1a\n" +
 	".CodeReply\x12@\n" +

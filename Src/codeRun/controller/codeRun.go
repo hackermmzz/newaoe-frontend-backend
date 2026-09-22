@@ -10,6 +10,7 @@ import (
 type CodeRunInfoFromPostBost struct {
 	Indices int `json:"indices"`
 	Class   int `json:"class"`
+	RunType int `json:"runType"`
 }
 
 func CodeRun(ctx *gin.Context) {
@@ -24,7 +25,7 @@ func CodeRun(ctx *gin.Context) {
 		return
 	}
 	//运行代码
-	err := service.CodeRun(info.Indices, id, info.Class)
+	err := service.CodeRun(info.Indices, id, info.Class, info.RunType)
 	if err != nil {
 		util.DebugError("CodeRun", err)
 		util.ResponseNAK_MSG(ctx, "服务器失败!", nil)

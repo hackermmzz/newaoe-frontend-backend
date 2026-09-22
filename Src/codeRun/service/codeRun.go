@@ -14,11 +14,16 @@ import (
 	"newaoe/Src/util"
 )
 
+type CodeRunTaskInfo struct {
+	model.CodeRunInfo
+	RunType int `json:"runtype"`
+}
+
 /*
 第一次运行代码时候执行
 indices表示提交的索引(服务会根据class判断去哪个表查找)
 */
-func CodeRun(indices int, id string, class int) error {
+func CodeRun(indices int, id string, class int, runType int) error {
 	//获取代码运行必要的结构数据
 	codeRunInfo, err := getCodeRunMustInfo(id, indices, class)
 	if err != nil {
@@ -38,7 +43,7 @@ func CodeRun(indices int, id string, class int) error {
 		return errors.New("插入CodeRunAdd记录失败!")
 	}
 	//插入一条记录（以防止崩溃可以恢复）
-	if !dao.CodeRunningInsert(session, model.CodeRunningInfo{Indices: codeRunInfo.Indices, SubmitTime: codeRunInfo.SubmitTime}) {
+	if !dao.CodeRunningInsert(session, model.CodeRunningInfo{Indices: codeRunInfo.Indices, SubmitTime: codeRunInfo.SubmitTime, RunType: runType}) {
 		return errors.New("插入CodeRunningInsert记录失败!")
 	}
 	//提交事务
@@ -46,7 +51,10 @@ func CodeRun(indices int, id string, class int) error {
 		return errors.New("commit失败!")
 	}
 	//插入队列，准备给oj消费
-	if err = addCodeFile(codeRunInfo); err != nil {
+	if err = addCodeFile(CodeRunTaskInfo{
+		CodeRunInfo: codeRunInfo,
+		RunType:     runType,
+	}); err != nil {
 		return err
 	}
 	//
@@ -96,7 +104,7 @@ func getCodeRunMustInfo(id string, indices int, class int) (model.CodeRunInfo, e
 }
 
 // 代码文件加入待运行队列
-func addCodeFile(task model.CodeRunInfo) error {
+func addCodeFile(task CodeRunTaskInfo) error {
 	data, err := json.Marshal(task)
 	if err != nil {
 		return errors.New("加入队列失败!" + err.Error())

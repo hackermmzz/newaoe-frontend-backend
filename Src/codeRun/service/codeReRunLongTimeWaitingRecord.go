@@ -23,7 +23,7 @@ func ReRunLongTimeWaitRecord() error {
 	}
 	//遍历每个info
 	for _, info := range runningList {
-		if err := ReRunHistoryCode(info.Indices); err != nil {
+		if err := ReRunHistoryCode(info); err != nil {
 			return errors.New("重新运行失败:" + err.Error())
 		}
 	}

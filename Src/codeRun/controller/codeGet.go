@@ -53,6 +53,7 @@ func (server *GrpcCodeServer) GetCode(ctx context.Context, req *grpc_api.CodeReq
 		HeaderUrl: headerUrl,
 		Ok:        true,
 		Msg:       "获取成功!",
+		Runtype:   int64(codeinfo.RunType),
 	}
 	return data, nil
 }

@@ -57,6 +57,11 @@ func ConnectRedis() {
 	util.DebugSuccess("Redis连接池初始化成功")
 }
 
+// 生成pi
+func NewTxPipeline() redis.Pipeliner {
+	return RDB.TxPipeline()
+}
+
 // RedisGet 带 ctx 规范获取（支持链路超时、链路追踪）
 func RedisGet(ctx context.Context, key string) ([]byte, bool) {
 	val, err := RDB.Get(ctx, key).Bytes()

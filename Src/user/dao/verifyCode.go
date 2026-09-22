@@ -27,7 +27,7 @@ func VerifyCodeAdd(keyID string, code string, class int8) error {
 		KeyID: keyID,
 		Class: class,
 	}
-	tx := redis.RDB.TxPipeline()
+	tx := redis.NewTxPipeline()
 	ctx := redis.RDB.Context()
 	tx.Set(ctx, data.String(), model.VerifyCodeInRedis{
 		Code:       code,

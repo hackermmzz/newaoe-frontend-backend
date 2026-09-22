@@ -112,3 +112,4 @@ other:
   superUserPassword: "newaoe"  #超级用户密码
   superUserEmail: "2049983474@qq.com"  #超级用户邮箱
   verifyCodeRetryCount: 5 #验证码最大可尝试次数
+  resetCommonSubmitBatch: 10000   #一批次最多重置Batch个人的提交次数

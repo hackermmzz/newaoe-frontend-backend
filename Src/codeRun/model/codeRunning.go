@@ -35,6 +35,7 @@ type CodeRunStatusInfo struct {
 type CodeRunningInfo struct {
 	Indices    int       `json:"indices" xorm:"indices pk "`
 	SubmitTime time.Time `json:"submittime" xorm:"submittime"` //提交日期
+	RunType    int       `json:"runtype" xorm:"runtype"`       //运行类型
 }
 
 func (CodeRunningInfo) TableName() string {

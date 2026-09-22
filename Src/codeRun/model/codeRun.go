@@ -2,6 +2,12 @@ package model
 
 import "time"
 
+// 运行类型（Release运行或者重度Debug运行）
+var (
+	CodeRunType_ReleaseRun = 0 //release版本运行
+	CodeRunType_DebugRun   = 1 //重度调试模式运行
+)
+
 // 上传的代码类别
 var (
 	Code_CommonSubmit     = 1 //普通提交
