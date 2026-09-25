@@ -340,7 +340,7 @@ def CodeRun(
                 if need_Log and resp:
                     Util.UploadData(resp.data.encode(), Util.read_any_text(f"{crashDir}/{crashLogFileName}"))
                 else:
-                    Log(f"上传CrashStatus失败，错误信息:{resp.error}")
+                    Log(f"上传CrashStatus失败，错误信息:{crashReason},{resp}")
                 return
 
             # ====================================================
