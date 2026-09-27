@@ -70,6 +70,20 @@ const routes = [
             }
           },
           {
+            path: 'all-history',
+            name: 'ManagerAllHistory',
+            component: ManagerHistory,
+            props: {
+              readOnly: true,
+              historyUrl: config.manager_all_history_url,
+              historyTitle: '所有人的提交记录',
+              backPath: '/home/manager/student-statistics',
+              showStudentId: true,
+              recordsPerPage: config.ManagerHistoryRecordPerPage,
+              requestParams: {}
+            }
+          },
+          {
             path: 'feedback',
             name: 'ManagerFeedback',
             component: () => import('./components/FeedbackRecords.vue')

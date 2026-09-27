@@ -169,9 +169,17 @@
             <!-- 记录编号与状态 -->
             <div class="p-4 border-b border-gray-100 flex justify-between items-center">
               <h3 class="font-medium text-gray-900">提交 #{{ item.indices }}</h3>
-              <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
-                已提交
-              </span>
+              <div class="flex items-center gap-2">
+                <span
+                  v-if="showStudentId"
+                  class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full"
+                >
+                  学生 ID：{{ item.id || '未知' }}
+                </span>
+                <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                  已提交
+                </span>
+              </div>
             </div>
             
             <!-- 核心信息：时间、文件大小 -->
@@ -341,18 +349,32 @@ const props = defineProps({
   requestParams: {
     type: Object,
     default: () => ({})
+  },
+  showStudentId: {
+    type: Boolean,
+    default: false
+  },
+  recordsPerPage: {
+    type: Number,
+    default: 0
   }
 });
 
 // ======================== 核心新增：分页状态管理 ========================
 const currentPage = ref(1); // 当前页码（默认第1页）
-const pageSize = ref(config.HistoryRecordPerPage || 10); // 每页条数（优先从config取，默认10）
+const configuredPageSize = Number(props.recordsPerPage);
+const pageSize = ref(
+  Number.isFinite(configuredPageSize) && configuredPageSize > 0
+    ? configuredPageSize
+    : (config.HistoryRecordPerPage || 10)
+); // 每页条数（优先使用组件配置，默认10）
 const hasNextPage = ref(true);
 const loadMoreTrigger = ref(null);
 let loadMoreObserver = null;
 const isReadOnly = computed(() => props.readOnly === true);
 const historyTitle = computed(() => props.historyTitle || '代码提交历史');
 const backPath = computed(() => props.backPath || '');
+const showStudentId = computed(() => props.showStudentId === true);
 
 // ======================== 原有状态保留 ========================
 const showUploadForm = ref(false);
@@ -814,11 +836,15 @@ const filteredHistory = computed(() => {
   return historyList.value.filter(item => {
     const headerName = getFileNameFromUrl(item.header).toLowerCase();
     const sourceName = getFileNameFromUrl(item.source).toLowerCase();
+    const studentIdMatch = item.id !== undefined && item.id !== null
+      ? String(item.id).toLowerCase().includes(query)
+      : false;
     const descMatch = item.description ? item.description.toLowerCase().includes(query) : false;
     const dateMatch = item.submittime.toLowerCase().includes(query);
     const statusMatch = `${getStatusLabel(item)} ${getStatusData(item)}`.toLowerCase().includes(query);
     
-    return headerName.includes(query) || sourceName.includes(query) || descMatch || dateMatch || statusMatch;
+    return headerName.includes(query) || sourceName.includes(query) || studentIdMatch
+      || descMatch || dateMatch || statusMatch;
   });
 });
 

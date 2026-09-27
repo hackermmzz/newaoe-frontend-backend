@@ -31,6 +31,13 @@
             >
               反馈记录
             </router-link>
+            <router-link
+              to="/home/manager/all-history"
+              class="text-gray-600 hover:text-blue-600 transition-colors"
+              active-class="text-blue-600 font-medium"
+            >
+              全部提交记录
+            </router-link>
           </nav>
         </header>
 

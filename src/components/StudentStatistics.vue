@@ -38,13 +38,13 @@
       role="search"
       @submit.prevent="searchStudent"
     >
-      <label for="student-search-id" class="sr-only">按学生 ID 搜索</label>
+      <label for="student-search-id" class="sr-only">按学生 ID 模糊搜索</label>
       <input
         id="student-search-id"
         v-model="searchId"
         type="text"
         autocomplete="off"
-        placeholder="请输入学生 ID"
+        placeholder="请输入完整或部分学生 ID"
         class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
       >
       <button
@@ -74,7 +74,7 @@
     </div>
 
     <div v-else-if="!students.length" class="py-16 text-center text-gray-500">
-      {{ activeSearchId ? '未找到该学生' : '暂无学生数据' }}
+      {{ activeSearchId ? '未找到匹配的学生' : '暂无学生数据' }}
     </div>
 
     <div v-else class="grid grid-cols-1 gap-4">
@@ -162,7 +162,7 @@
 
     <div
       ref="loadMoreTrigger"
-      v-show="!activeSearchId && hasNextPage"
+      v-show="hasNextPage"
       class="py-5 text-center text-sm text-gray-500"
       aria-live="polite"
     >
@@ -272,10 +272,10 @@ export default {
       }
     };
 
-    const searchStudent = async () => {
+    const searchStudent = async (page = 1, append = false) => {
       const studentId = String(searchId.value ?? '').trim();
       if (!studentId) {
-        clearSearch();
+        if (page === 1) clearSearch();
         return;
       }
       if (isLoading.value) return;
@@ -285,6 +285,9 @@ export default {
       try {
         const requestUrl = new URL(config.manager_student_search_url);
         requestUrl.searchParams.set('id', studentId);
+        const beg = (page - 1) * pageSize;
+        const end = beg + pageSize - 1;
+        requestUrl.searchParams.set('range', `${beg}:${end}`);
         const response = await fetch(requestUrl.toString(), {
           method: 'GET',
           credentials: 'include'
@@ -294,28 +297,47 @@ export default {
           throw new Error(data?.msg || `搜索学生失败（HTTP ${response.status}）`);
         }
 
-        if (!data?.data) {
-          throw new Error('学生不存在或暂无信息');
+        const payload = Array.isArray(data?.data)
+          ? data.data
+          : data?.data
+            ? [data.data]
+            : [];
+        const normalized = payload
+          .map(normalizeStudent)
+          .filter(student => student.id);
+
+        if (!normalized.length && page > 1) {
+          hasNextPage.value = false;
+          return;
+        }
+        if (!normalized.length) {
+          throw new Error('未找到匹配的学生');
         }
 
-        const student = normalizeStudent(data.data);
-        if (!student.id) {
-          throw new Error('未找到该学生');
-        }
-        if (student.avatar) {
+        const matchedStudents = await Promise.all(normalized.map(async student => {
+          if (!student.avatar) return student;
           try {
-            student.avatarUrl = await getDownloadUrl(student.avatar);
+            return {
+              ...student,
+              avatarUrl: await getDownloadUrl(student.avatar)
+            };
           } catch (error) {
             // 头像下载失败不影响学生信息展示。
+            return student;
           }
-        }
+        }));
 
-        students.value = [student];
+        students.value = append
+          ? [...students.value, ...matchedStudents]
+          : matchedStudents;
         activeSearchId.value = studentId;
-        currentPage.value = 1;
-        hasNextPage.value = false;
+        currentPage.value = page;
+        hasNextPage.value = payload.length >= pageSize;
       } catch (error) {
-        students.value = [];
+        if (!append) {
+          students.value = [];
+          hasNextPage.value = false;
+        }
         activeSearchId.value = studentId;
         errorMessage.value = error?.message || '搜索学生失败';
         ElMessage.error(errorMessage.value);
@@ -344,7 +366,11 @@ export default {
     };
 
     const loadNextStudents = () => {
-      if (activeSearchId.value || !hasNextPage.value || isLoading.value || isResettingAll.value) return;
+      if (!hasNextPage.value || isLoading.value || isResettingAll.value) return;
+      if (activeSearchId.value) {
+        searchStudent(currentPage.value + 1, true);
+        return;
+      }
       loadStudents(currentPage.value + 1, true);
     };
 

@@ -33,6 +33,14 @@ export default {
     requestParams: {
       type: Object,
       default: () => ({})
+    },
+    showStudentId: {
+      type: Boolean,
+      default: false
+    },
+    recordsPerPage: {
+      type: Number,
+      default: config.ManagerHistoryRecordPerPage
     }
   }
 };
