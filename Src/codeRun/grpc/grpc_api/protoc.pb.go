@@ -146,6 +146,7 @@ func (x *CodeStatusUpdateRequest) GetData() string {
 type StatusUpdateReply struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Data          string                 `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"` //多种用途，可能是上传链接
+	Auth          string                 `protobuf:"bytes,2,opt,name=auth,proto3" json:"auth,omitempty"` //新的鉴权token
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -187,6 +188,13 @@ func (x *StatusUpdateReply) GetData() string {
 	return ""
 }
 
+func (x *StatusUpdateReply) GetAuth() string {
+	if x != nil {
+		return x.Auth
+	}
+	return ""
+}
+
 type CodeReply struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	HeaderUrl     string                 `protobuf:"bytes,1,opt,name=headerUrl,proto3" json:"headerUrl,omitempty"` //头文件下载路径
@@ -197,6 +205,7 @@ type CodeReply struct {
 	Msg           string                 `protobuf:"bytes,6,opt,name=msg,proto3" json:"msg,omitempty"`             //消息
 	Runtype       int64                  `protobuf:"varint,7,opt,name=runtype,proto3" json:"runtype,omitempty"`    //运行类型Debug/Release
 	Data          string                 `protobuf:"bytes,8,opt,name=data,proto3" json:"data,omitempty"`           //多种用途
+	Auth          string                 `protobuf:"bytes,9,opt,name=auth,proto3" json:"auth,omitempty"`           //鉴权token
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -287,6 +296,13 @@ func (x *CodeReply) GetData() string {
 	return ""
 }
 
+func (x *CodeReply) GetAuth() string {
+	if x != nil {
+		return x.Auth
+	}
+	return ""
+}
+
 var File_protoc_proto protoreflect.FileDescriptor
 
 const file_protoc_proto_rawDesc = "" +
@@ -299,9 +315,10 @@ const file_protoc_proto_rawDesc = "" +
 	"\aindices\x18\x02 \x01(\x03R\aindices\x12\x0e\n" +
 	"\x02id\x18\x03 \x01(\tR\x02id\x12\x16\n" +
 	"\x06status\x18\x04 \x01(\x05R\x06status\x12\x12\n" +
-	"\x04data\x18\x05 \x01(\tR\x04data\"'\n" +
+	"\x04data\x18\x05 \x01(\tR\x04data\";\n" +
 	"\x11StatusUpdateReply\x12\x12\n" +
-	"\x04data\x18\x01 \x01(\tR\x04data\"\xc1\x01\n" +
+	"\x04data\x18\x01 \x01(\tR\x04data\x12\x12\n" +
+	"\x04auth\x18\x02 \x01(\tR\x04auth\"\xd5\x01\n" +
 	"\tCodeReply\x12\x1c\n" +
 	"\theaderUrl\x18\x01 \x01(\tR\theaderUrl\x12\x1c\n" +
 	"\tsourceUrl\x18\x02 \x01(\tR\tsourceUrl\x12\x0e\n" +
@@ -310,7 +327,8 @@ const file_protoc_proto_rawDesc = "" +
 	"\x02ok\x18\x05 \x01(\bR\x02ok\x12\x10\n" +
 	"\x03msg\x18\x06 \x01(\tR\x03msg\x12\x18\n" +
 	"\aruntype\x18\a \x01(\x03R\aruntype\x12\x12\n" +
-	"\x04data\x18\b \x01(\tR\x04data2m\n" +
+	"\x04data\x18\b \x01(\tR\x04data\x12\x12\n" +
+	"\x04auth\x18\t \x01(\tR\x04auth2m\n" +
 	"\x04Code\x12#\n" +
 	"\aGetCode\x12\f.CodeRequest\x1a\n" +
 	".CodeReply\x12@\n" +

@@ -15,7 +15,9 @@ type GrpcCodeServer struct {
 
 func (server *GrpcCodeServer) GetCode(ctx context.Context, req *grpc_api.CodeRequest) (*grpc_api.CodeReply, error) {
 	//鉴权
-	if !codeGrpcServerAuthConfirm(req.Auth) {
+	var ok bool
+	var auth string
+	if ok, auth = service.CodeGrpcServerAuthConfirm(req.Auth); !ok {
 		util.DebugError("疑似Auth泄露!")
 		return nil, nil
 	}
@@ -54,11 +56,7 @@ func (server *GrpcCodeServer) GetCode(ctx context.Context, req *grpc_api.CodeReq
 		Ok:        true,
 		Msg:       "获取成功!",
 		Runtype:   int64(codeinfo.RunType),
+		Auth:      auth,
 	}
 	return data, nil
-}
-
-// 鉴权使用
-func codeGrpcServerAuthConfirm(auth string) bool {
-	return auth == "5rGq56uL5rSq5piv5YWo5LiW55WM5pyA5biF55qE55S355Sf"
 }

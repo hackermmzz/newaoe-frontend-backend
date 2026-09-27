@@ -112,6 +112,25 @@ func UserUpdate(session *xorm.Session, id string, user model.Student) bool {
 	return true
 }
 
+// 获取 id like 的所有用户(不包含end)
+func UserGetLikeId(session *xorm.Session, id_like string, beg int, end int) []model.Student {
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
+
+	var users []model.Student
+
+	err := session.Where("id LIKE ?", "%"+id_like+"%").Limit(end-beg, beg).Find(&users)
+
+	if err != nil {
+		util.DebugError("UserGetLikeId:", err)
+		return nil
+	}
+
+	return users
+}
+
 // 获取指定用户的数据
 func UserGet(session *xorm.Session, id string) *model.Student {
 	//

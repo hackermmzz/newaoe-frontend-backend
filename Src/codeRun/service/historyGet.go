@@ -10,6 +10,7 @@ import (
 
 // 提交历史记录（发送给前端的）
 type SubmitRecord struct {
+	ID          string                  `json:"id"`
 	Indices     int                     `json:"indices"`
 	SubmitTime  time.Time               `json:"submittime"`
 	Header      string                  `json:"header"`
@@ -21,9 +22,15 @@ type SubmitRecord struct {
 	Class       int                     `json:"class"`
 }
 
+// 如果id==""，表示仅按范围查找(包含end)
 func GetHistoryRangeById(id string, beg int, end int) ([]SubmitRecord, error) {
 	//从数据库获取提交历史
-	historyRecords := dao.CodeRunGetRangeById(nil, id, beg, end+1)
+	var historyRecords []model.CodeRunInfo
+	if id != "" {
+		historyRecords = dao.CodeRunGetRangeById(nil, id, beg, end+1)
+	} else {
+		historyRecords = dao.CodeRunGetByRange(nil, beg, end+1)
+	}
 	if historyRecords == nil {
 		historyRecords = make([]model.CodeRunInfo, 0)
 	}
@@ -47,6 +54,7 @@ func GetHistoryRangeById(id string, beg int, end int) ([]SubmitRecord, error) {
 			return nil, util.NewError("怎么可能出现文件不存在的情况呢?")
 		}
 		//
+		record.ID = history.ID
 		record.Header = history.Header
 		record.Source = history.Source
 		record.HeaderSize = headerInfo.Size

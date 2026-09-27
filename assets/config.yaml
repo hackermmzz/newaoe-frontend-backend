@@ -52,7 +52,8 @@ code:
   codeWaitForRunQueueTopic: "CodeWaitForRun"    #代码待运行topic
   codeSubmitTimesPerDay: 10  #一天可以提交的次数
   codeAssessmentTimes: 1   #考核提交一共可以提交的次数
-  codeWaitTooLongTimeLimit: 60  #60分钟还没跑/跑完就算超时，重新跑
+  codeWaitTooLongTimeLimit: 90  #N分钟还没跑/跑完就算超时，重新跑
+  codeAuthExpireTime: 60  #N分钟权限过期，需要重新鉴权，防止机器伪造
 # 注册验证码配置
 registverifycode:
   expireTime: 300                   # 验证码过期时间 单位：秒（5分钟）

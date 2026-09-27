@@ -83,6 +83,7 @@ type CodeConfig struct {
 	CodeSubmitTimesPerDay                 int    `yaml:"codeSubmitTimesPerDay"`                 //一天可以提交的次数
 	CodeAssessmentTimes                   int    `yaml:"codeAssessmentTimes"`                   //考核提交可以提交的次数
 	CodeWaitTooLongTimeLimit              int    `yaml:"codeWaitTooLongTimeLimit"`              //代码等待结果超时时长
+	CodeAuthExpireTime                    int    `yaml:"codeAuthExpireTime"`                    //鉴权过期时间
 }
 
 type RegistVerifyCodeConfig struct {

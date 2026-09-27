@@ -212,3 +212,22 @@ func CodeRunGetStudentLastSubmitRecord(session *xorm.Session) []model.CodeRunInf
 
 	return result
 }
+
+// 获取指定范围的提交记录(不包含end)
+func CodeRunGetByRange(session *xorm.Session, beg int, end int) []model.CodeRunInfo {
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
+
+	var data []model.CodeRunInfo
+
+	err := session.Desc("indices").Limit(end-beg, beg).Find(&data)
+
+	if err != nil {
+		util.DebugError("CodeRunGetByRange:", err)
+		return nil
+	}
+
+	return data
+}

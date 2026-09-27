@@ -11,8 +11,11 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
+// 类型定义
+type Pipeliner = redis.Pipeliner
+
 // 全局 Redis 客户端（单例，线程安全）
-var RDB *redis.Client
+var redisRDB *redis.Client
 
 // ConnectRedis 生产级 Redis 初始化（连接池 + 重试 + 健康检查）
 func ConnectRedis() {
@@ -35,7 +38,7 @@ func ConnectRedis() {
 	}
 
 	// 创建客户端
-	RDB = redis.NewClient(opt)
+	redisRDB = redis.NewClient(opt)
 
 	// 健康检查 + 启动重试
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -43,7 +46,7 @@ func ConnectRedis() {
 
 	var err error
 	for i := 0; i < 10; i++ {
-		if err = RDB.Ping(ctx).Err(); err == nil {
+		if err = redisRDB.Ping(ctx).Err(); err == nil {
 			break
 		}
 		util.DebugError(fmt.Sprintf("Redis 重试连接 %d/10: %v", i+1, err))
@@ -57,14 +60,37 @@ func ConnectRedis() {
 	util.DebugSuccess("Redis连接池初始化成功")
 }
 
-// 生成pi
+// 获取上下文
+func NewContext() context.Context {
+	return redisRDB.Context()
+}
+
+// 生成pipeline
 func NewTxPipeline() redis.Pipeliner {
-	return RDB.TxPipeline()
+	return redisRDB.TxPipeline()
+}
+
+// 获取key的ttl
+func RedisTTL(ctx context.Context, key string) (time.Duration, error) {
+	return redisRDB.TTL(ctx, key).Result()
+}
+
+// 原子操作
+func RedisTx(ctx context.Context, fn func(Pipeliner) error) error {
+	_, err := redisRDB.TxPipelined(ctx, func(pipe Pipeliner) error {
+		return fn(pipe)
+	})
+	return err
+}
+
+// lua脚本
+func RedisLua(ctx context.Context, script string, keys []string, args ...interface{}) *redis.Cmd {
+	return redisRDB.Eval(ctx, script, keys, args...)
 }
 
 // RedisGet 带 ctx 规范获取（支持链路超时、链路追踪）
 func RedisGet(ctx context.Context, key string) ([]byte, bool) {
-	val, err := RDB.Get(ctx, key).Bytes()
+	val, err := redisRDB.Get(ctx, key).Bytes()
 
 	// key不存在不算异常，不打日志
 	if err == redis.Nil {
@@ -82,7 +108,7 @@ func RedisGet(ctx context.Context, key string) ([]byte, bool) {
 
 // RedisExist 判断key是否存在
 func RedisExist(ctx context.Context, key string) bool {
-	count, err := RDB.Exists(ctx, key).Result()
+	count, err := redisRDB.Exists(ctx, key).Result()
 	if err != nil {
 		util.DebugError(fmt.Sprintf("[RedisExist] err: %v, key: %s", err, key))
 		return false
@@ -92,7 +118,7 @@ func RedisExist(ctx context.Context, key string) bool {
 
 // RedisSet 标准set（带ctx、带过期）
 func RedisSet(ctx context.Context, key string, value any, expiration time.Duration) bool {
-	err := RDB.Set(ctx, key, value, expiration).Err()
+	err := redisRDB.Set(ctx, key, value, expiration).Err()
 	if err != nil {
 		util.DebugError(fmt.Sprintf("[RedisSet] err: %v, key: %s", err, key))
 		return false
@@ -102,7 +128,7 @@ func RedisSet(ctx context.Context, key string, value any, expiration time.Durati
 
 // RedisChange,只改value
 func RedisChange(ctx context.Context, key string, value any) bool {
-	err := RDB.Set(ctx, key, value, redis.KeepTTL).Err()
+	err := redisRDB.Set(ctx, key, value, redis.KeepTTL).Err()
 	if err != nil {
 		util.DebugError(fmt.Sprintf("[RedisChange] err: %v, key: %s", err, key))
 		return false
@@ -112,7 +138,7 @@ func RedisChange(ctx context.Context, key string, value any) bool {
 
 // RedisDel 删除key
 func RedisDel(ctx context.Context, key string) bool {
-	err := RDB.Del(ctx, key).Err()
+	err := redisRDB.Del(ctx, key).Err()
 	if err != nil {
 		util.DebugError(fmt.Sprintf("[RedisDel] err: %v, key: %s", err, key))
 		return false
@@ -123,7 +149,7 @@ func RedisDel(ctx context.Context, key string) bool {
 // RedisExpire 给key设置过期时间
 func RedisExpire(ctx context.Context, key string, expiration time.Duration) bool {
 
-	err := RDB.Expire(ctx, key, expiration).Err()
+	err := redisRDB.Expire(ctx, key, expiration).Err()
 	if err != nil {
 		util.DebugError(fmt.Sprintf("[RedisExpire] err: %v, key: %s", err, key))
 		return false
@@ -132,7 +158,7 @@ func RedisExpire(ctx context.Context, key string, expiration time.Duration) bool
 }
 
 func RedisListPush(ctx context.Context, queue string, data string) bool {
-	err := RDB.LPush(
+	err := redisRDB.LPush(
 		ctx,
 		queue,
 		data,
@@ -145,7 +171,7 @@ func RedisListPush(ctx context.Context, queue string, data string) bool {
 }
 
 func RedisListPop(ctx context.Context, queue string) (string, bool) {
-	val, err := RDB.RPop(ctx, queue).Result()
+	val, err := redisRDB.RPop(ctx, queue).Result()
 	if err == redis.Nil {
 		return "", false
 	}

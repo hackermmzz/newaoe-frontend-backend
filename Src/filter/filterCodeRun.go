@@ -1,6 +1,7 @@
 package filter
 
 import (
+	"context"
 	"fmt"
 	"newaoe/Src/config"
 	"newaoe/Src/redis"
@@ -49,7 +50,7 @@ func FilterCodeRun() gin.HandlerFunc {
 }
 
 func codeRunRecordTTL(id string) int64 {
-	ttl, err := redis.RDB.TTL(redis.RDB.Context(), fmt.Sprintf("CodeRunOrSubmit:%v", id)).Result()
+	ttl, err := redis.RedisTTL(context.Background(), fmt.Sprintf("CodeRunOrSubmit:%v", id))
 	if err != nil {
 		util.DebugError("CodeRunRecordTTL:", err)
 		return int64(1e9)
@@ -58,10 +59,7 @@ func codeRunRecordTTL(id string) int64 {
 }
 
 func codeRunRecordAdd(id string) bool {
-	err := redis.RDB.Set(redis.RDB.Context(), fmt.Sprintf("CodeRunOrSubmit:%v", id), "", time.Duration(config.Conf.Code.CodeSubmitInterval)*time.Second).Err()
+	ok := redis.RedisSet(context.Background(), fmt.Sprintf("CodeRunOrSubmit:%v", id), "", time.Duration(config.Conf.Code.CodeSubmitInterval)*time.Second)
 	//
-	if err != nil {
-		return false
-	}
-	return true
+	return ok
 }

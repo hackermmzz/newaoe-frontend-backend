@@ -27,6 +27,9 @@ type codeRunStatusInfoPushRedis struct {
 func CodeRunStatusGetProcess(id string, indices int64, info model.CodeRunStatusInfo) (*grpc_api.StatusUpdateReply, error) {
 	//判断是否需要下载链接(如果是会改变codeRunStatus一些字段)
 	ret := processCodeRunStatus(int(indices), id, &info)
+	if ret == nil {
+		ret = &grpc_api.StatusUpdateReply{}
+	}
 	//先更新redis
 	redisData := codeRunStatusInfoPushRedis{
 		ID:                id,

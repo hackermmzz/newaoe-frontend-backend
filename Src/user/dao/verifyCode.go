@@ -2,7 +2,6 @@ package dao
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"newaoe/Src/config"
 	"newaoe/Src/redis"
@@ -10,6 +9,35 @@ import (
 	"newaoe/Src/util"
 	"time"
 )
+
+var verifyCodeLua = `
+local value = redis.call("GET", KEYS[1])
+
+if not value then
+    return {-1, 0}
+end
+
+local info = cjson.decode(value)
+
+if info.RetryCount <= 0 then
+    return {-2, 0}
+end
+
+if ARGV[1] == info.Code then
+    return {1, info.RetryCount}
+end
+
+info.RetryCount = info.RetryCount - 1
+
+redis.call(
+    "SET",
+    KEYS[1],
+    cjson.encode(info),
+    "KEEPTTL"
+)
+
+return {0, info.RetryCount}
+`
 
 func VerifyCodeAdd(keyID string, code string, class int8) error {
 	var expire_time time.Duration
@@ -27,19 +55,19 @@ func VerifyCodeAdd(keyID string, code string, class int8) error {
 		KeyID: keyID,
 		Class: class,
 	}
-	tx := redis.NewTxPipeline()
-	ctx := redis.RDB.Context()
-	tx.Set(ctx, data.String(), model.VerifyCodeInRedis{
-		Code:       code,
-		RetryCount: int8(config.Conf.Other.VerifyCodeRetryCount),
-	}.Marshal(), expire_time)
-	tx.Set(ctx, data.Tag(), "", resend_time)
-	_, err := tx.Exec(ctx)
-	if err != nil {
-		util.DebugError("VerifyCodeAdd:", err)
-		return util.NewError("哈希碰撞!")
-	}
 
+	ctx := context.Background()
+	err := redis.RedisTx(ctx, func(pipe redis.Pipeliner) error {
+		pipe.Set(ctx, data.String(), model.VerifyCodeInRedis{
+			Code:       code,
+			RetryCount: int8(config.Conf.Other.VerifyCodeRetryCount),
+		}.Marshal(), expire_time)
+		pipe.Set(ctx, data.Tag(), "", resend_time)
+		return nil
+	})
+	if err != nil {
+		util.DebugError("VerifyCodeAdd", err)
+	}
 	return nil
 }
 
@@ -48,32 +76,29 @@ func VerifyCodeExist(keyID string, code string, class int8) (bool, error) {
 		KeyID: keyID,
 		Class: class,
 	}
-	key := data.String()
-	byte_data, exist := redis.RedisGet(context.Background(), key)
-	if !exist {
-		return false, util.NewError("查如此验证码!")
-	}
-	//
-	var info model.VerifyCodeInRedis
-	err := json.Unmarshal(byte_data, &info)
+	//lua执行
+	resultCMD := redis.RedisLua(
+		context.Background(),
+		verifyCodeLua,
+		[]string{data.String()},
+		code,
+	)
+	//获取结果
+	result, err := resultCMD.Int64Slice()
 	if err != nil {
 		return false, err
 	}
-	//如果验证码不匹配直接返回
-	if info.RetryCount <= 0 {
+	switch result[0] {
+	case -1:
+		return false, util.NewError("无此验证码!")
+	case -2:
 		return false, util.NewError("达到最大可重试次数!")
+	case 0:
+		return false, util.NewError(fmt.Sprintf("验证码错误,你还有%d次尝试", result[1]))
+	case 1:
+		return true, nil
 	}
-	//减少1次尝试次数
-	redis.RedisChange(context.Background(), key, model.VerifyCodeInRedis{
-		Code:       info.Code,
-		RetryCount: info.RetryCount - 1,
-	}.Marshal())
-	//验证码错误
-	if code != info.Code {
-		return false, util.NewError(fmt.Sprintf("验证码错误,你还有%d尝试", info.RetryCount-1))
-	}
-	//
-	return true, nil
+	return false, util.NewError("验证码校验异常")
 }
 
 func VerifyCodeCanSendTTL(keyID string, class int8) int64 {
@@ -81,7 +106,7 @@ func VerifyCodeCanSendTTL(keyID string, class int8) int64 {
 		KeyID: keyID,
 		Class: class,
 	}
-	ttl, err := redis.RDB.TTL(redis.RDB.Context(), data.Tag()).Result()
+	ttl, err := redis.RedisTTL(context.Background(), data.Tag())
 	if err != nil {
 		util.DebugError("VerifyCodeCanSendTTL:", err)
 		return int64(1e9)

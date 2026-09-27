@@ -26,6 +26,7 @@ message CodeStatusUpdateRequest{
 ////////////////////////////////////////////////////////// 响应消息
 message StatusUpdateReply{
     string data =1;    //多种用途，可能是上传链接
+    string auth =2; //新的鉴权token
 }
 
 message CodeReply{
@@ -37,4 +38,5 @@ message CodeReply{
     string msg =6;          //消息
     int64 runtype =7;     //运行类型Debug/Release
     string data =8 ;    //多种用途
+    string auth =9;     //鉴权token
 }
