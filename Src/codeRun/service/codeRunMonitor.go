@@ -53,11 +53,14 @@ func processCodeRunStatus(indices int, id string, codeRunstatus *model.CodeRunSt
 	status := codeRunstatus.Status
 	fp := ""
 	dtMap := make(map[string]interface{})
+	statusDataMap := make(map[string]interface{})
+	expire_dur := time.Duration(60) * time.Minute
 	switch status {
 	case model.Code_Status_Compile_Fail:
 		fileName := fmt.Sprintf("compile_%d_%s.log", indices, util.UUID())
 		fp = path.Join(config.Conf.OSS.PrivateBaseFolder, id, config.Conf.User.UserOtherFolder, fileName)
 		dtMap["compile_error_log"] = fp
+		statusDataMap["compile_error_log_url"] = upload.UploadFile(fp, expire_dur)
 	case model.Code_Status_Crash:
 		//解析原来的data，needlog为一个bool，表示是否生成崩溃日志
 		mp := make(map[string]interface{})
@@ -65,6 +68,7 @@ func processCodeRunStatus(indices int, id string, codeRunstatus *model.CodeRunSt
 		if needlog, ok := mp["needlog"].(bool); ok && needlog {
 			fileName := fmt.Sprintf("crash_%d_%s.log", indices, util.UUID())
 			fp = path.Join(config.Conf.OSS.PrivateBaseFolder, id, config.Conf.User.UserCrashFolder, fileName)
+			statusDataMap["crash_log_url"] = upload.UploadFile(fp, expire_dur)
 		}
 		if crash_reason, ok := mp["crash_reason"].(string); ok {
 			dtMap["crash_reason"] = crash_reason
@@ -75,25 +79,34 @@ func processCodeRunStatus(indices int, id string, codeRunstatus *model.CodeRunSt
 	case model.Code_Status_Fail:
 		fileName := fmt.Sprintf("video_fail_%d_%s.video", indices, util.UUID())
 		fp = path.Join(config.Conf.OSS.PrivateBaseFolder, id, config.Conf.User.UserVideoFolder, fileName)
-		dtMap["video_file"] = fp
+		dtMap["video_url"] = fp
+		statusDataMap["video_url"] = upload.UploadFile(fp, expire_dur)
 	case model.Code_Status_Success:
 		fileName := fmt.Sprintf("video_success_%d_%s.video", indices, util.UUID())
 		fp = path.Join(config.Conf.OSS.PrivateBaseFolder, id, config.Conf.User.UserVideoFolder, fileName)
 		dtMap["video_file"] = fp
+		statusDataMap["video_url"] = upload.UploadFile(fp, expire_dur)
+	}
+	//一些状态需要debug输出的要额外生成信息
+	switch status {
+	case model.Code_Status_Crash, model.Code_Status_Success, model.Code_Status_Fail:
+		//输出日志
+		debugFileName := fmt.Sprintf("debug_%d_%s.log", indices, util.UUID())
+		fp = path.Join(config.Conf.OSS.PrivateBaseFolder, id, config.Conf.User.UserOtherFolder, debugFileName)
+		statusDataMap["debug_log_url"] = upload.UploadFile(fp, expire_dur)
+		dtMap["debug_log_file"] = fp
 	}
 	//无论链接生成成功与否，都不用管
 	if len(dtMap) != 0 {
 		bytes, _ := json.Marshal(dtMap)
 		codeRunstatus.Data = string(bytes)
 	}
-	if fp != "" {
-		//尝试3次
-		for i := 0; i < 3; i += 1 {
-			expire_dur := time.Duration(60) * time.Minute
-			url := upload.UploadFile(fp, expire_dur)
-			if len(url) > 0 {
-				return &grpc_api.StatusUpdateReply{Data: url}
-			}
+	if len(statusDataMap) != 0 {
+		dt, err := json.Marshal(statusDataMap)
+		if err != nil {
+			util.DebugError("processCodeRunStatus", err)
+		} else {
+			return &grpc_api.StatusUpdateReply{Data: string(dt)}
 		}
 	}
 	//

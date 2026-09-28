@@ -2,7 +2,6 @@ package filter
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"newaoe/Src/config"
 	"newaoe/Src/redis"
@@ -10,6 +9,21 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+var limitCodeSubmitLua = `
+local current = tonumber(redis.call("GET", KEYS[1]) or "0")
+local limit = tonumber(ARGV[1])
+local expire = tonumber(ARGV[2])
+if current >= limit then
+    return {-1, current}
+end
+local newValue = redis.call("INCR", KEYS[1])
+if newValue == 1 then
+    redis.call("EXPIRE", KEYS[1], expire)
+end
+
+return {1, newValue}
+`
 
 // 判断是否达到提交/运行限制
 func FilterLimitCodeSubmit() gin.HandlerFunc {
@@ -30,22 +44,29 @@ func FilterLimitCodeSubmit() gin.HandlerFunc {
 		}
 		//
 		key := fmt.Sprintf("CommonUploadOrRunTimes_%v", id)
-		time, exist := redis.RedisGet(context.Background(), key)
-		curSubmitTime := 0
-		if exist {
-			err := json.Unmarshal(time, &curSubmitTime)
-			if err != nil {
-				util.DebugError("LimitCodeUploadOrRun Unmarshal Error!", err)
-			}
-		}
-		//判断是否达到限制
-		if curSubmitTime >= config.Conf.Code.CodeSubmitTimesPerDay {
-			util.ResponseNAK_MSG(ctx, "你已经达到当天提交限制!", nil)
+		result, err := redis.RedisLua(
+			context.Background(),
+			limitCodeSubmitLua,
+			[]string{key},
+			config.Conf.Code.CodeSubmitTimesPerDay,
+			util.GetLeftTimeForOneDay(),
+		).Result()
+
+		if err != nil {
+			util.DebugError("FilterLimitCodeSubmit", err)
+			util.ResponseNAK_MSG(ctx, "服务器异常!", err.Error())
 			ctx.Abort()
 			return
 		}
-		//
-		redis.RedisSet(context.Background(), key, curSubmitTime+1, util.GetLeftTimeForOneDay())
-		ctx.Next()
+
+		data := result.([]interface{})
+		status := data[0].(int64)
+
+		if status == 1 {
+			ctx.Next()
+		} else {
+			util.ResponseNAK_MSG(ctx, "当天提交次数已耗尽!", nil)
+			ctx.Abort()
+		}
 	}
 }

@@ -126,6 +126,24 @@ func RedisSet(ctx context.Context, key string, value any, expiration time.Durati
 	return true
 }
 
+// 自增
+func RedisIncrease(ctx context.Context, key string) (int, error) {
+	n, err := redisRDB.Incr(ctx, key).Result()
+	if err != nil {
+		return 0, err
+	}
+	return int(n), nil
+}
+
+// 自减
+func RedisDecrease(ctx context.Context, key string) (int, error) {
+	n, err := redisRDB.Decr(ctx, key).Result()
+	if err != nil {
+		return 0, err
+	}
+	return int(n), nil
+}
+
 // RedisChange,只改value
 func RedisChange(ctx context.Context, key string, value any) bool {
 	err := redisRDB.Set(ctx, key, value, redis.KeepTTL).Err()

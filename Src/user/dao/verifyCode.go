@@ -19,15 +19,15 @@ end
 
 local info = cjson.decode(value)
 
-if info.RetryCount <= 0 then
+if info.retrycount <= 0 then
     return {-2, 0}
 end
 
-if ARGV[1] == info.Code then
-    return {1, info.RetryCount}
+if ARGV[1] == info.code then
+    return {1, info.retrycount}
 end
 
-info.RetryCount = info.RetryCount - 1
+info.retrycount = info.retrycount - 1
 
 redis.call(
     "SET",
@@ -36,7 +36,7 @@ redis.call(
     "KEEPTTL"
 )
 
-return {0, info.RetryCount}
+return {0, info.retrycount}
 `
 
 func VerifyCodeAdd(keyID string, code string, class int8) error {
