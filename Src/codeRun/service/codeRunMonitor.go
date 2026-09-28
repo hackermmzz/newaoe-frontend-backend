@@ -79,7 +79,7 @@ func processCodeRunStatus(indices int, id string, codeRunstatus *model.CodeRunSt
 	case model.Code_Status_Fail:
 		fileName := fmt.Sprintf("video_fail_%d_%s.video", indices, util.UUID())
 		fp = path.Join(config.Conf.OSS.PrivateBaseFolder, id, config.Conf.User.UserVideoFolder, fileName)
-		dtMap["video_url"] = fp
+		dtMap["video_file"] = fp
 		statusDataMap["video_url"] = upload.UploadFile(fp, expire_dur)
 	case model.Code_Status_Success:
 		fileName := fmt.Sprintf("video_success_%d_%s.video", indices, util.UUID())
