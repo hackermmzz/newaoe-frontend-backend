@@ -263,6 +263,16 @@
                 </button>
               </div>
 
+              <!-- 有 debug_log_file 时紧跟运行结果日志，提供标准输出日志下载 -->
+              <div v-if="getDebugLogFile(item)" class="mb-4">
+                <button
+                  @click="downloadFile(getDebugLogFile(item))"
+                  class="text-sm px-3 py-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+                >
+                  <i class="fa fa-download mr-1"></i>下载标准输出日志
+                </button>
+              </div>
+
               <!-- 运行中及运行结束时展示比赛结果数据 -->
               <div v-if="isGameStats(item)" class="mb-4 grid grid-cols-2 md:grid-cols-3 gap-2 text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded">
                 <div><strong>Food:</strong> {{ getStatusInfo(item).food }}</div>
@@ -544,6 +554,30 @@ const getVideoLink = (item) => {
   }
   if (!data || typeof data !== 'object' || Array.isArray(data)) return '';
   return String(data.video_file ?? '').trim();
+};
+
+// debug_log_file 与 crash_log_file/video_file 一样，位于 status.data 中；兼容
+// 历史接口把 status 或 debug_log_file 放在不同层级、以及 JSON 字符串化的返回值。
+const getDebugLogData = (item) => {
+  let data = getStatusInfo(item).data;
+  if (typeof data === 'string') {
+    try {
+      const parsed = JSON.parse(data);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) data = parsed;
+    } catch (error) {
+      return {};
+    }
+  }
+  return data && typeof data === 'object' && !Array.isArray(data) ? data : {};
+};
+
+const getDebugLogFile = (item) => {
+  const statusInfo = getStatusInfo(item);
+  const data = getDebugLogData(item);
+  const fileIdentifier = data.debug_log_file ?? statusInfo.debug_log_file ?? item?.debug_log_file;
+  return fileIdentifier === undefined || fileIdentifier === null
+    ? ''
+    : String(fileIdentifier).trim();
 };
 
 const isCompileFail = (item) => getStatusCode(item) === config.Code_Status_Compile_Fail;
