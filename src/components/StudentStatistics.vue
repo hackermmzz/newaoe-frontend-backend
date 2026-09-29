@@ -36,7 +36,7 @@
     <form
       class="flex flex-col sm:flex-row gap-2"
       role="search"
-      @submit.prevent="searchStudent"
+      @submit.prevent="searchStudent()"
     >
       <label for="student-search-id" class="sr-only">按学生 ID 模糊搜索</label>
       <input
