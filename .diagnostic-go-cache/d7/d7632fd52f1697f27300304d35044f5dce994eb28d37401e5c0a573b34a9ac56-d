@@ -1,0 +1,4 @@
+./globalConst.go
+./globalFun.go
+./globalStruct.go
+./globalVar.go

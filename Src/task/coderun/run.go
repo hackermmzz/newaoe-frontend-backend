@@ -52,6 +52,9 @@ func Task_ProcessRun(ctx context.Context, server grpc_api.CodeClient) {
 				return
 			}
 			defer util.CloseFiles(files)
+			//记录性能
+			global.Profiler.IncreaseRunning()
+			defer global.Profiler.DecreaseRunning()
 			///////////////运行代码
 			err = runMonitor(
 				ctx,

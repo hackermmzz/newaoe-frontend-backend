@@ -1,13 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
-	task "new-aoe-judge/Src/Task"
 	api_preCompile "new-aoe-judge/Src/api/preCompile"
 	"new-aoe-judge/Src/config"
 	"new-aoe-judge/Src/global"
 	grpc_api "new-aoe-judge/Src/grpc"
+	task "new-aoe-judge/Src/task"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -18,6 +19,12 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 )
+
+// waitForAnyKey is line-buffered on non-Windows terminals; press a key and Enter.
+func waitForAnyKey() error {
+	_, err := bufio.NewReader(os.Stdin).ReadByte()
+	return err
+}
 
 // dialGRPC 连接 gRPC 服务器
 func dialGRPC() (*grpc.ClientConn, error) {
@@ -38,8 +45,17 @@ func CleanUp() {
 		for _, id := range strings.Fields(string(out)) {
 			ids += id + " "
 		}
-		_ = exec.Command("docker", "kill", ids).Run()
-		_ = exec.Command("docker", "rm", ids).Run()
+		global.Log(fmt.Sprintf("所有容器id为:%s", ids))
+		e0 := exec.Command("docker", "kill", ids).Run()
+		e1 := exec.Command("docker", "rm", ids).Run()
+		if e0 != nil {
+			global.Log("清理子进程失败: " + e0.Error())
+		}
+		if e1 != nil {
+			global.Log("清理子进程失败: " + e1.Error())
+		}
+	} else {
+		global.Log("清理子进程失败: " + e.Error())
 	}
 	global.Log("清理完成!")
 }
@@ -118,10 +134,50 @@ func main() {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
 	go func() {
-		<-sig
-		fmt.Printf("捕获到退出信号，当前等待:%d 编译:%d 运行:%d\n", global.Profiler.TaskWait, global.Profiler.Compile, global.Profiler.Running)
-		cancel()
-		CleanUp()
+		waitingConfirm := false
+		var keyPressed <-chan error
+		clear := func() {
+			fmt.Println("再次捕获到 Ctrl+C，正在清理并退出...")
+			signal.Stop(sig)
+			cancel()
+			CleanUp()
+		}
+		for {
+			select {
+			case <-sig:
+				if waitingConfirm {
+					clear()
+					return
+				}
+
+				waitingConfirm = true
+				fmt.Printf(
+					"捕获到退出信号，按任意其他键继续，按 Ctrl+C 退出。\n"+
+						"当前等待:%d 编译:%d/%d 运行:%d/%d\n",
+					global.Profiler.TaskWait,
+					global.Profiler.Compile,
+					len(global.CompileWaitQueue)+global.Profiler.Compile,
+					global.Profiler.Running,
+					len(global.RunWaitQueue)+global.Profiler.Running,
+				)
+
+				keyDone := make(chan error, 1)
+				keyPressed = keyDone
+				go func() {
+					keyDone <- waitForAnyKey()
+				}()
+
+			case err := <-keyPressed:
+				keyPressed = nil
+				waitingConfirm = false
+
+				if err != nil {
+					clear()
+				} else {
+					fmt.Println("收到其他按键，继续运行...")
+				}
+			}
+		}
 	}()
 	// 启动任务处理任务
 	go task.Task(ctx, server)

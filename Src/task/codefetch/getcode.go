@@ -21,6 +21,9 @@ func Task_GetStudentCode(ctx context.Context, server grpc_api.CodeClient) {
 				time.Sleep(time.Duration(config.Conf.JudgeSleepTimeWhenGetCodeFailed) * time.Second)
 				return
 			}
+			//记录性能
+			global.Profiler.IncreaseTaskWait()
+			defer global.Profiler.DecreaseTaskWait()
 			//
 			global.Log(fmt.Sprintf("获取代码成功! ID:%s Indices:%d RunType:%d", res.ID, res.Indices, res.RunType))
 			//将代码添加到编译队列

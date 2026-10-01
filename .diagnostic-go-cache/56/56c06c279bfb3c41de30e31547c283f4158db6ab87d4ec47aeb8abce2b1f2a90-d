@@ -1,0 +1,13 @@
+./client.go
+./digest.go
+./middleware.go
+./redirect.go
+./request.go
+./response.go
+./resty.go
+./retry.go
+./trace.go
+./transport.go
+./transport_other.go
+./util.go
+./util_curl.go

@@ -27,6 +27,7 @@ func Task_ProcessCompile(ctx context.Context, server grpc_api.CodeClient) {
 		case <-ctx.Done():
 			return
 		}
+		//编译代码
 		func() {
 			//创建编译日志文件
 			logFilePath := util.JoinPath(code.BuildDir, config.Conf.CompileLogFileName)
@@ -36,6 +37,12 @@ func Task_ProcessCompile(ctx context.Context, server grpc_api.CodeClient) {
 				return
 			}
 			defer f.Close()
+			//分配资源
+			res := global.Profiler.AllocateCodeCompileResource(global.CompileCPULimit)
+			defer global.Profiler.RecycleCodeCompileResource(res)
+			//记录性能
+			global.Profiler.IncreaseCompile()
+			defer global.Profiler.DecreaseCompile()
 			//通知服务器现在正在编译
 			resp, e := global.PostCodeStatus(
 				ctx,
@@ -51,9 +58,6 @@ func Task_ProcessCompile(ctx context.Context, server grpc_api.CodeClient) {
 				global.Log("task_ProcessCompile的PostCodeStatus返回错误", e.Error())
 				return
 			}
-			//分配资源
-			res := global.Profiler.AllocateCodeCompileResource(global.CompileCPULimit)
-			defer global.Profiler.RecycleCodeCompileResource(res)
 			//编译代码
 			result := api_codeCompile.CodeCompile(
 				res,
