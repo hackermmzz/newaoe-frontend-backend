@@ -1,0 +1,65 @@
+#鉴权账号
+AuthAccount: ""
+
+#鉴权密码
+AuthPassword: ""
+
+# 服务器网址
+BaseIP: "114.66.62.156"
+
+# gRPC端口
+GRPCPort: 50051
+
+# HTTP端口
+HTTPPort: 8080
+
+#进程Log日志
+ProcessLogFileName: "ProcessLog.txt"
+
+# AOE项目目录
+new_aoe_folder: "./new-aoe"
+
+# AOE镜像名称
+new_aoe_docker_img: "hackermmzz/qt-env"
+
+# 编译的输出日志
+CompileLogFileName: "CompileLog.txt"
+
+# 编译是否开启多线程编译模式
+CompileUseMultiThread: false
+
+# 每个可执行程序的运行根目录
+RunDir: "./RunDir"
+
+# 运行时日志文件
+RunLogFileName: "RunLog.txt"
+
+# 运行时实时作战结果输出文件
+RunResultFileName: "RunResult.txt"
+
+# 运行时调试日志文件
+RunDebugLogOutputFileName: "RunDebugLog.txt"
+
+# 运行时记录文件
+RecordFileName: "Record.video"
+
+# 运行崩溃日志文件
+CrashLogFileName: "CrashLog.txt"
+
+# 判题机最大任务拉取数
+JudgeCodeFetchQueueMaxPayload: 10
+
+# 限制运行内存
+RunMemoryLimit: "256m"
+
+# 限制磁盘使用
+RunDiskLimit: "20m"
+
+# 超时时间，单位：秒
+RunTimeout: 1800
+
+# 获取任务失败进行休眠时长，单位：秒
+JudgeSleepTimeWhenGetCodeFailed: 5
+
+# 代码运行上传实时数据间隔，单位：秒
+CodeRunStatusUploadInterval: 1

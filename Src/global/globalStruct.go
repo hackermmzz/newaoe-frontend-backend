@@ -1,0 +1,227 @@
+package global
+
+import (
+	"encoding/json"
+	"fmt"
+	"sort"
+	"sync"
+)
+
+type CodeRunType int64
+
+type PostRunStatus int32
+
+// //////////////////////// GRPCAuthInfo gRPC 认证信息
+type GRPCAuthInfo struct {
+	ID       string `json:"id"`
+	Password string `json:"password"`
+	Auth     string `json:"auth"`
+}
+
+func (a GRPCAuthInfo) String() string {
+	b, _ := json.Marshal(a)
+	return string(b)
+}
+
+// //////////////////////// CodeRunStatusInfo 代码运行状态信息
+type CodeRunStatusInfo struct {
+	Status int32  `json:"status"`
+	Food   int    `json:"food"`
+	Wood   int    `json:"wood"`
+	Gold   int    `json:"gold"`
+	Stone  int    `json:"stone"`
+	Frame  int    `json:"frame"`
+	Win    bool   `json:"win"`
+	Score  int    `json:"score"`
+	Data   string `json:"data"`
+}
+
+func (s CodeRunStatusInfo) String() string {
+	b, _ := json.Marshal(s)
+	return string(b)
+}
+
+// //////////////////////// ProfilerInfo 性能分析信息
+type SingleCoreInfo struct {
+	CoreID int `json:"coreID"`
+	Usage  int `json:"usage"`
+}
+
+type CoreInfo struct {
+	mu        sync.Mutex
+	cond      *sync.Cond
+	CoreInfos []SingleCoreInfo `json:"cores"`
+}
+
+type CPUResourceAllocateInfo struct {
+	CoreIDs     []int `json:"coreIDs"`
+	CPUSPerCore []int `json:"cpusPerCore"`
+	CPUS        int   `json:"cpus"`
+}
+
+type ProfilerInfo struct {
+	//统计性能
+	mu                         sync.Mutex
+	TaskWait, Compile, Running int
+	//分配资源
+	CompileCore *CoreInfo
+	RunCore     *CoreInfo
+}
+
+// GetCores 获取核心列表
+func (c CPUResourceAllocateInfo) GetCores() string {
+	ret := ""
+	for i, v := range c.CoreIDs {
+		if i != 0 {
+			ret += ","
+		}
+		ret += fmt.Sprintf("%d", v)
+	}
+	return ret
+}
+
+// GetCPUS 获取cpu资源
+func (c CPUResourceAllocateInfo) GetCPUS() string {
+	ret := ""
+	ret += fmt.Sprintf("%.2f", float64(c.CPUS)/100.0)
+	return ret
+}
+
+// newCoreInfo 创建核心信息
+func newCoreInfo(singleCoreInfos []SingleCoreInfo) *CoreInfo {
+	r := &CoreInfo{
+		CoreInfos: singleCoreInfos,
+	}
+	r.cond = sync.NewCond(&r.mu)
+	return r
+}
+
+// NewProfilerInfo 创建性能分析信息
+func NewProfilerInfo(compileCores []SingleCoreInfo, runCores []SingleCoreInfo) *ProfilerInfo {
+	return &ProfilerInfo{
+		TaskWait:    0,
+		Compile:     0,
+		Running:     0,
+		CompileCore: newCoreInfo(compileCores),
+		RunCore:     newCoreInfo(runCores),
+	}
+}
+
+// 分配cpu资源
+func (p *CoreInfo) allocateResource(cpus int) CPUResourceAllocateInfo {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	//尝试分配资源函数
+	tryAllocate := func() *CPUResourceAllocateInfo {
+		//分配资源(简单分配)
+		tmp := make([]SingleCoreInfo, len(p.CoreInfos))
+		copy(tmp, p.CoreInfos)
+		//排序核心按使用率从低到高
+		sort.Slice(tmp, func(i, j int) bool {
+			return tmp[i].Usage < tmp[j].Usage
+		})
+		var ret CPUResourceAllocateInfo
+		ret.CPUS = cpus
+		for i := 0; i < len(tmp) && cpus > 0 && tmp[i].Usage < 100; i += 1 {
+			minus := min(cpus, 100-tmp[i].Usage)
+			tmp[i].Usage += minus
+			cpus -= minus
+			ret.CoreIDs = append(ret.CoreIDs, tmp[i].CoreID)
+			ret.CPUSPerCore = append(ret.CPUSPerCore, minus)
+		}
+		//返回分配结果
+		if cpus == 0 {
+			p.CoreInfos = tmp
+			return &ret
+		}
+		return nil
+	}
+	//尝试分配资源
+	var res *CPUResourceAllocateInfo
+	for res = tryAllocate(); res == nil; {
+		//等待核心可用
+		p.cond.Wait()
+	}
+	//返回分配结果
+	return *res
+}
+
+// 回收资源
+func (p *CoreInfo) recycleResource(cpuResource CPUResourceAllocateInfo) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	//创建映射表
+	mp := make(map[int]int)
+	for _, v := range p.CoreInfos {
+		mp[v.CoreID] = v.Usage
+	}
+	//
+	for i, x := range cpuResource.CoreIDs {
+		mp[x] -= cpuResource.CPUSPerCore[i]
+	}
+	//更新核心信息
+	finalRes := make([]SingleCoreInfo, 0, len(p.CoreInfos))
+	for k, v := range mp {
+		finalRes = append(finalRes, SingleCoreInfo{
+			CoreID: k,
+			Usage:  v,
+		})
+	}
+	//更新核心信息
+	p.CoreInfos = finalRes
+	//通知其他核心可用
+	p.cond.Broadcast()
+}
+
+// 给代码编译分配资源
+func (p *ProfilerInfo) AllocateCodeCompileResource(cpus int) CPUResourceAllocateInfo {
+	return p.CompileCore.allocateResource(cpus)
+}
+
+// 回收代码编译资源
+func (p *ProfilerInfo) RecycleCodeCompileResource(cpuResource CPUResourceAllocateInfo) {
+	p.CompileCore.recycleResource(cpuResource)
+}
+
+// 给代码运行分配资源
+func (p *ProfilerInfo) AllocateCodeRunResource(cpus int) CPUResourceAllocateInfo {
+	return p.RunCore.allocateResource(cpus)
+}
+
+// 回收代码运行资源
+func (p *ProfilerInfo) RecycleCodeRunResource(cpuResource CPUResourceAllocateInfo) {
+	p.RunCore.recycleResource(cpuResource)
+}
+
+func (p *ProfilerInfo) inc(field *int) {
+	p.mu.Lock()
+	*field++
+	p.mu.Unlock()
+}
+func (p *ProfilerInfo) dec(field *int) {
+	p.mu.Lock()
+	if *field > 0 {
+		*field--
+	}
+	p.mu.Unlock()
+}
+func (p *ProfilerInfo) IncreaseTaskWait() {
+	p.inc(&p.TaskWait)
+}
+func (p *ProfilerInfo) DecreaseTaskWait() {
+
+	p.dec(&p.TaskWait)
+}
+func (p *ProfilerInfo) IncreaseCompile() {
+	p.inc(&p.Compile)
+}
+func (p *ProfilerInfo) DecreaseCompile() {
+	p.dec(&p.Compile)
+}
+func (p *ProfilerInfo) IncreaseRunning() {
+	p.inc(&p.Running)
+}
+func (p *ProfilerInfo) DecreaseRunning() {
+
+	p.dec(&p.Running)
+}

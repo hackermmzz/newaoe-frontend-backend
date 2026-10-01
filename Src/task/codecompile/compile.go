@@ -1,0 +1,120 @@
+package codecompile
+
+import (
+	"context"
+	"fmt"
+	api_codeCompile "new-aoe-judge/Src/api/codeCompile"
+	api_codeGet "new-aoe-judge/Src/api/codeGet"
+	"new-aoe-judge/Src/config"
+	"new-aoe-judge/Src/global"
+	grpc_api "new-aoe-judge/Src/grpc"
+	"new-aoe-judge/Src/task/coderun"
+	"new-aoe-judge/Src/util"
+	"os"
+)
+
+type ForCompileInfo struct {
+	api_codeGet.StudentCode
+}
+
+// 编译任务
+func Task_ProcessCompile(ctx context.Context, server grpc_api.CodeClient) {
+	for {
+		var code ForCompileInfo
+		select {
+		case dt := <-global.CompileWaitQueue:
+			code = dt.(ForCompileInfo)
+		case <-ctx.Done():
+			return
+		}
+		func() {
+			//创建编译日志文件
+			logFilePath := util.JoinPath(code.BuildDir, config.Conf.CompileLogFileName)
+			f, e := os.OpenFile(logFilePath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0644)
+			if e != nil {
+				global.Log("创建编译日志文件失败", logFilePath, e.Error())
+				return
+			}
+			defer f.Close()
+			//通知服务器现在正在编译
+			resp, e := global.PostCodeStatus(
+				ctx,
+				server,
+				code.ID,
+				code.Indices,
+				int32(global.Code_Status_Compile),
+				global.CodeRunStatusInfo{
+					Status: global.Code_Status_Compile,
+				}.String(),
+			)
+			if e != nil {
+				global.Log("task_ProcessCompile的PostCodeStatus返回错误", e.Error())
+				return
+			}
+			//分配资源
+			res := global.Profiler.AllocateCodeCompileResource(global.CompileCPULimit)
+			defer global.Profiler.RecycleCodeCompileResource(res)
+			//编译代码
+			result := api_codeCompile.CodeCompile(
+				res,
+				code.ID,
+				code.Indices,
+				code.BuildDir,
+				f,
+				code.RunType,
+			)
+			//处理编译结果
+			status := int32(global.Code_Status_Compile_Fail)
+			if result.OK {
+				status = int32(global.Code_Status_Compile_Success)
+			}
+			resp, e = global.PostCodeStatus(
+				ctx,
+				server,
+				code.ID,
+				code.Indices,
+				status,
+				global.CodeRunStatusInfo{
+					Status: status,
+				}.String(),
+			)
+			if e != nil {
+				global.Log("task_ProcessCompile的PostCodeStatus返回错误", e.Error())
+				return
+			}
+			//处理失败情况
+			if !result.OK {
+				global.Log(fmt.Sprintf("%s/%d/编译失败", code.ID, code.Indices))
+				if resp == nil {
+					global.Log("task_ProcessCompile的PostCodeStatus返回空指针!")
+					return
+				}
+				urls, err := util.JsonToMap(resp.Data)
+				if err != nil {
+					global.Log("解析编译状态更新数据失败", resp.Data, err.Error())
+					return
+				}
+				//上传编译错误日志
+				url, ok := urls["compile_error_log_url"].(string)
+				if !ok {
+					global.Log("编译状态更新数据中缺少编译错误日志URL", resp.Data)
+					return
+				}
+				if e := global.UploadFile(url, logFilePath); e != nil {
+					global.Log("上传编译错误日志失败", url, e.Error())
+					return
+				}
+				return
+			}
+			//编译成功
+			global.Log(fmt.Sprintf("%s/%d/编译成功!", code.ID, code.Indices))
+			//将编译结果添加到运行队列
+			global.RunWaitQueue <- coderun.ForRunInfo{
+				ID:       code.ID,
+				Indices:  code.Indices,
+				RunDir:   code.RunDir,
+				BuildDir: code.BuildDir,
+			}
+		}()
+	}
+}
