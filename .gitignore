@@ -1,5 +1,4 @@
 RunDir/
 *.txt
 new-aoe/
-!requirements.txt
 new-aoe-judge.exe
