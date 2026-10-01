@@ -1,6 +1,7 @@
 package global
 
 import (
+	"fmt"
 	"net/http"
 	"new-aoe-judge/Src/config"
 	"os"
@@ -34,7 +35,10 @@ func Init() error {
 			IdleConnTimeout:     60 * time.Second,
 		})
 	//初始化核心资源
-	initCoreResource()
+	err := initCoreResource()
+	if err != nil {
+		return err
+	}
 	//读取地图文件
 	entries, _ := os.ReadDir(config.Conf.NewAOEFolder)
 	for _, x := range entries {
@@ -56,7 +60,10 @@ func Init() error {
 }
 
 // initCoreResource 初始化核心资源
-func initCoreResource() {
+func initCoreResource() error {
+	if runtime.NumCPU() < 2 {
+		return fmt.Errorf("CPU核心数过少, 需要至少2个核心, 当前核心数:%d", runtime.NumCPU())
+	}
 	//获取核数(减去1个核心,0核心给系统使用)
 	JudgeMaxCore = max(runtime.NumCPU()-1, 2)
 	compileOccurCore := max(JudgeMaxCore/3, 1)
@@ -74,6 +81,24 @@ func initCoreResource() {
 		runCoreInfo[i].CoreID = i + compileOccurCore + 1
 	}
 	Profiler = NewProfilerInfo(compileCoreInfo, runCoreInfo)
+	//
+	Log(fmt.Sprintf("初始化核心资源完成, 总核数:%d, 编译核数:%d, 运行核数:%d, 编译CPU限制:%d, 运行CPU限制:%d", JudgeMaxCore, compileOccurCore, runOccurCore, CompileCPULimit, RunCPULimit))
+	if JudgeMaxCore == 2 {
+		Log("警告: 核心数过少, 可能会导致性能下降")
+	}
+	if compileOccurCore == 0 {
+		return fmt.Errorf("警告: 编译核数为0, 可能会导致编译失败")
+	}
+	if runOccurCore == 0 {
+		return fmt.Errorf("警告: 运行核数为0, 可能会导致运行失败")
+	}
+	if CompileCPULimit <= 0 {
+		return fmt.Errorf("警告: 编译CPU限制为0, 可能会导致编译失败")
+	}
+	if RunCPULimit <= 0 {
+		return fmt.Errorf("警告: 运行CPU限制为0, 可能会导致运行失败")
+	}
+	return nil
 }
 
 //

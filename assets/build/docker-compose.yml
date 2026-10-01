@@ -10,10 +10,7 @@ services:
     volumes:
       # 保存docker数据
       - docker_data:/var/lib/docker
-
-      # 你的代码目录
-      - ./newaoe-frontend-backend:/root/newaoe-frontend-backend
-
+      
     environment:
       DOCKER_TLS_CERTDIR: ""
 

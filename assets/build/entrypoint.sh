@@ -128,18 +128,16 @@ git_retry /root/newaoe-frontend-backend/new-aoe main
 
 
 ##################################
-# pip install
+# 编译程序
 ##################################
 
-echo "安装python依赖"
+echo "编译程序"
 
-
-cd /root/newaoe-frontend-backend
-
-
-if ! pip3 install -r requirements.txt
+if !(
+    cd /root/newaoe-frontend-backend/ && \
+    go build -o judge ./)
 then
-    echo "安装python依赖失败，程序退出"
+    echo "编译程序失败，程序退出"
     exit 1
 fi
 
@@ -165,10 +163,10 @@ cd "$dir"
 # 启动程序
 ##################################
 
-echo "启动main.py"
+echo "启动judge"
 
 
-python3 main.py
+./judge
 
 
 exit $?
