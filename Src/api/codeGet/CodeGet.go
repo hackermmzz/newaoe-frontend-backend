@@ -66,12 +66,12 @@ func createRunDir(id string, indices int64) (string, string, error) {
 	dirName := fmt.Sprintf("%s_%d_%s", id, indices, util.UUID())
 	rundir := util.JoinPath(config.Conf.RunDir, dirName)
 	if e := os.MkdirAll(rundir, 0755); e != nil {
-		return "", "", fmt.Errorf("创建运行目录失败", rundir, e.Error())
+		return "", "", fmt.Errorf("创建运行目录失败: %s, %s", rundir, e.Error())
 	}
 	//创建编译目录
 	buildDir := util.JoinPath(rundir, "build")
 	if e := os.MkdirAll(buildDir, 0755); e != nil {
-		return "", "", fmt.Errorf("创建编译目录失败", buildDir, e.Error())
+		return "", "", fmt.Errorf("创建编译目录失败: %s, %s", buildDir, e.Error())
 	}
 	return rundir, buildDir, nil
 }
