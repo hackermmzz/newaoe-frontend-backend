@@ -10,7 +10,6 @@ import (
 )
 
 func PreCompile() error {
-	return nil
 	// 读取预编脚本
 	script := util.ReadAnyText(util.JoinPath("assets", "bash", "precompile.sh"))
 	if script == "" {
