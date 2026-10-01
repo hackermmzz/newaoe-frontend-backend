@@ -20,7 +20,7 @@ jobs:
           git remote add gitee https://crackermmzz:${{ secrets.GITEE_TOKEN }}@gitee.com/crackermmzz/newaoe-frontend-backend.git
 
           # 只同步 judge 分支
-          git push gitee judge
+          git push -f gitee judge
 
           # 同步 tag（如果需要）
           git push gitee --tags
