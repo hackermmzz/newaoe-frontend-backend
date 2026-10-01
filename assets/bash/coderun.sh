@@ -57,7 +57,7 @@ EOF
 gdb \
 --return-child-result \
 --batch \
--ex "set args --offscreen --exam --freq=MAX --record --ResultLogFile={{.RunResultFileName}} --RecordOutputFile={{.RecordOutputFileName}}" \
+-ex "set args --offscreen --exam --freq={{.AOERunSpeed}} --record --ResultLogFile={{.RunResultFileName}} --RecordOutputFile={{.RecordOutputFileName}}" \
 -x crash.gdb \
 ./newAOE \
 > "{{.CrashLogFileName}}" 2>&1

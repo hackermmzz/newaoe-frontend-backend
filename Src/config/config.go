@@ -31,6 +31,7 @@ type Config struct {
 	RunMemoryLimit                  string `yaml:"RunMemoryLimit"`
 	RunDiskLimit                    string `yaml:"RunDiskLimit"`
 	ProcessLogFileName              string `yaml:"ProcessLogFileName"`
+	AOERunSpeed                     int    `yaml:"AOERunSpeed"`
 }
 
 var Conf Config
@@ -104,6 +105,7 @@ func LoadConfig() error {
 		JudgeSleepTimeWhenGetCodeFailed: atoi(envOr(m, "JudgeSleepTimeWhenGetCodeFailed"), 5),
 		CodeRunStatusUploadInterval:     atoi(envOr(m, "CodeRunStatusUploadInterval"), 1),
 		ProcessLogFileName:              envOr(m, "ProcessLogFileName"),
+		AOERunSpeed:                     atoi(envOr(m, "AOERunSpeed"), 8),
 	}
 	if Conf.GRPCPort == "" {
 		return errors.New("GRPCPort 不能为空")

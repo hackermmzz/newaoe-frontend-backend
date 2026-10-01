@@ -63,6 +63,7 @@ func CodeRun(
 		"RecordOutputFileName":      config.Conf.RecordFileName,
 		"RunDebugLogOutputFileName": config.Conf.RunDebugLogOutputFileName,
 		"CrashLogFileName":          config.Conf.CrashLogFileName,
+		"AOERunSpeed":               config.Conf.AOERunSpeed,
 	},
 	)
 

@@ -46,6 +46,9 @@ RecordFileName: "Record.video"
 # 运行崩溃日志文件
 CrashLogFileName: "CrashLog.txt"
 
+# 运行aoe的倍速
+AOERunSpeed: 15
+
 # 判题机最大任务拉取数
 JudgeCodeFetchQueueMaxPayload: 10
 
