@@ -8,7 +8,7 @@ import (
 	"new-aoe-judge/Src/config"
 	"new-aoe-judge/Src/global"
 	grpc_api "new-aoe-judge/Src/grpc"
-	task "new-aoe-judge/Src/task"
+	"new-aoe-judge/Src/task"
 	"os"
 	"os/exec"
 	"os/signal"
