@@ -56,7 +56,7 @@ func Task_ProcessRun(ctx context.Context, server grpc_api.CodeClient) {
 			global.Profiler.IncreaseRunning()
 			defer global.Profiler.DecreaseRunning()
 			//打印日志
-			global.Log("%s_%d正在运行...", code.ID, code.Indices)
+			global.Log(fmt.Sprintf("%s_%d正在运行...", code.ID, code.Indices))
 			///////////////运行代码
 			err = runMonitor(
 				ctx,
@@ -75,6 +75,11 @@ func Task_ProcessRun(ctx context.Context, server grpc_api.CodeClient) {
 				global.Log(fmt.Sprintf("%s/%d/运行代码失败: %s", code.ID, code.Indices, err.Error()))
 			} else {
 				global.Log(fmt.Sprintf("%s/%d/运行结束!", code.ID, code.Indices))
+			}
+			////////////////////删除日志文件
+			err = os.Remove(resultFilePath)
+			if err != nil {
+				global.Log(fmt.Sprintf("%s/%d/删除日志文件失败: %s", code.ID, code.Indices, err.Error()))
 			}
 		}()
 	}
