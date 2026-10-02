@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"time"
 )
 
 func getExitReason(code int) string {
@@ -99,40 +100,70 @@ func CodeRun(
 	}
 	code := cmd.ProcessState.ExitCode()
 	//判断是否是被OOM了
-	dockerStateCMD := exec.Command(
-		"docker",
-		"inspect",
-		container,
-	)
+	var dockerStateCMD *exec.Cmd
+	var dockerErr error
 	var outBuf, errBuf bytes.Buffer
-	dockerStateCMD.Stdout = &outBuf
-	dockerStateCMD.Stderr = &errBuf
-	if e = dockerStateCMD.Run(); e != nil {
-		return &CodeRunRetInfo{
-			Err: fmt.Errorf("CodeRun获取容器状态失败: %w", e),
+	dockerDone := make(chan struct{}, 1)
+	go func() {
+		dockerStateCMD = exec.Command(
+			"docker",
+			"inspect",
+			container,
+		)
+		dockerStateCMD.Stdout = &outBuf
+		dockerStateCMD.Stderr = &errBuf
+		if e = dockerStateCMD.Run(); e != nil {
+			dockerErr = fmt.Errorf("CodeRun获取容器状态失败: %w", e)
 		}
-	}
-	//判断是否是被OOM了
-	var info []map[string]interface{}
-	if e = json.Unmarshal(outBuf.Bytes(), &info); e != nil {
-		return &CodeRunRetInfo{
-			Err: fmt.Errorf("CodeRun解析容器状态失败: %w", e),
+		dockerDone <- struct{}{}
+	}()
+	select {
+	case <-dockerDone:
+		if dockerErr != nil {
+			return &CodeRunRetInfo{
+				Err: dockerErr,
+			}
+		} else {
+			//判断是否是被OOM了
+			var info []map[string]interface{}
+			if e = json.Unmarshal(outBuf.Bytes(), &info); e != nil {
+				return &CodeRunRetInfo{
+					Err: fmt.Errorf("CodeRun解析容器状态失败: %w", e),
+				}
+			}
+			oom := info[0]["State"].(map[string]interface{})["OOMKilled"]
+			if oom.(bool) {
+				code = 137
+			}
+			//移除容器
+			if e = exec.Command("docker", "rm", container).Run(); e != nil {
+				return &CodeRunRetInfo{
+					Err: fmt.Errorf("CodeRun移除容器失败: %w", e),
+				}
+			}
+			//获取退出原因
+			reason := getExitReason(code)
+			return &CodeRunRetInfo{
+				ExitReason: reason,
+				ExitCode:   code,
+			}
 		}
-	}
-	oom := info[0]["State"].(map[string]interface{})["OOMKilled"]
-	if oom.(bool) {
-		code = 137
-	}
-	//移除容器
-	if e = exec.Command("docker", "rm", container).Run(); e != nil {
-		return &CodeRunRetInfo{
-			Err: fmt.Errorf("CodeRun移除容器失败: %w", e),
+	case <-time.After(time.Duration(config.Conf.CodeRunStatusUploadInterval) * time.Second):
+		//停止容器
+		if e = exec.Command("docker", "kill", container).Run(); e != nil {
+			return &CodeRunRetInfo{
+				Err: fmt.Errorf("CodeRun停止容器失败: %w", e),
+			}
 		}
-	}
-	//获取退出原因
-	reason := getExitReason(code)
-	return &CodeRunRetInfo{
-		ExitReason: reason,
-		ExitCode:   code,
+		//移除容器
+		if e = exec.Command("docker", "rm", container).Run(); e != nil {
+			return &CodeRunRetInfo{
+				Err: fmt.Errorf("CodeRun移除容器失败: %w", e),
+			}
+		}
+		//返回超时
+		return &CodeRunRetInfo{
+			Err: fmt.Errorf("CodeRun获取容器状态超时"),
+		}
 	}
 }
