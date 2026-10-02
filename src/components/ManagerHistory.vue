@@ -22,6 +22,18 @@ export default {
       type: String,
       default: config.manager_history_url
     },
+    rerunAnomalRecordUrl: {
+      type: String,
+      default: config.manager_rerun_anomal_record_url
+    },
+    blockAllSubmitUrl: {
+      type: String,
+      default: config.manager_block_all_submit_url
+    },
+    cancelSubmitBlockUrl: {
+      type: String,
+      default: config.manager_cancel_submit_block_url
+    },
     historyTitle: {
       type: String,
       default: '学生提交历史'

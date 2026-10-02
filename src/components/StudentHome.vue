@@ -1,5 +1,41 @@
 <template>
   <div class="bg-white p-6 shadow-sm min-h-[calc(100vh-10rem)]">
+    <div
+      v-if="announcement"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      role="presentation"
+    >
+      <div
+        class="w-full max-w-lg overflow-hidden rounded-xl bg-white shadow-xl"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="announcement-title"
+      >
+        <div class="border-b border-gray-100 px-6 py-5">
+          <p class="text-sm font-medium text-blue-600">系统公告</p>
+          <h2 id="announcement-title" class="mt-1 text-xl font-semibold text-gray-900">
+            {{ announcement.title || '最新公告' }}
+          </h2>
+          <div class="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-gray-500">
+            <span>发布日期：{{ announcement.createdAt }}</span>
+            <span>修改日期：{{ announcement.updatedAt }}</span>
+          </div>
+        </div>
+        <div class="max-h-[60vh] overflow-y-auto px-6 py-5">
+          <p class="whitespace-pre-wrap break-words text-gray-700">{{ announcement.content }}</p>
+        </div>
+        <div class="flex justify-end border-t border-gray-100 px-6 py-4">
+          <button
+            type="button"
+            class="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+            @click="acknowledgeAnnouncement"
+          >
+            我已知晓
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div class="max-w-3xl mx-auto">
       
       <!-- 1. 头像区域（放最上方，居中展示） -->
@@ -176,6 +212,89 @@ export default {
     const feedbackVideoInput = ref(null);
     const feedbackFileInput = ref(null);
     const submitting = ref(false);
+    const announcement = ref(null);
+
+    const isAnnouncementEnabled = value => (
+      value !== false
+      && value !== 0
+      && String(value ?? '').toLowerCase() !== 'false'
+      && String(value ?? '') !== '0'
+    );
+
+    const getAnnouncementPayload = result => {
+      let payload = result?.data ?? result;
+      if (Array.isArray(payload)) payload = payload[0];
+      return payload && typeof payload === 'object' ? payload : null;
+    };
+
+    const formatAnnouncementDate = value => {
+      if (value === null || value === undefined || value === '') return '未知';
+
+      const numericValue = Number(value);
+      const date = typeof value === 'number' || /^\d+$/.test(String(value).trim())
+        ? new Date(numericValue < 100000000000 ? numericValue * 1000 : numericValue)
+        : new Date(value);
+      if (Number.isNaN(date.getTime())) return String(value);
+      return date.toLocaleString('zh-CN', { hour12: false });
+    };
+
+    const fetchAnnouncement = async () => {
+      try {
+        const response = await fetch(config.fetch_announcement_url, {
+          method: 'GET',
+          credentials: 'include'
+        });
+        const result = await response.json();
+        if (!response.ok || result?.status === false) {
+          throw new Error(result?.msg || `获取公告失败（HTTP ${response.status}）`);
+        }
+
+        const payload = getAnnouncementPayload(result);
+        if (!payload || !isAnnouncementEnabled(payload.enabled)) return;
+
+        const indices = String(payload.indices ?? '').trim();
+        const version = String(payload.version ?? '').trim();
+        if (!indices || !version) return;
+
+        const storageKey = `Announcement_${indices}_${version}`;
+        try {
+          if (window.localStorage.getItem(storageKey) !== null) return;
+        } catch (error) {
+          // 本地存储不可用时仍显示公告，避免用户错过重要信息。
+        }
+
+        announcement.value = {
+          indices,
+          version,
+          storageKey,
+          title: String(payload.title ?? '').trim(),
+          content: String(payload.content ?? ''),
+          createdAt: formatAnnouncementDate(
+            payload.create_time ?? payload.createTime ?? payload.created_at
+          ),
+          updatedAt: formatAnnouncementDate(
+            payload.update_time ?? payload.updateTime ?? payload.updated_at
+          )
+        };
+      } catch (error) {
+        // 公告获取失败不应阻断个人中心其它功能。
+        console.error('获取公告失败:', error);
+      }
+    };
+
+    const acknowledgeAnnouncement = () => {
+      const storageKey = announcement.value?.storageKey;
+      if (!storageKey) {
+        announcement.value = null;
+        return;
+      }
+      try {
+        window.localStorage.setItem(storageKey, '1');
+      } catch (error) {
+        // 即使浏览器禁用了本地存储，也先关闭当前公告。
+      }
+      announcement.value = null;
+    };
     
     // 从网络获取用户信息
     const fetchUserInfo = async () => {
@@ -209,6 +328,7 @@ export default {
     // 在组件挂载后获取用户信息
     onMounted(() => {
       fetchUserInfo();
+      fetchAnnouncement();
     });
     
     // 头像上传处理函数
@@ -577,6 +697,8 @@ export default {
       feedbackVideoInput,
       feedbackFileInput,
       submitting,
+      announcement,
+      acknowledgeAnnouncement,
       handleAvatarChange,
       handleFeedbackImages,
       handleFeedbackVideos,

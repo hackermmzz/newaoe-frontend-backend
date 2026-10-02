@@ -13,6 +13,36 @@
         >
           返回学生统计
         </router-link>
+        <button
+          v-if="rerunAnomalRecordUrl"
+          type="button"
+          @click="handleRerunAnomalRecord"
+          :disabled="isRerunningAnomalRecord"
+          class="bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <i v-if="isRerunningAnomalRecord" class="fa fa-spinner fa-spin mr-2"></i>
+          {{ isRerunningAnomalRecord ? '重新运行中...' : '重新运行异常记录' }}
+        </button>
+        <button
+          v-if="blockAllSubmitUrl"
+          type="button"
+          @click="handleBlockAllSubmit"
+          :disabled="isBlockingAllSubmit"
+          class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <i v-if="isBlockingAllSubmit" class="fa fa-spinner fa-spin mr-2"></i>
+          {{ isBlockingAllSubmit ? '阻塞中...' : '阻塞提交' }}
+        </button>
+        <button
+          v-if="cancelSubmitBlockUrl"
+          type="button"
+          @click="handleCancelSubmitBlock"
+          :disabled="isCancellingSubmitBlock"
+          class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <i v-if="isCancellingSubmitBlock" class="fa fa-spinner fa-spin mr-2"></i>
+          {{ isCancellingSubmitBlock ? '取消中...' : '取消阻塞' }}
+        </button>
         <button 
           v-if="!isReadOnly"
           @click="toggleUploadForm"
@@ -356,6 +386,18 @@ const props = defineProps({
     type: String,
     default: ''
   },
+  rerunAnomalRecordUrl: {
+    type: String,
+    default: ''
+  },
+  blockAllSubmitUrl: {
+    type: String,
+    default: ''
+  },
+  cancelSubmitBlockUrl: {
+    type: String,
+    default: ''
+  },
   requestParams: {
     type: Object,
     default: () => ({})
@@ -393,6 +435,9 @@ const sourceFile = ref(null);
 const description = ref('');
 const isDebugRun = ref(false);
 const isSubmitting = ref(false);
+const isRerunningAnomalRecord = ref(false);
+const isBlockingAllSubmit = ref(false);
+const isCancellingSubmitBlock = ref(false);
 const isLoading = ref(true);
 const historyList = ref([]);
 const searchQuery = ref('');
@@ -744,6 +789,98 @@ const handleRun = async (item) => {
         break;
       }
     }
+  }
+};
+
+const handleRerunAnomalRecord = async () => {
+  if (!props.rerunAnomalRecordUrl || isRerunningAnomalRecord.value) return;
+
+  isRerunningAnomalRecord.value = true;
+  try {
+    const response = await fetch(props.rerunAnomalRecordUrl, {
+      method: 'GET',
+      credentials: 'include'
+    });
+    let result = {};
+    try {
+      result = await response.json();
+    } catch (error) {
+      if (!response.ok) {
+        throw new Error(`重新运行异常记录失败（HTTP ${response.status}）`);
+      }
+    }
+
+    if (!response.ok || result?.status === false) {
+      throw new Error(result?.msg || `重新运行异常记录失败（HTTP ${response.status}）`);
+    }
+
+    ElMessage.success('异常记录已重新运行');
+    const records = await GetHistory(currentPage.value, pageSize.value);
+    if (Array.isArray(records)) historyList.value = records;
+  } catch (error) {
+    ElMessage.error(error?.message || '重新运行异常记录失败');
+  } finally {
+    isRerunningAnomalRecord.value = false;
+  }
+};
+
+const handleBlockAllSubmit = async () => {
+  if (!props.blockAllSubmitUrl || isBlockingAllSubmit.value) return;
+
+  isBlockingAllSubmit.value = true;
+  try {
+    const response = await fetch(props.blockAllSubmitUrl, {
+      method: 'GET',
+      credentials: 'include'
+    });
+    let result = {};
+    try {
+      result = await response.json();
+    } catch (error) {
+      if (!response.ok) {
+        throw new Error(`阻塞提交失败（HTTP ${response.status}）`);
+      }
+    }
+
+    if (!response.ok || result?.status === false) {
+      throw new Error(result?.msg || `阻塞提交失败（HTTP ${response.status}）`);
+    }
+
+    ElMessage.success('已阻塞所有提交');
+  } catch (error) {
+    ElMessage.error(error?.message || '阻塞提交失败');
+  } finally {
+    isBlockingAllSubmit.value = false;
+  }
+};
+
+const handleCancelSubmitBlock = async () => {
+  if (!props.cancelSubmitBlockUrl || isCancellingSubmitBlock.value) return;
+
+  isCancellingSubmitBlock.value = true;
+  try {
+    const response = await fetch(props.cancelSubmitBlockUrl, {
+      method: 'GET',
+      credentials: 'include'
+    });
+    let result = {};
+    try {
+      result = await response.json();
+    } catch (error) {
+      if (!response.ok) {
+        throw new Error(`取消阻塞失败（HTTP ${response.status}）`);
+      }
+    }
+
+    if (!response.ok || result?.status === false) {
+      throw new Error(result?.msg || `取消阻塞失败（HTTP ${response.status}）`);
+    }
+
+    ElMessage.success('已取消提交阻塞');
+  } catch (error) {
+    ElMessage.error(error?.message || '取消阻塞失败');
+  } finally {
+    isCancellingSubmitBlock.value = false;
   }
 };
 
