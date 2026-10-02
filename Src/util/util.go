@@ -19,6 +19,14 @@ func UUID() string {
 	return uuid.New().String()
 }
 
+// ReadFileAnyBytes 从io.Reader读取指定字节数，返回读取到的字节切片
+// 注意：如果流提前结束，返回已读到的数据，不返回error
+func ReadFileAnyBytes(file io.Reader, bytes int64) []byte {
+	buf := make([]byte, bytes)
+	n, _ := io.ReadFull(file, buf)
+	return buf[:n]
+}
+
 func ReadFile(file io.Reader) []byte {
 	b, e := io.ReadAll(file)
 	if e != nil {
@@ -55,8 +63,7 @@ func (r *byteReader) Read(p []byte) (int, error) {
 	r.i += n
 	return n, nil
 }
-func bytesReader(b []byte) io.Reader { return &byteReader{b: b} }
-func FileExist(path string) bool     { _, e := os.Stat(path); return e == nil }
+func FileExist(path string) bool { _, e := os.Stat(path); return e == nil }
 func GetFolerRandomFileIfExist(path string) string {
 	entries, e := os.ReadDir(path)
 	if e != nil || len(entries) == 0 {

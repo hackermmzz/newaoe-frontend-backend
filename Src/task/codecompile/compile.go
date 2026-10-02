@@ -67,6 +67,10 @@ func Task_ProcessCompile(ctx context.Context, server grpc_api.CodeClient) {
 				f,
 				code.RunType,
 			)
+			if result.Error != nil {
+				global.LogError("task_ProcessCompile的CodeCompile返回错误", result.Error.Error())
+				return
+			}
 			//处理编译结果
 			status := int32(global.Code_Status_Compile_Fail)
 			if result.OK {

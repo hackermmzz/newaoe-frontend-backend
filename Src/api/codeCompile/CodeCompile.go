@@ -10,8 +10,9 @@ import (
 )
 
 type CodeCompileResult struct {
-	OK  bool
-	Msg string
+	OK    bool
+	Msg   string
+	Error error
 }
 
 func CodeCompile(
@@ -27,7 +28,7 @@ func CodeCompile(
 		"DebugMode": runtype == int64(global.CodeRunTypeDebug),
 	})
 	if e != nil {
-		return CodeCompileResult{OK: false, Msg: "format失败:" + e.Error()}
+		return CodeCompileResult{OK: false, Error: fmt.Errorf("format失败:%w", e)}
 	}
 	//设置编译CPU限制
 	args := []string{
@@ -49,13 +50,13 @@ func CodeCompile(
 	e = cmd.Run()
 	if e != nil {
 		if _, ok := e.(*exec.ExitError); !ok {
-			return CodeCompileResult{OK: false, Msg: "CodeCompile运行容器失败:" + e.Error()}
+			return CodeCompileResult{OK: false, Error: fmt.Errorf("CodeCompile运行容器失败:%w", e)}
 		}
 	}
 	//拿到状态码
 	exitCode := cmd.ProcessState.ExitCode()
 	if exitCode != 0 || e != nil {
-		msg := util.ReadFile(logfile)
+		msg := util.ReadFileAnyBytes(logfile, 1024)
 		return CodeCompileResult{OK: false, Msg: string(msg)}
 	}
 	//编译成功
