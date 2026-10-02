@@ -55,6 +55,8 @@ func Task_ProcessRun(ctx context.Context, server grpc_api.CodeClient) {
 			//记录性能
 			global.Profiler.IncreaseRunning()
 			defer global.Profiler.DecreaseRunning()
+			//打印日志
+			global.Log("%s_%d正在运行...", code.ID, code.Indices)
 			///////////////运行代码
 			err = runMonitor(
 				ctx,
@@ -130,9 +132,6 @@ func runMonitor(
 		wg.Wait()
 		allDone <- struct{}{}
 	}()
-	//启动定时器
-	timer := time.NewTimer(time.Duration(config.Conf.RunTimeout) * time.Second)
-	defer timer.Stop()
 	//等待结果
 	select {
 	case <-allDone:
@@ -155,15 +154,6 @@ func runMonitor(
 		}
 	case <-ctx.Done():
 		return ctx.Err()
-	case <-timer.C:
-		//这算是服务器异常,告诉服务器
-		global.PostCodeStatus(ctx,
-			server,
-			id,
-			indices,
-			global.Code_Status_Error,
-			global.CodeRunStatusInfo{Status: global.Code_Status_Error}.String())
-		return fmt.Errorf(" %s/%d/ 运行超时!", id, indices)
 	}
 }
 

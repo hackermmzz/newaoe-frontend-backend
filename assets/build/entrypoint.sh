@@ -2,6 +2,20 @@
 
 set -e
 
+##################################
+
+# 环境变量
+##################################
+
+export PATH+=:/root/go/bin
+export GOPROXY=https://goproxy.cn,direct
+export GOROOT=/root/go/
+export GOPATH=/root/go/package
+
+##################################
+# 启动Docker daemon
+##################################
+
 
 echo "======================"
 echo "启动 Docker daemon"
