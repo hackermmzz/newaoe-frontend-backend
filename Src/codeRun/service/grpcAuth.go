@@ -43,7 +43,7 @@ func CodeGrpcServerAuthConfirm(auth string) (bool, string) {
 		return false, ""
 	}
 	//判断权限
-	if info_user.Vip < UserModel.VIP_NONE {
+	if info_user.Vip < UserModel.VIP_SUPER {
 		util.DebugError("codeGrpcServerAuthConfirm", "权限不够", info)
 		return false, ""
 	}
