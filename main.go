@@ -36,8 +36,8 @@ func keepaliveParams() keepalive.ClientParameters {
 	return keepalive.ClientParameters{Time: 10 * time.Second, Timeout: 5 * time.Second, PermitWithoutStream: true}
 }
 
-// CleanUp 清理子进程
-func CleanUp() {
+// cleanUp 清理子进程
+func cleanUp() {
 	global.Log("正在清理子进程...")
 	out, e := exec.Command("docker", "ps", "-q", "--filter", "label=newaoe-judge").Output()
 	if e == nil {
@@ -80,8 +80,8 @@ func getAuthAccount() {
 	}
 }
 
-// PreProcess 预处理
-func PreProcess() error {
+// preProcess 预处理
+func preProcess() error {
 	// 初始化全局变量
 	if e := global.Init(); e != nil {
 		return e
@@ -89,8 +89,8 @@ func PreProcess() error {
 	return nil
 }
 
-// CloseProcess 关闭进程
-func CloseProcess() {
+// closeProcess 关闭进程
+func closeProcess() {
 	// 延迟关闭日志文件
 	defer func() {
 		if global.LogFile != nil {
@@ -98,17 +98,29 @@ func CloseProcess() {
 		}
 	}()
 }
+
+// 打印任务情况
+func getTaskStatus() string {
+	return fmt.Sprintf(
+		"当前等待:%d 编译:%d/%d 运行:%d/%d\n",
+		global.Profiler.TaskWait,
+		global.Profiler.Compile,
+		len(global.CompileWaitQueue)+global.Profiler.Compile,
+		global.Profiler.Running,
+		len(global.RunWaitQueue)+global.Profiler.Running,
+	)
+}
 func main() {
 	// 初始化配置
 	if e := config.LoadConfig(); e != nil {
 		panic(e)
 	}
 	// 初始化预处理
-	if e := PreProcess(); e != nil {
+	if e := preProcess(); e != nil {
 		panic(e)
 	}
 	// 延迟处理一些事务
-	defer CloseProcess()
+	defer closeProcess()
 	// 初始化认证
 	getAuthAccount()
 	// 初始化运行目录
@@ -140,7 +152,7 @@ func main() {
 			fmt.Println("再次捕获到 Ctrl+C，正在清理并退出...")
 			signal.Stop(sig)
 			cancel()
-			CleanUp()
+			cleanUp()
 		}
 		for {
 			select {
@@ -151,14 +163,8 @@ func main() {
 				}
 
 				waitingConfirm = true
-				fmt.Printf(
-					"捕获到退出信号，按任意其他键继续，按 Ctrl+C 退出。\n"+
-						"当前等待:%d 编译:%d/%d 运行:%d/%d\n",
-					global.Profiler.TaskWait,
-					global.Profiler.Compile,
-					len(global.CompileWaitQueue)+global.Profiler.Compile,
-					global.Profiler.Running,
-					len(global.RunWaitQueue)+global.Profiler.Running,
+				fmt.Println(
+					"捕获到退出信号，按任意其他键继续，按 Ctrl+C 退出。\n" + getTaskStatus(),
 				)
 
 				keyDone := make(chan error, 1)
@@ -181,6 +187,13 @@ func main() {
 	}()
 	// 启动任务处理任务
 	go task.Task(ctx, server)
+	//启动日志记录任务情况
+	go func() {
+		for {
+			time.Sleep(5 * time.Second)
+			fmt.Println(getTaskStatus())
+		}
+	}()
 	// 等待上下文取消
 	<-ctx.Done()
 }
