@@ -14,6 +14,15 @@ import (
 // 防止用户一直提交代码进行攻击
 func FilterCodeRun() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
+		//如果阻塞提交，直接返回
+		if blocked, err := queryBlock("BlockCodeRun"); blocked || err != nil {
+			if err == nil {
+				err = util.NewError("服务器异常!")
+			}
+			util.ResponseNAK_MSG(ctx, err.Error(), nil)
+			ctx.Abort()
+			return
+		}
 		//
 		userInfo := util.GetCtxTookenInfo(ctx)
 		if userInfo == nil {
@@ -62,4 +71,20 @@ func codeRunRecordAdd(id string) bool {
 	ok := redis.RedisSet(context.Background(), fmt.Sprintf("CodeRunOrSubmit:%v", id), "", time.Duration(config.Conf.Code.CodeSubmitInterval)*time.Second)
 	//
 	return ok
+}
+
+func queryBlock(key string) (bool, error) {
+	var queryBlockLua = `
+	local val = redis.call("GET", KEYS[1])
+	if val == nil then
+		return 0
+	end
+	return tonumber(val)
+	`
+	resCMD := redis.RedisLua(context.Background(), queryBlockLua, []string{key})
+	res, err := resCMD.Int()
+	if err != nil {
+		return false, err
+	}
+	return res == 1, nil
 }

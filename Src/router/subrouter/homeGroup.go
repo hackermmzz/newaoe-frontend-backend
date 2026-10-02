@@ -20,4 +20,5 @@ func routeConfig_Home(group *gin.RouterGroup) {
 	group.POST("feedbackUploadAttachment", controller.StudentFeedbckUploadAttachment)
 	group.POST("feedbackUpload", controller.StudentFeedbackUpload)
 	group.GET("avatarUpdate", controller.AvatarUpdate)
+	group.GET("fetchAnnouncement", controller.FetchAnnouncement)
 }

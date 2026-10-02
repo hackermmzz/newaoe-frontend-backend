@@ -28,6 +28,16 @@ return {1, newValue}
 // 判断是否达到提交/运行限制
 func FilterLimitCodeSubmit() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
+		//如果阻塞提交，直接返回
+		if blocked, err := queryBlock("BlockCommonSubmit"); blocked || err != nil {
+			if err == nil {
+				err = util.NewError("服务器异常!")
+			}
+			util.ResponseNAK_MSG(ctx, err.Error(), nil)
+			ctx.Abort()
+			return
+		}
+		//
 		userInfo := util.GetCtxTookenInfo(ctx)
 		if userInfo == nil {
 			util.ResponseNAK_MSG(ctx, "cookie非法或者错误", "")
@@ -49,7 +59,7 @@ func FilterLimitCodeSubmit() gin.HandlerFunc {
 			limitCodeSubmitLua,
 			[]string{key},
 			config.Conf.Code.CodeSubmitTimesPerDay,
-			util.GetLeftTimeForOneDay(),
+			util.GetLeftTimeForOneDay().Seconds(),
 		).Result()
 
 		if err != nil {

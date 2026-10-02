@@ -24,4 +24,8 @@ func routeConfig_VIPConfirm(vip_group *gin.RouterGroup) {
 	vip_group.GET("searchstudentbyid", controller.SearchStudentInfo)
 	vip_group.POST("resetcommonsubmittime", controller.ResetCommonSubmit)
 	vip_group.GET("fetchSubmitRecord", controller.FetchSubmitRecord)
+	vip_group.POST("publishAnnouncement", controller.PublishAnnouncement)
+	vip_group.GET("rerunAnomalRecord", controller.ReRunAnomalRecord)
+	vip_group.GET("blockAllSubmit", controller.BlockAllSubmit)
+	vip_group.GET("cancelSubmitBlock", controller.CancelSubmitBlock)
 }

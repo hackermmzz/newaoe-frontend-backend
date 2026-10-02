@@ -3,12 +3,11 @@ package service
 import (
 	"errors"
 	"newaoe/Src/codeRun/dao"
-	"newaoe/Src/config"
 	database "newaoe/Src/databse"
 	"time"
 )
 
-func ReRunLongTimeWaitRecord() error {
+func ReRunLongTimeWaitRecord(expireDuration time.Duration) error {
 	session := database.NewSession()
 	defer session.Close()
 	if err := session.Begin(); err != nil {
@@ -16,7 +15,6 @@ func ReRunLongTimeWaitRecord() error {
 	}
 	defer session.Rollback()
 	// 获取超时的记录
-	expireDuration := time.Duration(config.Conf.Code.CodeWaitTooLongTimeLimit) * time.Minute
 	runningList := dao.CodeRunningGetExpireTime(session, expireDuration, 20)
 	if len(runningList) == 0 {
 		return nil

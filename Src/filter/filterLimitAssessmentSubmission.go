@@ -11,6 +11,15 @@ import (
 // 代码运行过滤器，过滤评测提交的代码，防止用户多次上传，提前上传
 func FilterLimitAssessmentSubmission() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
+		//如果阻塞提交，直接返回
+		if blocked, err := queryBlock("BlockAssessmentSubmit"); blocked || err != nil {
+			if err == nil {
+				err = util.NewError("服务器异常!")
+			}
+			util.ResponseNAK_MSG(ctx, err.Error(), nil)
+			ctx.Abort()
+			return
+		}
 		//获取用户
 		info := util.GetCtxTookenInfo(ctx)
 		if info == nil {
