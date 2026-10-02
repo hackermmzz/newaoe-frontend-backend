@@ -7,23 +7,23 @@ import (
 	"time"
 )
 
-func ReRunLongTimeWaitRecord(expireDuration time.Duration) error {
+func ReRunLongTimeWaitRecord(expireDuration time.Duration) (int, error) {
 	session := database.NewSession()
 	defer session.Close()
 	if err := session.Begin(); err != nil {
-		return errors.New("开始事务失败：" + err.Error())
+		return 0, errors.New("开始事务失败：" + err.Error())
 	}
 	defer session.Rollback()
 	// 获取超时的记录
 	runningList := dao.CodeRunningGetExpireTime(session, expireDuration, 20)
 	if len(runningList) == 0 {
-		return nil
+		return 0, nil
 	}
 	//遍历每个info
-	for _, info := range runningList {
+	for i, info := range runningList {
 		if err := ReRunHistoryCode(info); err != nil {
-			return errors.New("重新运行失败:" + err.Error())
+			return i, errors.New("重新运行失败:" + err.Error())
 		}
 	}
-	return nil
+	return 0, nil
 }

@@ -86,7 +86,7 @@ func codeRunningLongTimeWaitRepush() {
 	for {
 		func() {
 			expireDuration := time.Duration(config.Conf.Code.CodeWaitTooLongTimeLimit) * time.Minute
-			err := service.ReRunLongTimeWaitRecord(expireDuration)
+			_, err := service.ReRunLongTimeWaitRecord(expireDuration)
 			if err != nil {
 				util.DebugError("codeRunningLongTimeWaitRepush:", err)
 			}

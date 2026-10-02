@@ -48,7 +48,7 @@ code:
   codeRunStatusGroupCount: 3      #消费者组数量
   codeRunStatusUpdateQueueMaxSize: 800    #代码运行状态更新队列最大大小
   codeRunStatusUpdateQueueSizeThreshold: 500    #队列触发更新大小阈值
-  codeRunStatusUpdateInterval: 5    #队列更新间隔 单位：秒
+  codeRunStatusUpdateInterval: 1    #队列更新间隔 单位：秒
   codeWaitForRunQueueTopic: "CodeWaitForRun"    #代码待运行topic
   codeSubmitTimesPerDay: 10  #一天可以提交的次数
   codeAssessmentTimes: 1   #考核提交一共可以提交的次数

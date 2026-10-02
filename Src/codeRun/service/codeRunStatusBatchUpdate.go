@@ -46,7 +46,7 @@ func BatchUpdateCodeRunStatus(indices []int) {
 		} else {
 			status := model.NewCodeRunStatusInfo()
 			status.Status = model.Code_Status_Error
-			dt.Status = model.ProcessDataMessageByStatus(status).Marshal()
+			dt.Status = util.TruncateString(model.ProcessDataMessageByStatus(status).Marshal(), 32*1024) //截断32kb
 		}
 		idx += 1
 	}

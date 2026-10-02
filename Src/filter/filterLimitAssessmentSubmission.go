@@ -14,7 +14,7 @@ func FilterLimitAssessmentSubmission() gin.HandlerFunc {
 		//如果阻塞提交，直接返回
 		if blocked, err := queryBlock("BlockAssessmentSubmit"); blocked || err != nil {
 			if err == nil {
-				err = util.NewError("服务器异常!")
+				err = util.NewError("禁止提交!")
 			}
 			util.ResponseNAK_MSG(ctx, err.Error(), nil)
 			ctx.Abort()
