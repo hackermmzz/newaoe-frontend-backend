@@ -11,6 +11,7 @@ import (
 )
 
 type StudentCode struct {
+	Error    error
 	OK       bool
 	Msg      string
 	Header   string
@@ -25,7 +26,7 @@ type StudentCode struct {
 func GetOneStudentCode(ctx context.Context, server grpc_api.CodeClient) StudentCode {
 	resp, e := server.GetCode(ctx, &grpc_api.CodeRequest{Auth: global.AuthString()})
 	if e != nil {
-		return StudentCode{Msg: fmt.Sprintf("服务器异常: %v", e)}
+		return StudentCode{Error: fmt.Errorf("服务器异常: %v", e)}
 	}
 	if !resp.GetOk() {
 		return StudentCode{Msg: resp.GetMsg()}
@@ -33,22 +34,23 @@ func GetOneStudentCode(ctx context.Context, server grpc_api.CodeClient) StudentC
 	//创建运行目录和编译目录
 	runDir, buildDir, e := createRunDir(resp.GetId(), resp.GetIndices())
 	if e != nil {
-		return StudentCode{Msg: fmt.Sprintf("创建运行目录失败: %v", e)}
+		return StudentCode{Error: fmt.Errorf("%s_%d_创建运行目录失败: %v", resp.GetId(), resp.GetIndices(), e)}
 	}
 	//下载头文件
 	headerPath := util.JoinPath(buildDir, "UsrAI.h")
 	_, e = global.DownloadFile(resp.GetHeaderUrl(), headerPath)
 	if e != nil {
-		return StudentCode{Msg: "下载头文件失败!"}
+		return StudentCode{Error: fmt.Errorf("%s_%d_下载头文件失败: %v", resp.GetId(), resp.GetIndices(), e)}
 	}
 	//下载源文件
 	sourcePath := util.JoinPath(buildDir, "UsrAI.cpp")
 	_, e = global.DownloadFile(resp.GetSourceUrl(), sourcePath)
 	if e != nil {
-		return StudentCode{Msg: "下载源文件失败!"}
+		return StudentCode{Error: fmt.Errorf("%s_%d_下载源文件失败: %v", resp.GetId(), resp.GetIndices(), e)}
 	}
 	global.UpdateAuth(resp.GetAuth())
 	return StudentCode{
+		Error:    nil,
 		OK:       true,
 		Msg:      "获取代码成功!",
 		Header:   headerPath,

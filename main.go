@@ -38,26 +38,26 @@ func keepaliveParams() keepalive.ClientParameters {
 
 // cleanUp 清理子进程
 func cleanUp() {
-	global.Log("正在清理子进程...")
+	global.LogInfo("正在清理子进程...")
 	out, e := exec.Command("docker", "ps", "-q", "--filter", "label=newaoe-judge").Output()
 	if e == nil {
 		ids := ""
 		for _, id := range strings.Fields(string(out)) {
 			ids += id + " "
 		}
-		global.Log(fmt.Sprintf("所有容器id为:%s", ids))
+		global.LogInfo(fmt.Sprintf("所有容器id为:%s", ids))
 		e0 := exec.Command("docker", "kill", ids).Run()
 		e1 := exec.Command("docker", "rm", ids).Run()
 		if e0 != nil {
-			global.Log("清理子进程失败: " + e0.Error())
+			global.LogError("清理子进程失败: " + e0.Error())
 		}
 		if e1 != nil {
-			global.Log("清理子进程失败: " + e1.Error())
+			global.LogError("清理子进程失败: " + e1.Error())
 		}
 	} else {
-		global.Log("清理子进程失败: " + e.Error())
+		global.LogError("清理子进程失败: " + e.Error())
 	}
-	global.Log("清理完成!")
+	global.LogSuccess("清理完成!")
 }
 
 // getAuthAccount 获取认证账号
@@ -102,7 +102,7 @@ func closeProcess() {
 // 打印任务情况
 func getTaskStatus() string {
 	return fmt.Sprintf(
-		"当前等待:%d 编译:%d/%d 运行:%d/%d\n",
+		"当前等待:%d 编译:%d/%d 运行:%d/%d",
 		global.Profiler.TaskWait,
 		global.Profiler.Compile,
 		len(global.CompileWaitQueue)+global.Profiler.Compile,
@@ -127,14 +127,16 @@ func main() {
 	_ = os.MkdirAll(config.Conf.RunDir, 0755)
 	// 预编译
 	if e := api_preCompile.PreCompile(); e != nil {
-		global.Log("预编译失败: " + e.Error())
+		global.LogError("预编译失败: " + e.Error())
 		return
 	}
-	global.Log("初始化完成!")
+	// 清空日志文件
+	global.LogClear()
+	global.LogSuccess("初始化完成!")
 	// 连接 gRPC 服务器
 	conn, e := dialGRPC()
 	if e != nil {
-		global.Log("连接 gRPC 失败: " + e.Error())
+		global.LogError("连接 gRPC 失败: " + e.Error())
 		return
 	}
 	defer conn.Close()
@@ -163,10 +165,7 @@ func main() {
 				}
 
 				waitingConfirm = true
-				fmt.Println(
-					"捕获到退出信号，按任意其他键继续，按 Ctrl+C 退出。\n" + getTaskStatus(),
-				)
-
+				fmt.Println("捕获到退出信号，按任意其他键继续，按 Ctrl+C 退出。资源情况: " + getTaskStatus())
 				keyDone := make(chan error, 1)
 				keyPressed = keyDone
 				go func() {
@@ -191,7 +190,7 @@ func main() {
 	go func() {
 		for {
 			time.Sleep(5 * time.Second)
-			fmt.Println(getTaskStatus())
+			global.LogInfo(fmt.Sprintf("任务情况: %s", getTaskStatus()))
 		}
 	}()
 	// 等待上下文取消

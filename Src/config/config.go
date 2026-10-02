@@ -30,7 +30,7 @@ type Config struct {
 	CodeRunStatusUploadInterval     int    `yaml:"CodeRunStatusUploadInterval"`
 	RunMemoryLimit                  string `yaml:"RunMemoryLimit"`
 	RunDiskLimit                    string `yaml:"RunDiskLimit"`
-	ProcessLogFileName              string `yaml:"ProcessLogFileName"`
+	ProcessLogDir                   string `yaml:"ProcessLogDir"`
 	AOERunSpeed                     int    `yaml:"AOERunSpeed"`
 }
 
@@ -104,7 +104,7 @@ func LoadConfig() error {
 		RunTimeout:                      atoi(envOr(m, "RunTimeout"), 1800),
 		JudgeSleepTimeWhenGetCodeFailed: atoi(envOr(m, "JudgeSleepTimeWhenGetCodeFailed"), 5),
 		CodeRunStatusUploadInterval:     atoi(envOr(m, "CodeRunStatusUploadInterval"), 1),
-		ProcessLogFileName:              envOr(m, "ProcessLogFileName"),
+		ProcessLogDir:                   envOr(m, "ProcessLogDir"),
 		AOERunSpeed:                     atoi(envOr(m, "AOERunSpeed"), 8),
 	}
 	if Conf.GRPCPort == "" {

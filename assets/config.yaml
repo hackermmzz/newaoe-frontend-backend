@@ -14,7 +14,7 @@ GRPCPort: 50051
 HTTPPort: 8080
 
 #进程Log日志
-ProcessLogFileName: "ProcessLog.txt"
+ProcessLogDir: "./ProcessLog"
 
 # AOE项目目录
 new_aoe_folder: "./new-aoe"

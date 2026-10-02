@@ -3,6 +3,7 @@ package codefetch
 import (
 	"context"
 	"fmt"
+	"math/rand/v2"
 	api_codeGet "new-aoe-judge/Src/api/codeGet"
 	"new-aoe-judge/Src/config"
 	"new-aoe-judge/Src/global"
@@ -14,22 +15,36 @@ import (
 // ////////////////// 获取代码
 func Task_GetStudentCode(ctx context.Context, server grpc_api.CodeClient) {
 	for {
-		func() {
-			res := api_codeGet.GetOneStudentCode(ctx, server)
-			if !res.OK {
-				global.Log(res.Msg)
-				time.Sleep(time.Duration(config.Conf.JudgeSleepTimeWhenGetCodeFailed) * time.Second)
-				return
-			}
-			//记录性能
-			global.Profiler.IncreaseTaskWait()
-			defer global.Profiler.DecreaseTaskWait()
-			//
-			global.Log(fmt.Sprintf("获取代码成功! ID:%s Indices:%d RunType:%d", res.ID, res.Indices, res.RunType))
-			//将代码添加到编译队列
-			global.CompileWaitQueue <- codecompile.ForCompileInfo{
-				StudentCode: res,
-			}
-		}()
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			func() {
+				res := api_codeGet.GetOneStudentCode(ctx, server)
+				sleepTime := time.Duration(config.Conf.JudgeSleepTimeWhenGetCodeFailed-rand.IntN(2)+1) * time.Second
+				if res.Error != nil {
+					global.LogError(res.Error.Error())
+					time.Sleep(sleepTime)
+					return
+				}
+				if !res.OK {
+					time.Sleep(sleepTime)
+					return
+				}
+				//记录性能
+				global.Profiler.IncreaseTaskWait()
+				defer global.Profiler.DecreaseTaskWait()
+				//
+				global.LogSuccess(fmt.Sprintf("获取代码成功! ID:%s Indices:%d RunType:%d", res.ID, res.Indices, res.RunType))
+				//将代码添加到编译队列
+				select {
+				case <-ctx.Done():
+					return
+				case global.CompileWaitQueue <- codecompile.ForCompileInfo{
+					StudentCode: res,
+				}:
+				}
+			}()
+		}
 	}
 }

@@ -10,6 +10,7 @@ import (
 )
 
 func PreCompile() error {
+	return nil
 	// 读取预编脚本
 	script := util.ReadAnyText(util.JoinPath("assets", "bash", "precompile.sh"))
 	if script == "" {
@@ -19,6 +20,7 @@ func PreCompile() error {
 		"docker",
 		"run",
 		"--rm",
+		"--name", fmt.Sprintf("PreCompile_%s", util.UUID()),
 		"--label", "newaoe-judge",
 		"-v", config.Conf.NewAOEFolder+":/app/newaoe",
 		"-w", "/app",

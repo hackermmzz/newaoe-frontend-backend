@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"new-aoe-judge/Src/config"
+	"new-aoe-judge/Src/util"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -46,9 +47,8 @@ func Init() error {
 			MapFiles = append(MapFiles, x.Name())
 		}
 	}
-	//打开日志文件
-	var e error
-	LogFile, e = os.OpenFile(config.Conf.ProcessLogFileName, os.O_CREATE|os.O_WRONLY|os.O_TRUNC|os.O_APPEND, 0644)
+	//初始化日志文件
+	e := logInit()
 	if e != nil {
 		return e
 	}
@@ -82,9 +82,9 @@ func initCoreResource() error {
 	}
 	Profiler = NewProfilerInfo(compileCoreInfo, runCoreInfo)
 	//
-	Log(fmt.Sprintf("初始化核心资源完成, 总核数:%d, 编译核数:%d, 运行核数:%d, 编译CPU限制:%d, 运行CPU限制:%d", JudgeMaxCore, compileOccurCore, runOccurCore, CompileCPULimit, RunCPULimit))
+	LogInfo(fmt.Sprintf("初始化核心资源完成, 总核数:%d, 编译核数:%d, 运行核数:%d, 编译CPU限制:%d, 运行CPU限制:%d", JudgeMaxCore, compileOccurCore, runOccurCore, CompileCPULimit, RunCPULimit))
 	if JudgeMaxCore == 2 {
-		Log("警告: 核心数过少, 可能会导致性能下降")
+		LogInfo("警告: 核心数过少, 可能会导致性能下降")
 	}
 	if compileOccurCore == 0 {
 		return fmt.Errorf("警告: 编译核数为0, 可能会导致编译失败")
@@ -101,4 +101,21 @@ func initCoreResource() error {
 	return nil
 }
 
-//
+func logInit() error {
+	//清空文件夹
+	err := os.RemoveAll(util.JoinPath(config.Conf.ProcessLogDir))
+	if err != nil {
+		return err
+	}
+	//创建文件夹
+	err = os.MkdirAll(config.Conf.ProcessLogDir, 0755)
+	if err != nil {
+		return err
+	}
+	//创建日志文件
+	LogFile, err = os.OpenFile(util.JoinPath(config.Conf.ProcessLogDir, "ProcessLog0.html"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC|os.O_APPEND, 0644)
+	if err != nil {
+		return err
+	}
+	return nil
+}

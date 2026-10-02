@@ -22,10 +22,10 @@ func Task_ProcessCompile(ctx context.Context, server grpc_api.CodeClient) {
 	for {
 		var code ForCompileInfo
 		select {
-		case dt := <-global.CompileWaitQueue:
-			code = dt.(ForCompileInfo)
 		case <-ctx.Done():
 			return
+		case dt := <-global.CompileWaitQueue:
+			code = dt.(ForCompileInfo)
 		}
 		//编译代码
 		func() {
@@ -33,7 +33,7 @@ func Task_ProcessCompile(ctx context.Context, server grpc_api.CodeClient) {
 			logFilePath := util.JoinPath(code.BuildDir, config.Conf.CompileLogFileName)
 			f, e := os.OpenFile(logFilePath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0644)
 			if e != nil {
-				global.Log("创建编译日志文件失败", logFilePath, e.Error())
+				global.LogError("创建编译日志文件失败", logFilePath, e.Error())
 				return
 			}
 			defer f.Close()
@@ -55,7 +55,7 @@ func Task_ProcessCompile(ctx context.Context, server grpc_api.CodeClient) {
 				}.String(),
 			)
 			if e != nil {
-				global.Log("task_ProcessCompile的PostCodeStatus返回错误", e.Error())
+				global.LogError("task_ProcessCompile的PostCodeStatus返回错误", e.Error())
 				return
 			}
 			//编译代码
@@ -83,42 +83,47 @@ func Task_ProcessCompile(ctx context.Context, server grpc_api.CodeClient) {
 				}.String(),
 			)
 			if e != nil {
-				global.Log("task_ProcessCompile的PostCodeStatus返回错误", e.Error())
+				global.LogError("task_ProcessCompile的PostCodeStatus返回错误", e.Error())
 				return
 			}
 			//处理失败情况
 			if !result.OK {
-				global.Log(fmt.Sprintf("%s/%d/编译失败: %s", code.ID, code.Indices, result.Msg))
+				global.LogSuccess(fmt.Sprintf("%s/%d/编译失败: %s", code.ID, code.Indices, result.Msg))
 				if resp == nil {
-					global.Log("task_ProcessCompile的PostCodeStatus返回空指针!")
+					global.LogError("task_ProcessCompile的PostCodeStatus返回空指针!")
 					return
 				}
 				urls, err := util.JsonToMap(resp.Data)
 				if err != nil {
-					global.Log("解析编译状态更新数据失败", resp.Data, err.Error())
+					global.LogError("解析编译状态更新数据失败", resp.Data, err.Error())
 					return
 				}
 				//上传编译错误日志
 				url, ok := urls["compile_error_log_url"].(string)
 				if !ok {
-					global.Log("编译状态更新数据中缺少编译错误日志URL", resp.Data)
+					global.LogError("编译状态更新数据中缺少编译错误日志URL", resp.Data)
 					return
 				}
 				if e := global.UploadFile(url, logFilePath); e != nil {
-					global.Log("上传编译错误日志失败", url, e.Error())
+					global.LogError("上传编译错误日志失败", url, e.Error())
 					return
 				}
 				return
 			}
 			//编译成功
-			global.Log(fmt.Sprintf("%s/%d/编译成功!", code.ID, code.Indices))
+			global.LogSuccess(fmt.Sprintf("%s/%d/编译成功!", code.ID, code.Indices))
 			//将编译结果添加到运行队列
-			global.RunWaitQueue <- coderun.ForRunInfo{
+			select {
+			case <-ctx.Done():
+				return
+			case global.RunWaitQueue <- coderun.ForRunInfo{
 				ID:       code.ID,
 				Indices:  code.Indices,
 				RunDir:   code.RunDir,
 				BuildDir: code.BuildDir,
+			}:
 			}
+
 		}()
 	}
 }

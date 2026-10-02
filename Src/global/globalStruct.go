@@ -188,7 +188,7 @@ func (p *ProfilerInfo) GetResourceSnapshot() string {
 	stats["CoreForRun"] = make([]SingleCoreInfo, 0)
 	stats["CoreForRun"] = p.RunCore.CoreInfos
 	//返回快照
-	dataBytes, _ := json.Marshal(stats)
+	dataBytes, _ := json.MarshalIndent(stats, "", "  ")
 	return string(dataBytes)
 }
 
@@ -196,7 +196,7 @@ func (p *ProfilerInfo) GetResourceSnapshot() string {
 func (p *ProfilerInfo) AllocateCodeCompileResource(cpus int) CPUResourceAllocateInfo {
 	res := p.CompileCore.allocateResource(cpus)
 	//Log资源情况
-	Log(fmt.Sprintf("ProfilerInfo分配资源成功!当前资源情况: %s", p.GetResourceSnapshot()))
+	LogInfo(fmt.Sprintf("ProfilerInfo分配资源成功!当前资源情况: %s", p.GetResourceSnapshot()))
 	return res
 }
 
@@ -204,14 +204,14 @@ func (p *ProfilerInfo) AllocateCodeCompileResource(cpus int) CPUResourceAllocate
 func (p *ProfilerInfo) RecycleCodeCompileResource(cpuResource CPUResourceAllocateInfo) {
 	p.CompileCore.recycleResource(cpuResource)
 	//Log资源情况
-	Log(fmt.Sprintf("ProfilerInfo回收资源成功!当前资源情况: %s", p.GetResourceSnapshot()))
+	LogInfo(fmt.Sprintf("ProfilerInfo回收资源成功!当前资源情况: %s", p.GetResourceSnapshot()))
 }
 
 // 给代码运行分配资源
 func (p *ProfilerInfo) AllocateCodeRunResource(cpus int) CPUResourceAllocateInfo {
 	res := p.RunCore.allocateResource(cpus)
 	//Log资源情况
-	Log(fmt.Sprintf("ProfilerInfo分配资源成功!当前资源情况: %s", p.GetResourceSnapshot()))
+	LogInfo(fmt.Sprintf("ProfilerInfo分配资源成功!当前资源情况: %s", p.GetResourceSnapshot()))
 	return res
 }
 
@@ -219,7 +219,7 @@ func (p *ProfilerInfo) AllocateCodeRunResource(cpus int) CPUResourceAllocateInfo
 func (p *ProfilerInfo) RecycleCodeRunResource(cpuResource CPUResourceAllocateInfo) {
 	p.RunCore.recycleResource(cpuResource)
 	//Log资源情况
-	Log(fmt.Sprintf("ProfilerInfo回收资源成功!当前资源情况: %s", p.GetResourceSnapshot()))
+	LogInfo(fmt.Sprintf("ProfilerInfo回收资源成功!当前资源情况: %s", p.GetResourceSnapshot()))
 }
 
 func (p *ProfilerInfo) inc(field *int) {
