@@ -88,7 +88,7 @@ func Task_ProcessCompile(ctx context.Context, server grpc_api.CodeClient) {
 			}
 			//处理失败情况
 			if !result.OK {
-				global.Log(fmt.Sprintf("%s/%d/编译失败", code.ID, code.Indices))
+				global.Log(fmt.Sprintf("%s/%d/编译失败: %s", code.ID, code.Indices, result.Msg))
 				if resp == nil {
 					global.Log("task_ProcessCompile的PostCodeStatus返回空指针!")
 					return

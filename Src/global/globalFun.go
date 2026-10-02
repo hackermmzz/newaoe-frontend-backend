@@ -41,21 +41,26 @@ func PostCodeStatus(
 	indices int64,
 	status int32,
 	data string) (*grpc_api.StatusUpdateReply, error) {
-	resp, e := server.CodeStatusUpdate(ctx,
-		&grpc_api.CodeStatusUpdateRequest{
-			Auth:    AuthString(),
-			Indices: indices,
-			Id:      id,
-			Status:  status,
-			Data:    data,
-		})
-	if e != nil {
-		return nil, e
+	errs := make([]error, 0)
+	//尝试3次
+	for i := 0; i < 3; i++ {
+		resp, e := server.CodeStatusUpdate(ctx,
+			&grpc_api.CodeStatusUpdateRequest{
+				Auth:    AuthString(),
+				Indices: indices,
+				Id:      id,
+				Status:  status,
+				Data:    data,
+			})
+		if e != nil {
+			errs = append(errs, e)
+		}
+		if resp.GetAuth() != "" {
+			UpdateAuth(resp.GetAuth())
+			return resp, nil
+		}
 	}
-	if resp.GetAuth() != "" {
-		UpdateAuth(resp.GetAuth())
-	}
-	return resp, nil
+	return nil, fmt.Errorf("%v", errs)
 }
 
 // UploadFile PUT上传本地文件，直接流式读文件，不全部加载进内存
@@ -82,33 +87,45 @@ func UploadFile(url string, filepath string) error {
 		return err
 	}
 	req.ContentLength = filesize
-	//发送请求
-	resp, err := httpClient.GetClient().Do(req)
-	if err != nil {
-		return err
+	//发送请求(最多尝试3次)
+	errs := make([]error, 0)
+	for i := 0; i < 3; i++ {
+		resp, err := httpClient.GetClient().Do(req)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		defer resp.Body.Close()
+		//检查响应状态码
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+			errs = append(errs, fmt.Errorf(
+				"UploadFile: http status %d: %s",
+				resp.StatusCode,
+				strings.TrimSpace(string(body)),
+			))
+			continue
+		}
+		return nil
 	}
-	defer resp.Body.Close()
-	//检查响应状态码
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return fmt.Errorf(
-			"UploadFile: http status %d: %s",
-			resp.StatusCode,
-			strings.TrimSpace(string(body)),
-		)
-	}
-
-	return nil
+	return fmt.Errorf("%v", errs)
 }
 
 // DownloadFile 下载文件
 func DownloadFile(url string, filepath string) (*resty.Response, error) {
-	resp, e := httpClient.R().SetOutput(filepath).Get(url)
-	if e != nil {
-		return resp, e
+	errs := make([]error, 0)
+	//尝试3次
+	for i := 0; i < 3; i++ {
+		resp, e := httpClient.R().SetOutput(filepath).Get(url)
+		if e != nil {
+			errs = append(errs, e)
+			continue
+		}
+		if !resp.IsSuccess() {
+			errs = append(errs, fmt.Errorf("DownloadFile: http status %d", resp.StatusCode()))
+			continue
+		}
+		return resp, nil
 	}
-	if !resp.IsSuccess() {
-		return resp, fmt.Errorf("DownloadFile: http status %d", resp.StatusCode())
-	}
-	return resp, nil
+	return nil, fmt.Errorf("%v", errs)
 }
