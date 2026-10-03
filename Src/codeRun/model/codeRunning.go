@@ -20,15 +20,16 @@ var (
 )
 
 type CodeRunStatusInfo struct {
-	Status int    `json:"status"`
-	Food   int    `json:"food"`
-	Wood   int    `json:"wood"`
-	Gold   int    `json:"gold"`
-	Stone  int    `json:"stone"`
-	Frame  int    `json:"frame"`
-	Win    bool   `json:"win"`
-	Score  int    `json:"score"`
-	Data   string `json:"data"`
+	Status   int    `json:"status"`
+	Food     int    `json:"food"`
+	Wood     int    `json:"wood"`
+	Gold     int    `json:"gold"`
+	Stone    int    `json:"stone"`
+	Frame    int    `json:"frame"`
+	Win      bool   `json:"win"`
+	Score    int    `json:"score"`
+	Data     string `json:"data"`
+	TimeCost int64  `json:"time_cost"` //运行耗时s
 }
 
 // 这个表负责维护哪些正在跑，但是可能会出问题的运行记录（保证失败了可以重新推入队列）

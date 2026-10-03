@@ -37,3 +37,10 @@ func ResponseACK_MSG(ctx *gin.Context, msg string, data interface{}) {
 func ResponseNAK_MSG(ctx *gin.Context, msg string, data interface{}) {
 	ctx.JSON(http.StatusOK, GetResponseNAK_MSG(msg, data))
 }
+
+func Response401_NotAuth(ctx *gin.Context, msg string) {
+	ctx.JSON(http.StatusUnauthorized, MSG{
+		Status: false,
+		Msg:    msg,
+	})
+}
