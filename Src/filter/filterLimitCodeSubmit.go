@@ -16,6 +16,7 @@ local limit = tonumber(ARGV[1])
 local expire = tonumber(ARGV[2])
 if current ==nil then
 	return {-1, -1}
+end
 if current >= limit then
     return {-1, current}
 end
@@ -61,7 +62,7 @@ func FilterLimitCodeSubmit() gin.HandlerFunc {
 			limitCodeSubmitLua,
 			[]string{key},
 			config.Conf.Code.CodeSubmitTimesPerDay,
-			util.GetLeftTimeForOneDay().Seconds(),
+			int64(util.GetLeftTimeForOneDay().Seconds()),
 		).Result()
 
 		if err != nil {
