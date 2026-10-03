@@ -98,10 +98,26 @@ func processCodeRunFinish(
 	recordFile string,
 	runRet *api_codeRun.CodeRunRetInfo,
 ) error {
+	//如果游戏胜利直接走正常结束路径
+	var resultData *global.CodeRunStatusInfo
+	var success bool
+	if resultData, success = checkIfWin(resultFile); success {
+		return processNormalEnd(ctx, server, id, indices, resultData, resultFile, recordFile, debugFile)
+	}
 	//判断是否是崩溃
 	if runRet.ExitCode != 0 {
 		return processCrash(ctx, server, id, indices, crashFile, debugFile, runRet)
 	}
 	//处理正常结束
-	return processNormalEnd(ctx, server, id, indices, resultFile, recordFile, debugFile)
+	return processNormalEnd(ctx, server, id, indices, resultData, resultFile, recordFile, debugFile)
+}
+
+// 获取结果日志最后一行，如果是胜利那么无论崩溃与否直接按照胜利来算
+func checkIfWin(resultFile string) (*global.CodeRunStatusInfo, bool) {
+	//获取最终结果
+	res, err := getFinalResult(resultFile)
+	if err != nil {
+		return nil, false
+	}
+	return res, res.Status == global.Code_Status_Success
 }

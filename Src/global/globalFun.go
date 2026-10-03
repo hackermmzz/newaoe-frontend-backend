@@ -285,30 +285,31 @@ func PostCodeStatus(
 
 // UploadFile PUT上传本地文件，直接流式读文件，不全部加载进内存
 func UploadFile(url string, filepath string) error {
-	f, err := os.Open(filepath)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	//获取文件大小
-	info, err := f.Stat()
-	if err != nil {
-		return err
-	}
-	filesize := info.Size()
-	//如果文件大小为0，则使用http.NoBody
-	var body io.Reader = f
-	if filesize == 0 {
-		body = http.NoBody
-	}
-	//创建PUT请求
-	req, err := http.NewRequest(http.MethodPut, url, body)
-	if err != nil {
-		return err
-	}
-	req.ContentLength = filesize
 	//发送请求
 	fun := func() error {
+		//打开文件
+		f, err := os.Open(filepath)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		//获取文件大小
+		info, err := f.Stat()
+		if err != nil {
+			return err
+		}
+		filesize := info.Size()
+		//如果文件大小为0，则使用http.NoBody
+		var body io.Reader = f
+		if filesize == 0 {
+			body = http.NoBody
+		}
+		//创建PUT请求
+		req, err := http.NewRequest(http.MethodPut, url, body)
+		if err != nil {
+			return err
+		}
+		req.ContentLength = filesize
 		resp, err := httpClient.GetClient().Do(req)
 		if err != nil {
 			return err
@@ -326,7 +327,7 @@ func UploadFile(url string, filepath string) error {
 		return nil
 	}
 	//重试6次
-	err = backOff(sleepMS, MaxRetryTimes, MaxBackOffMS, fun)
+	err := backOff(sleepMS, MaxRetryTimes, MaxBackOffMS, fun)
 	if err != nil {
 		return err
 	}
