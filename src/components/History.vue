@@ -214,10 +214,14 @@
             
             <!-- 核心信息：时间、文件大小 -->
             <div class="p-4 border-b border-gray-100">
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-gray-600">
+              <div class="grid grid-cols-1 md:grid-cols-4 gap-2 text-sm text-gray-600">
                 <div class="flex items-center">
                   <i class="fa fa-calendar-o mr-2 text-gray-400"></i>
                   <span><strong>提交时间:</strong> {{ convertUtcToCts(item.submittime) }}</span>
+                </div>
+                <div v-if="(isGameStats(item) || isCrash(item)) && isTimeAvailable(item)" class="flex items-center">
+                  <i class="fa fa-clock-o mr-2 text-orange-400"></i>
+                  <span><strong>运行耗时:</strong> {{ formatTimeCost(getStatusInfo(item).time_cost) }}</span>
                 </div>
                 <div class="flex items-center">
                   <i class="fa fa-file-o mr-2 text-blue-400"></i>
@@ -240,9 +244,12 @@
                 <div class="flex flex-wrap items-center justify-between gap-2">
                   <div class="flex items-center text-sm text-gray-600 bg-gray-50 px-3 py-1.5 rounded w-full">
                     <i class="fa fa-file-code-o mr-2 text-blue-500 shrink-0"></i>
-                    <span class="run-status-text" :class="{ 'expanded': expandedItems[index] || isCrash(item), 'crash-reason': isCrash(item) }">
+                    <span class="run-status-text" :class="{ 'expanded': expandedItems[index] || hasStatusReason(item), 'crash-reason': hasStatusReason(item) }">
                       <span class="status-content" :ref="(element) => setStatusElement(element, index)">
                         <span>运行状态: {{ getStatusLabel(item) }}</span>
+                        <template v-if="isServerError(item) && getStatusData(item)">
+                          <span class="block mt-1">{{ getStatusData(item) }}</span>
+                        </template>
                         <template v-if="isCrash(item) && getCrashReason(item)">
                           <span class="block mt-1">{{ getCrashReason(item) }}</span>
                         </template>
@@ -251,7 +258,7 @@
                   </div>
                   
                   <button 
-                    v-if="!isCrash(item) && hasStatusOverflow(index)"
+                  v-if="!hasStatusReason(item) && hasStatusOverflow(index)"
                     @click="toggleExpand(index)"
                     class="text-sm text-blue-600 hover:text-blue-800 transition-colors flex items-center"
                   >
@@ -628,7 +635,24 @@ const getDebugLogFile = (item) => {
 const isCompileFail = (item) => getStatusCode(item) === config.Code_Status_Compile_Fail;
 const isGameResult = (item) => [config.Code_Status_Success, config.Code_Status_Fail].includes(getStatusCode(item));
 const isGameStats = (item) => isGameResult(item) || getStatusCode(item) === config.Code_Status_Running;
+const isServerError = (item) => getStatusCode(item) === config.Code_Status_Error;
 const isCrash = (item) => getStatusCode(item) === config.Code_Status_Crash;
+const isTimeAvailable = (item) => {
+  try {
+    const cost=getStatusInfo(item).time_cost;
+    if(cost<=0) return false;
+    const res=formatTimeCost(cost);
+    if(res==='NaN') return false;
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+const hasStatusReason = (item) => (
+  (isServerError(item) && Boolean(getStatusData(item)))
+  || (isCrash(item) && Boolean(getCrashReason(item)))
+);
 
 watch(() => props.requestParams, async (newParams, oldParams) => {
   if (newParams === oldParams) return;
@@ -655,6 +679,26 @@ const convertUtcToCts = (utcTime) => {
   const seconds = String(ctsTime.getUTCSeconds()).padStart(2, '0');
   
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+};
+
+// time_cost 的单位是秒，转换为“分+秒”；缺少或无效时按要求显示 NaN。
+const formatTimeCost = (timeCost) => {
+  if (timeCost === null || timeCost === undefined || String(timeCost).trim() === '') {
+    return 'NaN';
+  }
+
+  const totalSeconds = Number(timeCost);
+  if (!Number.isFinite(totalSeconds) || totalSeconds < 0) {
+    return 'NaN';
+  }
+
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds - minutes * 60;
+  const formattedSeconds = Number.isInteger(seconds)
+    ? String(seconds)
+    : seconds.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+
+  return `${minutes}分${formattedSeconds}秒`;
 };
 
 // ======================== 核心修改：分页获取历史记录 ========================

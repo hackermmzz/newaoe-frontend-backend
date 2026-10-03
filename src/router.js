@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import axios from 'axios'
 
 import Login from './components/Login.vue'
 import Regist from './components/Regist.vue'
@@ -18,19 +19,23 @@ const routes = [
   {
     path: '/',
     redirect: '/login', // 修正重定向写法，不是restrict
-    component: Login
+    component: Login,
+    meta: { public: true }
   },
   {
     path: '/login',
-    component: Login // 登录页路由
+    component: Login, // 登录页路由
+    meta: { public: true }
   },
   {
     path: '/regist',
-    component: Regist // 注册页路由
+    component: Regist, // 注册页路由
+    meta: { public: true }
   },
   {
     path: '/passwordforget',
-    component: PasswordForget
+    component: PasswordForget,
+    meta: { public: true }
   },
   {
     path: '/home',
@@ -98,5 +103,79 @@ const router = createRouter({
   history: createWebHistory(),
   routes
 })
+
+/**
+ * 校验当前 Cookie 是否仍然有效。
+ *
+ * Cookie 使用 HttpOnly 属性时，前端不能直接读取它，只能通过后端接口
+ * 判断登录状态。后端约定 Cookie 失效时返回 401。
+ */
+async function checkLoginStatus() {
+  try {
+    const response = await fetch(`${config.base_url}/checkLoginStatus`, {
+      credentials: 'include'
+    })
+
+    // 后端约定 Cookie 有效时返回 2xx，失效时返回 401。
+    return response?.status !== 401
+  } catch {
+    // 网络异常时不允许进入需要登录的页面
+    return false
+  }
+}
+
+router.beforeEach(async (to) => {
+  // 登录、注册和找回密码页面不需要登录校验
+  if (to.meta.public) {
+    return true
+  }
+
+  if (await checkLoginStatus()) {
+    return true
+  }
+
+  return {
+    path: '/login',
+    query: {
+      redirect: to.fullPath
+    }
+  }
+})
+
+// 处理接口请求过程中 Cookie 失效的情况。
+// 项目中的 Axios 请求会共用这个全局响应拦截器。
+let redirectingToLogin = false
+
+function redirectToLogin() {
+  const currentRoute = router.currentRoute.value
+
+  // 登录页不再重复跳转；多个请求同时返回 401 时只处理一次。
+  if (redirectingToLogin || currentRoute.meta.public) {
+    return
+  }
+
+  redirectingToLogin = true
+  router.replace({
+    path: '/login',
+    query: {
+      redirect: currentRoute.fullPath
+    }
+  }).catch(() => {
+    // 忽略重复导航或被其他导航取消的错误
+  }).finally(() => {
+    redirectingToLogin = false
+  })
+}
+
+axios.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.response?.status === 401) {
+      redirectToLogin()
+    }
+
+    return Promise.reject(error)
+  }
+)
 
 export default router
