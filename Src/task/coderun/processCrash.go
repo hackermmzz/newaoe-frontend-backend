@@ -33,8 +33,9 @@ func processCrash(
 		indices,
 		global.Code_Status_Crash,
 		global.CodeRunStatusInfo{
-			Status: global.Code_Status_Crash,
-			Data:   util.JsonMap(dataMp),
+			Status:   global.Code_Status_Crash,
+			Data:     util.JsonMap(dataMp),
+			TimeCost: int64(runRet.TimeCost.Seconds()),
 		}.String(),
 	)
 	if err != nil {

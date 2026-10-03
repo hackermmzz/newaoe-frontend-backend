@@ -208,6 +208,7 @@ func log(msg ...interface{}) {
 	}
 	//
 	data := fmt.Sprint(msg...)
+	logFileLine += util.GetStringLines(data)
 	fmt.Fprint(LogFile, data)
 	_ = LogFile.Sync()
 }

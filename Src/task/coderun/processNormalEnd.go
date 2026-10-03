@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	api_codeRun "new-aoe-judge/Src/api/codeRun"
 	"new-aoe-judge/Src/global"
 	grpc_api "new-aoe-judge/Src/grpc"
 	"new-aoe-judge/Src/util"
@@ -22,6 +23,7 @@ func processNormalEnd(
 	resultFile string,
 	recordFile string,
 	debugFile string,
+	runRet *api_codeRun.CodeRunRetInfo,
 ) error {
 	//获取最终结果
 	data := resultData
@@ -33,7 +35,7 @@ func processNormalEnd(
 		}
 	}
 	//发送最终状态
-	win := data.Status == global.Code_Status_Success
+	win := data.Win
 	finalStatus := int32(global.Code_Status_Success)
 	if !win {
 		finalStatus = global.Code_Status_Fail
@@ -45,15 +47,16 @@ func processNormalEnd(
 		indices,
 		finalStatus,
 		global.CodeRunStatusInfo{
-			Status: finalStatus,
-			Win:    win,
-			Score:  data.Score,
-			Frame:  data.Frame,
-			Food:   data.Food,
-			Wood:   data.Wood,
-			Gold:   data.Gold,
-			Stone:  data.Stone,
-			Data:   data.String(),
+			Status:   finalStatus,
+			Win:      win,
+			Score:    data.Score,
+			Frame:    data.Frame,
+			Food:     data.Food,
+			Wood:     data.Wood,
+			Gold:     data.Gold,
+			Stone:    data.Stone,
+			Data:     data.String(),
+			TimeCost: int64(runRet.TimeCost.Seconds()),
 		}.String(),
 	)
 	if err != nil {
@@ -110,6 +113,7 @@ func getFinalResult(resultFile string) (*global.CodeRunStatusInfo, error) {
 		if line == "" {
 			continue
 		}
+
 		var tmp global.CodeRunStatusInfo
 		err = json.Unmarshal([]byte(line), &tmp)
 		if err == nil {

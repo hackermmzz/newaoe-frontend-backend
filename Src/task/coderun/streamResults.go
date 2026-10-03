@@ -30,6 +30,8 @@ func streamResults(
 	//缓存
 	chunkData := make([]byte, 0)
 	readPerbatch := int64(4096)
+	//运行计时
+	runStartTime := time.Now()
 	//读取结果日志
 	for {
 		select {
@@ -64,15 +66,16 @@ func streamResults(
 			indices,
 			global.Code_Status_Running,
 			global.CodeRunStatusInfo{
-				Status: global.Code_Status_Running,
-				Food:   latest.Food,
-				Wood:   latest.Wood,
-				Gold:   latest.Gold,
-				Stone:  latest.Stone,
-				Frame:  latest.Frame,
-				Win:    latest.Win,
-				Score:  latest.Score,
-				Data:   latest.String(),
+				Status:   global.Code_Status_Running,
+				Food:     latest.Food,
+				Wood:     latest.Wood,
+				Gold:     latest.Gold,
+				Stone:    latest.Stone,
+				Frame:    latest.Frame,
+				Win:      latest.Win,
+				Score:    latest.Score,
+				Data:     latest.String(),
+				TimeCost: int64(time.Since(runStartTime).Seconds()),
 			}.String(),
 		)
 	}

@@ -25,15 +25,16 @@ func (a GRPCAuthInfo) String() string {
 
 // //////////////////////// CodeRunStatusInfo 代码运行状态信息
 type CodeRunStatusInfo struct {
-	Status int32  `json:"status"`
-	Food   int    `json:"food"`
-	Wood   int    `json:"wood"`
-	Gold   int    `json:"gold"`
-	Stone  int    `json:"stone"`
-	Frame  int    `json:"frame"`
-	Win    bool   `json:"win"`
-	Score  int    `json:"score"`
-	Data   string `json:"data"`
+	Status   int32  `json:"status"`
+	Food     int    `json:"food"`
+	Wood     int    `json:"wood"`
+	Gold     int    `json:"gold"`
+	Stone    int    `json:"stone"`
+	Frame    int    `json:"frame"`
+	Win      bool   `json:"win"`
+	Score    int    `json:"score"`
+	Data     string `json:"data"`
+	TimeCost int64  `json:"time_cost"` //秒
 }
 
 func (s CodeRunStatusInfo) String() string {

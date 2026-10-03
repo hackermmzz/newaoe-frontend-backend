@@ -243,3 +243,14 @@ func FlushAllFiles(files []*os.File) error {
 	}
 	return errors.Join(retErr...)
 }
+
+// 获取字符串行数
+func GetStringLines(msg string) int {
+	ret := 0
+	for _, v := range msg {
+		if v == '\n' {
+			ret++
+		}
+	}
+	return ret
+}
