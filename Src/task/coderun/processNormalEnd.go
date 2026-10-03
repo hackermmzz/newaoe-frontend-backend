@@ -56,7 +56,7 @@ func processNormalEnd(
 			Gold:     data.Gold,
 			Stone:    data.Stone,
 			Data:     data.String(),
-			TimeCost: int64(runRet.TimeCost.Seconds()),
+			TimeCost: runRet.TimeCost,
 		}.String(),
 	)
 	if err != nil {

@@ -24,130 +24,6 @@ var (
 	//日志参数
 	logFileLine  = 0
 	logFileIndex = 0
-	htmlInfo     = `<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta http-equiv="refresh" content="2">
-<title>运行日志</title>
-<style>
-body {
-    margin: 0;
-    padding: 20px;
-    background: #111827;
-    color: #d1d5db;
-    font-family: Consolas, monospace;
-}
-
-#filters {
-    margin-bottom: 16px;
-}
-
-#filters label {
-    margin-right: 16px;
-    cursor: pointer;
-}
-
-.log {
-    padding: 6px 10px;
-    margin-bottom: 4px;
-    border-radius: 4px;
-    white-space: pre-wrap;
-    word-break: break-word;
-}
-
-.time {
-    color: #6b7280;
-}
-
-.success {
-    color: #22c55e;
-    background: #052e16;
-}
-
-.error {
-    color: #f87171;
-    background: #450a0a;
-}
-
-.info {
-    color: #d1d5db;
-    background: #1f2937;
-}
-</style>
-</head>
-
-<body>
-<h2>运行日志</h2>
-
-<div id="filters">
-    <label>
-        <input type="checkbox" value="success">
-        成功
-    </label>
-
-    <label>
-        <input type="checkbox" value="error">
-        错误
-    </label>
-
-    <label>
-        <input type="checkbox" value="info">
-        信息
-    </label>
-</div>
-
-<div id="logs">
-
-<script>
-const filterInputs = document.querySelectorAll("#filters input");
-
-function applyFilter() {
-    const selected = Array.from(filterInputs)
-        .filter(input => input.checked)
-        .map(input => input.value);
-
-    localStorage.setItem(
-        "log-filters",
-        JSON.stringify(selected)
-    );
-
-    // 每次重新查询，包含后续追加的日志
-    document.querySelectorAll("#logs .log").forEach(item => {
-        if (selected.length === 0) {
-            item.hidden = false;
-        } else {
-            item.hidden = !selected.some(level =>
-                item.classList.contains(level)
-            );
-        }
-    });
-}
-
-function initFilter() {
-    try {
-        const saved = JSON.parse(
-            localStorage.getItem("log-filters") || "[]"
-        );
-
-        filterInputs.forEach(input => {
-            input.checked = saved.includes(input.value);
-        });
-    } catch (e) {
-        console.warn("读取筛选状态失败", e);
-    }
-
-    filterInputs.forEach(input => {
-        input.addEventListener("change", applyFilter);
-    });
-
-    applyFilter();
-}
-
-// 必须等整个日志文件解析完成后再首次过滤
-document.addEventListener("DOMContentLoaded", initFilter);
-</script>
-`
 )
 
 func LogClear() {
@@ -157,7 +33,7 @@ func LogClear() {
 	_ = LogFile.Truncate(0)
 	// Truncate 不一定会自动重置当前文件偏移
 	_, _ = LogFile.Seek(0, io.SeekStart)
-	log(htmlInfo)
+	//log()
 }
 
 func LogSuccess(msg ...interface{}) {
@@ -203,7 +79,7 @@ func log(msg ...interface{}) {
 			_ = LogFile.Close()
 			//设置新的日志文件
 			LogFile = newFile
-			fmt.Fprint(LogFile, htmlInfo)
+			//fmt.Fprint(LogFile, htmlInfo)
 		}
 	}
 	//
@@ -282,6 +158,18 @@ func PostCodeStatus(
 		return nil, err
 	}
 	return statusUpdateReply, nil
+}
+
+// 服务器异常的PostCodeStatus
+func PostServerErrorStatus(ctx context.Context,
+	server grpc_api.CodeClient,
+	id string,
+	indices int64,
+	err error) (*grpc_api.StatusUpdateReply, error) {
+	return PostCodeStatus(ctx, server, id, indices, Code_Status_Error, CodeRunStatusInfo{
+		Status: Code_Status_Error,
+		Data:   fmt.Sprintf("服务器异常:%v", err),
+	}.String())
 }
 
 // UploadFile PUT上传本地文件，直接流式读文件，不全部加载进内存

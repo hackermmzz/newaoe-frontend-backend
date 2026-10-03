@@ -8,6 +8,7 @@ import (
 	"new-aoe-judge/Src/config"
 	"new-aoe-judge/Src/global"
 	grpc_api "new-aoe-judge/Src/grpc"
+	"new-aoe-judge/Src/server"
 	"new-aoe-judge/Src/task"
 	"os"
 	"os/exec"
@@ -125,6 +126,8 @@ func main() {
 	getAuthAccount()
 	// 初始化运行目录
 	_ = os.MkdirAll(config.Conf.RunDir, 0755)
+	//初始化HTTP服务器
+	go server.ServerInit()
 	// 预编译
 	if e := api_preCompile.PreCompile(); e != nil {
 		global.LogError("预编译失败: " + e.Error())

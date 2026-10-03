@@ -28,6 +28,13 @@ func Task_ProcessRun(ctx context.Context, server grpc_api.CodeClient) {
 			code = dt.(ForRunInfo)
 		}
 		func() {
+			postError := true
+			var postErrorMsg error
+			defer func() {
+				if postError {
+					global.PostServerErrorStatus(ctx, server, code.ID, code.Indices, postErrorMsg)
+				}
+			}()
 			//////////////创建文件
 			crashLogFilePath := util.JoinPath(code.RunDir, config.Conf.CrashLogFileName)
 			logFilePath := util.JoinPath(code.RunDir, config.Conf.RunLogFileName)
@@ -42,7 +49,8 @@ func Task_ProcessRun(ctx context.Context, server grpc_api.CodeClient) {
 				debugLogFilePath,
 			}, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 			if err != nil {
-				global.LogError("创建文件失败", err.Error())
+				postErrorMsg = fmt.Errorf("创建文件失败: %w", err)
+				global.LogError(postErrorMsg.Error())
 				return
 			}
 			defer util.CloseFiles(files)
@@ -66,14 +74,20 @@ func Task_ProcessRun(ctx context.Context, server grpc_api.CodeClient) {
 				files[4],
 			)
 			if err != nil {
-				global.LogError(fmt.Sprintf("%s/%d/运行代码失败: %s", code.ID, code.Indices, err.Error()))
+				if runRet == nil {
+					postErrorMsg = fmt.Errorf("运行代码失败: %s", err.Error())
+				} else {
+					postErrorMsg = fmt.Errorf("运行代码失败: %s,耗时:%d秒", err.Error(), runRet.TimeCost)
+				}
+				global.LogError(postErrorMsg.Error())
 				return
 			}
 			///////////////刷盘结果
 			global.LogInfo(fmt.Sprintf("%s/%d/开始刷盘结果...", code.ID, code.Indices))
 			err = util.FlushAllFiles(files)
 			if err != nil {
-				global.LogError(fmt.Sprintf("%s/%d/刷盘结果失败: %s", code.ID, code.Indices, err.Error()))
+				postErrorMsg = fmt.Errorf("刷盘结果失败: %s,耗时:%d秒", err.Error(), runRet.TimeCost)
+				global.LogError(postErrorMsg.Error())
 				return
 			} else {
 				global.LogSuccess(fmt.Sprintf("%s/%d/刷盘结果成功", code.ID, code.Indices))
@@ -91,10 +105,13 @@ func Task_ProcessRun(ctx context.Context, server grpc_api.CodeClient) {
 				runRet,
 			)
 			if err != nil {
-				global.LogError(fmt.Sprintf("%s/%d/处理结果日志失败: %s", code.ID, code.Indices, err.Error()))
+				postErrorMsg = fmt.Errorf("处理结果日志失败: %s ,耗时:%d秒", err.Error(), runRet.TimeCost)
+				global.LogError(postErrorMsg.Error())
 				return
 			}
-			global.LogSuccess(fmt.Sprintf("%s/%d/运行结束!", code.ID, code.Indices))
+			global.LogSuccess(fmt.Sprintf("%s/%d/运行结束,耗时:%d秒", code.ID, code.Indices, runRet.TimeCost))
+			//取消错误报告
+			postError = false
 		}()
 	}
 }

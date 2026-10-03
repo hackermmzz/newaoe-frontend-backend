@@ -25,7 +25,7 @@ type CodeRunRetInfo struct {
 	ExitReason string
 	ExitCode   int
 	Err        error
-	TimeCost   time.Duration
+	TimeCost   int64 //秒数
 }
 
 func CodeRun(
@@ -87,28 +87,31 @@ func CodeRun(
 	}
 	args = append(args, mounts...)
 	args = append(args, "-w", workdir, config.Conf.NewAOEDockerImg, "bash", "-c", script)
-	// 运行命令
-	cmd := exec.Command("docker", args...)
-	cmd.Stdout = logFile
-	cmd.Stderr = logFile
-	if e = cmd.Run(); e != nil {
-		_, ok := e.(*exec.ExitError)
-		if !ok {
-			return &CodeRunRetInfo{
-				Err: fmt.Errorf("CodeRun运行容器失败: %w", e),
-			}
-		}
-	}
-	code := cmd.ProcessState.ExitCode()
-	//判断是否是被OOM了
+	//
 	var dockerStateCMD *exec.Cmd
 	var dockerErr error
 	var outBuf, errBuf bytes.Buffer
 	var ret CodeRunRetInfo
+	var exitCode int
 	// 记录开始时间
 	startTime := time.Now()
 	dockerDone := make(chan struct{}, 1)
 	go func() {
+		defer func() {
+			dockerDone <- struct{}{}
+		}()
+		// 运行命令
+		cmd := exec.Command("docker", args...)
+		cmd.Stdout = logFile
+		cmd.Stderr = logFile
+		if e = cmd.Run(); e != nil {
+			_, ok := e.(*exec.ExitError)
+			if !ok {
+				dockerErr = fmt.Errorf("CodeRun运行容器失败: %w", e)
+				return
+			}
+		}
+		//获取容器状态码
 		dockerStateCMD = exec.Command(
 			"docker",
 			"inspect",
@@ -118,8 +121,9 @@ func CodeRun(
 		dockerStateCMD.Stderr = &errBuf
 		if e = dockerStateCMD.Run(); e != nil {
 			dockerErr = fmt.Errorf("CodeRun获取容器状态失败: %w", e)
+			return
 		}
-		dockerDone <- struct{}{}
+		exitCode = dockerStateCMD.ProcessState.ExitCode()
 	}()
 	select {
 	case <-dockerDone:
@@ -137,7 +141,7 @@ func CodeRun(
 			}
 			oom := info[0]["State"].(map[string]interface{})["OOMKilled"]
 			if oom.(bool) {
-				code = 137
+				exitCode = 137
 			}
 			//移除容器
 			if e = exec.Command("docker", "rm", container).Run(); e != nil {
@@ -146,13 +150,13 @@ func CodeRun(
 				}
 			}
 			//获取退出原因
-			reason := getExitReason(code)
+			reason := getExitReason(exitCode)
 			ret = CodeRunRetInfo{
 				ExitReason: reason,
-				ExitCode:   code,
+				ExitCode:   exitCode,
 			}
 		}
-	case <-time.After(time.Duration(config.Conf.CodeRunStatusUploadInterval) * time.Second):
+	case <-time.After(time.Duration(config.Conf.RunTimeout) * time.Second):
 		//停止容器
 		if e = exec.Command("docker", "kill", container).Run(); e != nil {
 			ret = CodeRunRetInfo{
@@ -171,6 +175,6 @@ func CodeRun(
 		}
 	}
 	//返回结果
-	ret.TimeCost = time.Since(startTime)
+	ret.TimeCost = int64(time.Since(startTime).Seconds())
 	return &ret
 }

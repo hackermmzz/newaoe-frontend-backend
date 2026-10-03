@@ -13,6 +13,9 @@ GRPCPort: 50051
 # HTTP端口
 HTTPPort: 8080
 
+# 服务器静态文件根目录
+ServerHome: "assets/server/"
+
 #进程Log日志
 ProcessLogDir: "./ProcessLog"
 

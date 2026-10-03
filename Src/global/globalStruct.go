@@ -9,8 +9,6 @@ import (
 
 type CodeRunType int64
 
-type PostRunStatus int32
-
 // //////////////////////// GRPCAuthInfo gRPC 认证信息
 type GRPCAuthInfo struct {
 	ID       string `json:"id"`

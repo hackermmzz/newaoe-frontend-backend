@@ -29,11 +29,19 @@ func Task_ProcessCompile(ctx context.Context, server grpc_api.CodeClient) {
 		}
 		//编译代码
 		func() {
+			postError := true
+			var postErrorMsg error
+			defer func() {
+				if postError {
+					global.PostServerErrorStatus(ctx, server, code.ID, code.Indices, postErrorMsg)
+				}
+			}()
 			//创建编译日志文件
 			logFilePath := util.JoinPath(code.BuildDir, config.Conf.CompileLogFileName)
 			f, e := os.OpenFile(logFilePath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0644)
 			if e != nil {
-				global.LogError("创建编译日志文件失败", logFilePath, e.Error())
+				postErrorMsg = fmt.Errorf("创建编译日志文件失败: %w", e)
+				global.LogError(postErrorMsg.Error())
 				return
 			}
 			defer f.Close()
@@ -55,7 +63,8 @@ func Task_ProcessCompile(ctx context.Context, server grpc_api.CodeClient) {
 				}.String(),
 			)
 			if e != nil {
-				global.LogError("task_ProcessCompile的PostCodeStatus返回错误", e.Error())
+				postErrorMsg = fmt.Errorf("PostCodeStatus返回错误: %w", e)
+				global.LogError(postErrorMsg.Error())
 				return
 			}
 			//编译代码
@@ -68,7 +77,8 @@ func Task_ProcessCompile(ctx context.Context, server grpc_api.CodeClient) {
 				code.RunType,
 			)
 			if result.Error != nil {
-				global.LogError("task_ProcessCompile的CodeCompile返回错误", result.Error.Error())
+				postErrorMsg = fmt.Errorf("CodeCompile返回错误: %w", result.Error)
+				global.LogError(postErrorMsg.Error())
 				return
 			}
 			//处理编译结果
@@ -87,29 +97,34 @@ func Task_ProcessCompile(ctx context.Context, server grpc_api.CodeClient) {
 				}.String(),
 			)
 			if e != nil {
-				global.LogError("task_ProcessCompile的PostCodeStatus返回错误", e.Error())
+				postErrorMsg = fmt.Errorf("PostCodeStatus返回错误: %w", e)
+				global.LogError(postErrorMsg.Error())
 				return
 			}
 			//处理失败情况
 			if !result.OK {
 				global.LogSuccess(fmt.Sprintf("%s/%d/编译失败: %s", code.ID, code.Indices, result.Msg))
 				if resp == nil {
-					global.LogError("task_ProcessCompile的PostCodeStatus返回空指针!")
+					postErrorMsg = fmt.Errorf("PostCodeStatus返回空指针!")
+					global.LogError(postErrorMsg.Error())
 					return
 				}
 				urls, err := util.JsonToMap(resp.Data)
 				if err != nil {
-					global.LogError("解析编译状态更新数据失败", resp.Data, err.Error())
+					postErrorMsg = fmt.Errorf("解析编译状态更新数据失败: %w", err)
+					global.LogError(postErrorMsg.Error())
 					return
 				}
 				//上传编译错误日志
 				url, ok := urls["compile_error_log_url"].(string)
 				if !ok {
-					global.LogError("编译状态更新数据中缺少编译错误日志URL", resp.Data)
+					postErrorMsg = fmt.Errorf("编译状态更新数据中缺少编译错误日志URL: %s", resp.Data)
+					global.LogError(postErrorMsg.Error())
 					return
 				}
 				if e := global.UploadFile(url, logFilePath); e != nil {
-					global.LogError("上传编译错误日志失败", url, e.Error())
+					postErrorMsg = fmt.Errorf("上传编译错误日志失败: %w", e)
+					global.LogError(postErrorMsg.Error())
 					return
 				}
 				return
@@ -127,7 +142,8 @@ func Task_ProcessCompile(ctx context.Context, server grpc_api.CodeClient) {
 				BuildDir: code.BuildDir,
 			}:
 			}
-
+			//取消错误报告
+			postError = false
 		}()
 	}
 }
