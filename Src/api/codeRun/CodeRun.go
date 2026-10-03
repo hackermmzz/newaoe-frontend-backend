@@ -125,6 +125,14 @@ func CodeRun(
 		}
 		exitCode = dockerStateCMD.ProcessState.ExitCode()
 	}()
+	//移除容器
+	defer func() {
+		//移除容器
+		if e = exec.Command("docker", "rm", container).Run(); e != nil {
+			global.LogError(fmt.Errorf("CodeRun移除容器失败: %w", e))
+		}
+	}()
+	//
 	select {
 	case <-dockerDone:
 		if dockerErr != nil {
@@ -143,12 +151,6 @@ func CodeRun(
 			if oom.(bool) {
 				exitCode = 137
 			}
-			//移除容器
-			if e = exec.Command("docker", "rm", container).Run(); e != nil {
-				ret = CodeRunRetInfo{
-					Err: fmt.Errorf("CodeRun移除容器失败: %w", e),
-				}
-			}
 			//获取退出原因
 			reason := getExitReason(exitCode)
 			ret = CodeRunRetInfo{
@@ -161,12 +163,6 @@ func CodeRun(
 		if e = exec.Command("docker", "kill", container).Run(); e != nil {
 			ret = CodeRunRetInfo{
 				Err: fmt.Errorf("CodeRun停止容器失败: %w", e),
-			}
-		}
-		//移除容器
-		if e = exec.Command("docker", "rm", container).Run(); e != nil {
-			ret = CodeRunRetInfo{
-				Err: fmt.Errorf("CodeRun移除容器失败: %w", e),
 			}
 		}
 		//返回超时
