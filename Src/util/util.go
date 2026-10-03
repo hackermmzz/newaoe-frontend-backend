@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
 	"os"
 	"path/filepath"
+	"sync"
 	"text/template"
 	"time"
 
@@ -145,7 +147,6 @@ func ReadLineBack(file *os.File) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
 	if pos == 0 {
 		return "", io.EOF
 	}
@@ -153,13 +154,20 @@ func ReadLineBack(file *os.File) (string, error) {
 	var result []byte
 	var one [1]byte
 
-	// 如果当前位置在换行符后，先跳过换行符
+	// 只跳过当前位置之前紧邻的换行符
+	_, err = file.ReadAt(one[:], pos-1)
+	if err != nil {
+		return "", err
+	}
+	if one[0] == '\n' {
+		pos--
+	}
+
 	for pos > 0 {
 		_, err = file.ReadAt(one[:], pos-1)
 		if err != nil {
 			return "", err
 		}
-
 		if one[0] == '\n' {
 			pos--
 			break
@@ -169,12 +177,10 @@ func ReadLineBack(file *os.File) (string, error) {
 		pos--
 	}
 
-	// 反转字节顺序
 	for i, j := 0, len(result)-1; i < j; i, j = i+1, j-1 {
 		result[i], result[j] = result[j], result[i]
 	}
 
-	// 文件指针移动到当前行的开头
 	if _, err := file.Seek(pos, io.SeekStart); err != nil {
 		return "", err
 	}
@@ -210,4 +216,30 @@ func ReadFileLimitFromCurrentOffset(f *os.File, limit int64) ([]byte, error) {
 		return nil, err
 	}
 	return buf[:n], nil
+}
+
+func FlushAllFiles(files []*os.File) error {
+	var wg sync.WaitGroup
+	errChan := make(chan error, len(files))
+	wg.Add(len(files))
+	for _, f := range files {
+		go func() {
+			defer wg.Done()
+			err := f.Sync()
+			errChan <- err
+		}()
+	}
+	// 等待所有goroutine完成
+	go func() {
+		wg.Wait()
+		close(errChan) // 全部完成后关闭channel，range才会结束
+	}()
+	// 等待所有文件同步完成
+	retErr := make([]error, 0)
+	for err := range errChan {
+		if err != nil {
+			retErr = append(retErr, err)
+		}
+	}
+	return errors.Join(retErr...)
 }

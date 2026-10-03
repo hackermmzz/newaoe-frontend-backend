@@ -21,7 +21,6 @@ type ForRunInfo struct {
 func Task_ProcessRun(ctx context.Context, server grpc_api.CodeClient) {
 	for {
 		var code ForRunInfo
-		var resultFilePath string
 		select {
 		case <-ctx.Done():
 			return
@@ -33,7 +32,7 @@ func Task_ProcessRun(ctx context.Context, server grpc_api.CodeClient) {
 			crashLogFilePath := util.JoinPath(code.RunDir, config.Conf.CrashLogFileName)
 			logFilePath := util.JoinPath(code.RunDir, config.Conf.RunLogFileName)
 			recordFilePath := util.JoinPath(code.RunDir, config.Conf.RecordFileName)
-			resultFilePath = util.JoinPath(code.RunDir, config.Conf.RunResultFileName)
+			resultFilePath := util.JoinPath(code.RunDir, config.Conf.RunResultFileName)
 			debugLogFilePath := util.JoinPath(code.RunDir, config.Conf.RunDebugLogOutputFileName)
 			files, err := util.OpenFiles([]string{
 				crashLogFilePath,
@@ -53,7 +52,7 @@ func Task_ProcessRun(ctx context.Context, server grpc_api.CodeClient) {
 			//打印日志
 			global.LogInfo(fmt.Sprintf("%s_%d正在运行...", code.ID, code.Indices))
 			///////////////运行代码
-			err = runMonitor(
+			err, runRet := runMonitor(
 				ctx,
 				server,
 				code.ID,
@@ -68,16 +67,34 @@ func Task_ProcessRun(ctx context.Context, server grpc_api.CodeClient) {
 			)
 			if err != nil {
 				global.LogError(fmt.Sprintf("%s/%d/运行代码失败: %s", code.ID, code.Indices, err.Error()))
-			} else {
-				global.LogSuccess(fmt.Sprintf("%s/%d/运行结束!", code.ID, code.Indices))
+				return
 			}
-		}()
-		////////////////////删除日志文件
-		if _, err := os.Stat(resultFilePath); err == nil {
-			err = os.Remove(resultFilePath)
+			///////////////刷盘结果
+			global.LogInfo(fmt.Sprintf("%s/%d/开始刷盘结果...", code.ID, code.Indices))
+			err = util.FlushAllFiles(files)
 			if err != nil {
-				global.LogError(fmt.Sprintf("%s/%d/删除日志文件失败: %s", code.ID, code.Indices, err.Error()))
+				global.LogError(fmt.Sprintf("%s/%d/刷盘结果失败: %s", code.ID, code.Indices, err.Error()))
+				return
+			} else {
+				global.LogSuccess(fmt.Sprintf("%s/%d/刷盘结果成功", code.ID, code.Indices))
 			}
-		}
+			///////////////处理结果日志
+			err = processCodeRunFinish(
+				ctx,
+				server,
+				code.ID,
+				code.Indices,
+				resultFilePath,
+				crashLogFilePath,
+				debugLogFilePath,
+				recordFilePath,
+				runRet,
+			)
+			if err != nil {
+				global.LogError(fmt.Sprintf("%s/%d/处理结果日志失败: %s", code.ID, code.Indices, err.Error()))
+				return
+			}
+			global.LogSuccess(fmt.Sprintf("%s/%d/运行结束!", code.ID, code.Indices))
+		}()
 	}
 }

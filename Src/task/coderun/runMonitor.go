@@ -2,6 +2,7 @@ package coderun
 
 import (
 	"context"
+	"fmt"
 	api_codeRun "new-aoe-judge/Src/api/codeRun"
 	"new-aoe-judge/Src/global"
 	grpc_api "new-aoe-judge/Src/grpc"
@@ -21,7 +22,7 @@ func runMonitor(
 	recordFile *os.File,
 	resultFile *os.File,
 	debugFile *os.File,
-) error {
+) (error, *api_codeRun.CodeRunRetInfo) {
 	//申请资源
 	resource := global.Profiler.AllocateCodeRunResource(global.RunCPULimit)
 	defer global.Profiler.RecycleCodeRunResource(resource)
@@ -65,24 +66,14 @@ func runMonitor(
 	select {
 	case <-allDone:
 		if streamErr != nil {
-			return streamErr
+			return streamErr, nil
 		} else if runRet.Err != nil {
-			return runRet.Err
+			return runRet.Err, nil
 		} else {
-			return processCodeRunFinish(
-				ctx,
-				server,
-				id,
-				indices,
-				resultFile.Name(),
-				crashFile.Name(),
-				debugFile.Name(),
-				recordFile.Name(),
-				runRet,
-			)
+			return nil, runRet
 		}
 	case <-ctx.Done():
-		return ctx.Err()
+		return ctx.Err(), nil
 	}
 }
 
@@ -101,7 +92,12 @@ func processCodeRunFinish(
 	//如果游戏胜利直接走正常结束路径
 	var resultData *global.CodeRunStatusInfo
 	var success bool
-	if resultData, success = checkIfWin(resultFile); success {
+	var err error
+	resultData, success, err = checkIfWin(resultFile)
+	if err != nil {
+		return fmt.Errorf("检查结果失败: %w", err)
+	}
+	if success {
 		return processNormalEnd(ctx, server, id, indices, resultData, resultFile, recordFile, debugFile)
 	}
 	//判断是否是崩溃
@@ -113,11 +109,11 @@ func processCodeRunFinish(
 }
 
 // 获取结果日志最后一行，如果是胜利那么无论崩溃与否直接按照胜利来算
-func checkIfWin(resultFile string) (*global.CodeRunStatusInfo, bool) {
+func checkIfWin(resultFile string) (*global.CodeRunStatusInfo, bool, error) {
 	//获取最终结果
 	res, err := getFinalResult(resultFile)
 	if err != nil {
-		return nil, false
+		return nil, false, err
 	}
-	return res, res.Status == global.Code_Status_Success
+	return res, res.Win, nil
 }

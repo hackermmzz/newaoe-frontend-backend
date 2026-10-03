@@ -9,6 +9,7 @@ import (
 	"new-aoe-judge/Src/global"
 	grpc_api "new-aoe-judge/Src/grpc"
 	"new-aoe-judge/Src/task/codecompile"
+	"os"
 	"time"
 )
 
@@ -31,6 +32,12 @@ func Task_GetStudentCode(ctx context.Context, server grpc_api.CodeClient) {
 					time.Sleep(sleepTime)
 					return
 				}
+				//处理一下.cpp文件
+				err := fixCPP(res.Source)
+				if err != nil {
+					global.LogError(fmt.Sprintf("处理代码失败! %s", err.Error()))
+					return
+				}
 				//记录性能
 				global.Profiler.IncreaseTaskWait()
 				defer global.Profiler.DecreaseTaskWait()
@@ -47,4 +54,25 @@ func Task_GetStudentCode(ctx context.Context, server grpc_api.CodeClient) {
 			}()
 		}
 	}
+}
+
+// 目前需要对cpp进行一下处理，增加一个函数就行了
+func fixCPP(sourceFile string) error {
+	extra_fun := `
+
+		UsrAI* MMZZ_NewUsrAI(){
+			return new UsrAI();
+		}
+			
+	`
+
+	// 以追加模式打开文件，O_APPEND 写到文件末尾
+	f, err := os.OpenFile(sourceFile, os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	_, err = f.WriteString(extra_fun)
+	return err
 }

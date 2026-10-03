@@ -10,6 +10,10 @@ import (
 )
 
 func PreCompile() error {
+	// 更新new-aoe目录
+	if err := pullNewAOE(); err != nil {
+		return err
+	}
 	// 读取预编脚本
 	script := util.ReadAnyText(util.JoinPath("assets", "bash", "precompile.sh"))
 	if script == "" {
@@ -38,4 +42,14 @@ func PreCompile() error {
 	}
 	//预编成功
 	return nil
+}
+
+// 更新new-aoe目录
+func pullNewAOE() error {
+	cmd := exec.Command(
+		"git",
+		"pull",
+	)
+	cmd.Dir = util.JoinPath(config.Conf.NewAOEFolder)
+	return cmd.Run()
 }
