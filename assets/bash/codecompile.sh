@@ -50,9 +50,7 @@ if [ $DebugMode = true ]; then
 else
     g++ -c UsrAI.cpp \
     -O2 \
-    -fPIC \
-    -g \
-    -fno-omit-frame-pointer \
+    -DNDEBUG \
     -I./ \
     -I${QTINCLUDE} \
     -I${QTINCLUDE}/QtCore \
@@ -64,8 +62,6 @@ else
     # 链接公共 .o 文件
     g++ UsrAI.o ../project/release/*.o \
         -O2 \
-        -g \
-        -fno-omit-frame-pointer \
         -o newAOE \
         -L/opt/qt5.9.2/lib \
         -lQt5Widgets \

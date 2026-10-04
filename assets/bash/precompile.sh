@@ -12,8 +12,7 @@ export PATH="$PATH:/opt/qt5.9.2/bin/"
 if ! qmake \
     CONFIG+=release \
     CONFIG-=debug \
-    "QMAKE_CXXFLAGS_RELEASE=-O2 -g -fno-omit-frame-pointer " \
-    "QMAKE_LFLAGS_RELEASE+=-g"; then
+    "QMAKE_CXXFLAGS_RELEASE+=-O2"; then
     echo "Release qmake 失败"
     exit 1
 fi

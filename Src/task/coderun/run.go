@@ -110,6 +110,12 @@ func Task_ProcessRun(ctx context.Context, server grpc_api.CodeClient) {
 				return
 			}
 			global.LogSuccess(fmt.Sprintf("%s/%d/运行结束,耗时:%d秒", code.ID, code.Indices, runRet.TimeCost))
+			//删除AOE二进制文件
+			err = util.RemoveFiles([]string{util.JoinPath(code.BuildDir, "newAOE")})
+			if err != nil {
+				//删除失败,继续运行
+				global.LogError(err.Error())
+			}
 			//取消错误报告
 			postError = false
 		}()

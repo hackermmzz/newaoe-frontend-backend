@@ -254,3 +254,14 @@ func GetStringLines(msg string) int {
 	}
 	return ret
 }
+
+// 删除文件
+func RemoveFiles(filepath []string) error {
+	ret := make([]error, 0)
+	for _, file := range filepath {
+		if err := os.Remove(file); err != nil {
+			ret = append(ret, err)
+		}
+	}
+	return errors.Join(ret...)
+}
