@@ -23,28 +23,32 @@ func Task_GetStudentCode(ctx context.Context, server grpc_api.CodeClient) {
 		default:
 			func() {
 				//提前申请一个任务槽
-				bAcquireTaskSem := true
+				bNeedComplete := true
+				bNeedSleep := true
 				global.Profiler.TaskProcess()
 				defer func() {
-					if bAcquireTaskSem {
+					if bNeedComplete {
 						global.Profiler.TaskComplete()
+						if bNeedSleep {
+							sleepTime := time.Duration(config.Conf.JudgeSleepTimeWhenGetCodeFailed-rand.IntN(2)+1) * time.Second
+							time.Sleep(sleepTime)
+						}
 					}
 				}()
 				//获取代码
 				res := api_codeGet.GetOneStudentCode(ctx, server)
-				sleepTime := time.Duration(config.Conf.JudgeSleepTimeWhenGetCodeFailed-rand.IntN(2)+1) * time.Second
+
 				if res.Error != nil {
 					global.LogError(res.Error.Error())
-					time.Sleep(sleepTime)
 					return
 				}
 				if !res.OK {
-					time.Sleep(sleepTime)
 					return
 				}
 				//处理一下.cpp文件
 				err := fixCPP(res.Source)
 				if err != nil {
+					bNeedSleep = false
 					global.LogError(fmt.Sprintf("处理代码失败! %s", err.Error()))
 					return
 				}
@@ -56,13 +60,14 @@ func Task_GetStudentCode(ctx context.Context, server grpc_api.CodeClient) {
 				//将代码添加到编译队列
 				select {
 				case <-ctx.Done():
+					bNeedSleep = false
 					return
 				case global.CompileWaitQueue <- codecompile.ForCompileInfo{
 					StudentCode: res,
 				}:
 				}
 				//保持任务信号量
-				bAcquireTaskSem = false
+				bNeedComplete = false
 			}()
 		}
 	}

@@ -312,7 +312,5 @@ func (p *ProfilerInfo) TaskAllDone() bool {
 }
 
 func (p *ProfilerInfo) GetTaskSem() int64 {
-	p.taskMu.Lock()
-	defer p.taskMu.Unlock()
 	return p.taskSem
 }
