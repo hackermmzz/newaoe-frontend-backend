@@ -60,12 +60,12 @@ func server() {
 	)
 
 	server := &http.Server{
-		Addr:    "127.0.0.1:50119",
+		Addr:    fmt.Sprintf("0.0.0.0:%d", config.Conf.ProcessLogPort),
 		Handler: mux,
 	}
 
 	fmt.Println("HTTP server started:")
-	fmt.Println("http://127.0.0.1:50119/")
+	fmt.Println(fmt.Sprintf("http://0.0.0.0:%d/", config.Conf.ProcessLogPort))
 
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatal(err)

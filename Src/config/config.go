@@ -34,6 +34,7 @@ type Config struct {
 	ServerHome                      string `yaml:"ServerHome"`
 	SystemInfoFetchInterval         int    `yaml:"SystemInfoFetchInterval"`
 	CurrentVersion                  string `yaml:"CurrentVersion"`
+	ProcessLogPort                  int    `yaml:"ProcessLogPort"`
 }
 
 var Conf Config
@@ -110,6 +111,7 @@ func LoadConfig() error {
 		ServerHome:                      envOr(m, "ServerHome"),
 		SystemInfoFetchInterval:         atoi(envOr(m, "SystemInfoFetchInterval"), 5),
 		CurrentVersion:                  envOr(m, "CurrentVersion"),
+		ProcessLogPort:                  atoi(envOr(m, "ProcessLogPort"), 500119),
 	}
 	if Conf.GRPCPort == "" {
 		return errors.New("GRPCPort 不能为空")

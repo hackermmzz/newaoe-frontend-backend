@@ -16,6 +16,9 @@ HTTPPort: 8080
 # 服务器静态文件根目录
 ServerHome: "assets/server/"
 
+#进程Log日志服务端口
+ProcessLogPort: 50119
+
 #进程Log日志
 ProcessLogDir: "./ProcessLog"
 
