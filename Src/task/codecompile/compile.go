@@ -127,20 +127,19 @@ func Task_ProcessCompile(ctx context.Context, server grpc_api.CodeClient) {
 					global.LogError(postErrorMsg.Error())
 					return
 				}
-				return
-			}
-			//编译成功
-			global.LogSuccess(fmt.Sprintf("%s/%d/编译成功!", code.ID, code.Indices))
-			//将编译结果添加到运行队列
-			select {
-			case <-ctx.Done():
-				return
-			case global.RunWaitQueue <- coderun.ForRunInfo{
-				ID:       code.ID,
-				Indices:  code.Indices,
-				RunDir:   code.RunDir,
-				BuildDir: code.BuildDir,
-			}:
+			} else { //编译成功
+				global.LogSuccess(fmt.Sprintf("%s/%d/编译成功!", code.ID, code.Indices))
+				//将编译结果添加到运行队列
+				select {
+				case <-ctx.Done():
+					return
+				case global.RunWaitQueue <- coderun.ForRunInfo{
+					ID:       code.ID,
+					Indices:  code.Indices,
+					RunDir:   code.RunDir,
+					BuildDir: code.BuildDir,
+				}:
+				}
 			}
 			//取消错误报告
 			postError = false

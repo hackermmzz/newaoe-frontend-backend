@@ -51,6 +51,7 @@ else
     g++ -c UsrAI.cpp \
     -O2 \
     -DNDEBUG \
+    -fPIC \
     -I./ \
     -I${QTINCLUDE} \
     -I${QTINCLUDE}/QtCore \
