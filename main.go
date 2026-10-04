@@ -149,7 +149,7 @@ func logResourceStatus() {
 		//打印任务情况
 		global.LogInfo(fmt.Sprintf("任务情况: %s", getTaskStatus()))
 		//打印docker资源占用情况
-		global.LogInfo(fmt.Sprintf("docker资源占用情况: ****************************\n%s\n****************************\n", getDockerResourceStatus()))
+		global.LogInfo(fmt.Sprintf("docker资源占用情况: \n****************************\n%s\n****************************\n", getDockerResourceStatus()))
 	}
 }
 
