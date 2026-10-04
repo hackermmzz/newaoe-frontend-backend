@@ -84,7 +84,7 @@ def main():
             # 拉取最新代码(judge)的judge分支
             print("开始拉取judge代码")
             begin_time = time.time()
-            git_pull("./", "judge")
+            git_pull("./", "judge", 3)
             end_time = time.time()
             print(f"judge拉取最新代码时间: {end_time - begin_time:.2f}秒")
             print(f"judge拉取最新代码成功")

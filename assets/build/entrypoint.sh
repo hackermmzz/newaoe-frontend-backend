@@ -154,25 +154,9 @@ git_retry /root/newaoe-frontend-backend/new-aoe main
 
 
 ##################################
-# cp到/tmp分区
-##################################
-
-echo "cp到/tmp分区"
-dir="/tmp/judge_$(date +%Y%m%d_%H%M%S)"
-mkdir -p "$dir"
-cp -r /root/newaoe-frontend-backend/* $dir/
-
-##################################
-# 切换到/tmp/judge目录下
-##################################
-
-echo "切换到{{$dir}}目录下"
-cd "$dir"
-
-
-##################################
 # 启动程序
 ##################################
+cd /root/newaoe-frontend-backend
 
 echo "启动judge"
 
