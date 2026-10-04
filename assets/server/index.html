@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>运行日志</title>
+
+<style>
+body {
+    margin: 0;
+    padding: 80px 20px 20px;
+    background: #111827;
+    color: #d1d5db;
+    font-family: Consolas, monospace;
+}
+
+/* 悬浮筛选栏 */
+#filters {
+    position: fixed;
+    top: 16px;
+    left: 20px;
+    z-index: 1000;
+
+    display: flex;
+    align-items: center;
+    gap: 14px;
+
+    padding: 10px 14px;
+    border: 1px solid #374151;
+    border-radius: 8px;
+    background: rgba(31, 41, 55, 0.96);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+#filters label {
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+/* 关键词搜索框 */
+#keywordSearch {
+    width: 180px;
+    padding: 6px 9px;
+    border: 1px solid #4b5563;
+    border-radius: 5px;
+    outline: none;
+    background: #111827;
+    color: #f3f4f6;
+    font-family: Consolas, monospace;
+}
+
+#keywordSearch:focus {
+    border-color: #60a5fa;
+}
+
+/* 悬浮分页栏 */
+#pageNav {
+    position: fixed;
+    top: 16px;
+    right: 20px;
+    z-index: 1000;
+
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    padding: 10px 14px;
+    border: 1px solid #374151;
+    border-radius: 8px;
+    background: rgba(31, 41, 55, 0.96);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+#pageNav button {
+    padding: 6px 12px;
+    border: 1px solid #4b5563;
+    border-radius: 5px;
+    background: #374151;
+    color: #f3f4f6;
+    cursor: pointer;
+}
+
+#pageNav button:hover:not(:disabled) {
+    background: #4b5563;
+}
+
+#pageNav button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+#pageInfo {
+    min-width: 70px;
+    color: #9ca3af;
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* 页码输入 */
+#jumpPageInput {
+    width: 58px;
+    padding: 6px 8px;
+    border: 1px solid #4b5563;
+    border-radius: 5px;
+    outline: none;
+    background: #111827;
+    color: #f3f4f6;
+    font-family: Consolas, monospace;
+}
+
+#jumpPageInput:focus {
+    border-color: #60a5fa;
+}
+
+.log {
+    padding: 6px 10px;
+    margin-bottom: 4px;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.time {
+    color: #6b7280;
+}
+
+.success {
+    color: #22c55e;
+    background: #052e16;
+}
+
+.error {
+    color: #f87171;
+    background: #450a0a;
+}
+
+.info {
+    color: #d1d5db;
+    background: #1f2937;
+}
+
+#loadError {
+    padding: 12px;
+    border-radius: 6px;
+    color: #f87171;
+    background: #450a0a;
+}
+
+@media (max-width: 700px) {
+    body {
+        padding-top: 20px;
+    }
+
+    #filters,
+    #pageNav {
+        position: static;
+        width: fit-content;
+        max-width: calc(100vw - 40px);
+        margin-bottom: 10px;
+        flex-wrap: wrap;
+    }
+
+    #keywordSearch {
+        width: 160px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div id="filters">
+    <label>
+        <input type="checkbox" value="success">
+        成功
+    </label>
+
+    <label>
+        <input type="checkbox" value="error">
+        错误
+    </label>
+
+    <label>
+        <input type="checkbox" value="info">
+        信息
+    </label>
+
+    <input
+        id="keywordSearch"
+        type="search"
+        placeholder="搜索关键词"
+        autocomplete="off"
+    >
+</div>
+
+<div id="pageNav">
+    <button id="prevPage" type="button">
+        上一页
+    </button>
+
+    <span id="pageInfo">加载中</span>
+
+    <button id="nextPage" type="button">
+        下一页
+    </button>
+
+    <input
+        id="jumpPageInput"
+        type="number"
+        min="0"
+        step="1"
+        placeholder="页码"
+    >
+
+    <button id="jumpPageButton" type="button">
+        跳转
+    </button>
+
+    <button id="scrollBottomButton" type="button">
+        滑到底部
+    </button>
+</div>
+
+<h2>运行日志</h2>
+
+<div id="logs"></div>
+
+<script>
+const filterInputs =
+    document.querySelectorAll("#filters input[type='checkbox']");
+
+const keywordSearch =
+    document.getElementById("keywordSearch");
+
+const logsElement =
+    document.getElementById("logs");
+
+const prevButton =
+    document.getElementById("prevPage");
+
+const nextButton =
+    document.getElementById("nextPage");
+
+const pageInfo =
+    document.getElementById("pageInfo");
+
+const jumpPageInput =
+    document.getElementById("jumpPageInput");
+
+const jumpPageButton =
+    document.getElementById("jumpPageButton");
+
+const scrollBottomButton =
+    document.getElementById("scrollBottomButton");
+
+let currentIndex = getCurrentIndex();
+let pageLoading = false;
+
+/*
+ * 只有已经在页面底部，
+ * 并且继续向下滚动时才刷新。
+ */
+let bottomRefreshArmed = true;
+let bottomRefreshing = false;
+let lastTouchY = null;
+
+/**
+ * 应用等级筛选和关键词搜索。
+ */
+function applyFilter() {
+    const selectedLevels = Array.from(filterInputs)
+        .filter(input => input.checked)
+        .map(input => input.value);
+
+    const keyword = keywordSearch.value
+        .trim()
+        .toLowerCase();
+
+    localStorage.setItem(
+        "log-filters",
+        JSON.stringify(selectedLevels)
+    );
+
+    localStorage.setItem(
+        "log-keyword",
+        keywordSearch.value
+    );
+
+    document.querySelectorAll("#logs .log").forEach(item => {
+        const levelMatched =
+            selectedLevels.length === 0 ||
+            selectedLevels.some(level =>
+                item.classList.contains(level)
+            );
+
+        const keywordMatched =
+            keyword.length === 0 ||
+            item.textContent
+                .toLowerCase()
+                .includes(keyword);
+
+        item.hidden = !(levelMatched && keywordMatched);
+    });
+}
+
+/**
+ * 初始化筛选条件和关键词。
+ */
+function initFilter() {
+    try {
+        const savedLevels = JSON.parse(
+            localStorage.getItem("log-filters") || "[]"
+        );
+
+        filterInputs.forEach(input => {
+            input.checked = savedLevels.includes(input.value);
+        });
+
+        keywordSearch.value =
+            localStorage.getItem("log-keyword") || "";
+    } catch (e) {
+        console.warn("读取筛选状态失败:", e);
+    }
+
+    filterInputs.forEach(input => {
+        input.addEventListener("change", applyFilter);
+    });
+
+    keywordSearch.addEventListener("input", applyFilter);
+
+    applyFilter();
+}
+
+/**
+ * 获取当前页码。
+ *
+ * 如果页面文件名是 ProcessLog5.html，
+ * 则返回 5。
+ *
+ * 如果当前页面是 home.html，
+ * 则从 sessionStorage 恢复上一次页码。
+ */
+function getCurrentIndex() {
+    const match = decodeURIComponent(location.pathname)
+        .match(/ProcessLog(\d+)\.html$/i);
+
+    if (match) {
+        return Number(match[1]);
+    }
+
+    try {
+        const savedIndex = Number.parseInt(
+            sessionStorage.getItem("current-log-page"),
+            10
+        );
+
+        if (
+            Number.isInteger(savedIndex) &&
+            savedIndex >= 0
+        ) {
+            return savedIndex;
+        }
+    } catch (e) {
+        console.warn("读取当前页码失败:", e);
+    }
+
+    return 0;
+}
+
+/**
+ * 保存当前页码。
+ */
+function saveCurrentIndex(index) {
+    try {
+        sessionStorage.setItem(
+            "current-log-page",
+            String(index)
+        );
+    } catch (e) {
+        console.warn("保存当前页码失败:", e);
+    }
+}
+
+/**
+ * 判断文件是否存在。
+ */
+async function fileExists(url) {
+    if (!url) {
+        return false;
+    }
+
+    try {
+        let response = await fetch(url, {
+            method: "HEAD",
+            cache: "no-store"
+        });
+
+        if (response.ok) {
+            return true;
+        }
+
+        /*
+         * 某些服务器不支持 HEAD，
+         * 改用 GET 判断。
+         */
+        if (
+            response.status === 403 ||
+            response.status === 405 ||
+            response.status === 501
+        ) {
+            response = await fetch(url, {
+                method: "GET",
+                cache: "no-store"
+            });
+
+            return response.ok;
+        }
+
+        return false;
+    } catch (e) {
+        console.warn("检查文件是否存在失败:", url, e);
+        return false;
+    }
+}
+
+/**
+ * 根据页码获取日志文件完整 URL。
+ *
+ * 例如：
+ * /log/ProcessLog3.html
+ */
+async function getProcessLogUrl(index) {
+    if (!Number.isInteger(index) || index < 0) {
+        return "";
+    }
+
+    const fullUrl = new URL(
+        "/log/ProcessLog" + index + ".html",
+        window.location.origin
+    ).href;
+
+    if (await fileExists(fullUrl)) {
+        return fullUrl;
+    }
+
+    return "";
+}
+
+/**
+ * 更新分页按钮状态。
+ */
+async function updatePagination() {
+    prevButton.disabled = true;
+    nextButton.disabled = true;
+
+    const prevUrl = currentIndex > 0
+        ? await getProcessLogUrl(currentIndex - 1)
+        : "";
+
+    const nextUrl = await getProcessLogUrl(currentIndex + 1);
+
+    prevButton.disabled =
+        pageLoading || !prevUrl;
+
+    nextButton.disabled =
+        pageLoading || !nextUrl;
+}
+
+/**
+ * 加载指定页码。
+ */
+async function loadLogPage(index) {
+    if (
+        pageLoading ||
+        !Number.isInteger(index) ||
+        index < 0
+    ) {
+        return false;
+    }
+
+    pageLoading = true;
+
+    prevButton.disabled = true;
+    nextButton.disabled = true;
+    jumpPageButton.disabled = true;
+
+    pageInfo.textContent = "加载中";
+
+    const url = await getProcessLogUrl(index);
+
+    if (!url) {
+        pageLoading = false;
+
+        pageInfo.textContent =
+            "第 " + currentIndex + " 页";
+
+        jumpPageInput.value = currentIndex;
+
+        jumpPageButton.disabled = false;
+
+        await updatePagination();
+
+        return false;
+    }
+
+    try {
+        const response = await fetch(url, {
+            method: "GET",
+            cache: "no-store"
+        });
+
+        if (!response.ok) {
+            throw new Error(
+                "HTTP " +
+                response.status +
+                " " +
+                response.statusText
+            );
+        }
+
+        const html = await response.text();
+
+        /*
+         * 日志文件只包含 div 等 HTML 片段。
+         */
+        logsElement.innerHTML = html;
+
+        currentIndex = index;
+
+        saveCurrentIndex(currentIndex);
+
+        pageInfo.textContent =
+            "第 " + currentIndex + " 页";
+
+        jumpPageInput.value = currentIndex;
+
+        applyFilter();
+
+        return true;
+    } catch (e) {
+        console.warn("加载日志文件失败:", url, e);
+
+        logsElement.innerHTML =
+            '<div id="loadError">日志加载失败</div>';
+
+        pageInfo.textContent = "加载失败";
+
+        return false;
+    } finally {
+        pageLoading = false;
+        jumpPageButton.disabled = false;
+
+        await updatePagination();
+    }
+}
+
+/**
+ * 跳转到指定页码。
+ */
+async function jumpToPage() {
+    const targetIndex = Number.parseInt(
+        jumpPageInput.value,
+        10
+    );
+
+    if (
+        !Number.isInteger(targetIndex) ||
+        targetIndex < 0
+    ) {
+        jumpPageInput.value = currentIndex;
+        return;
+    }
+
+    const oldIndex = currentIndex;
+    const loaded = await loadLogPage(targetIndex);
+
+    /*
+     * 目标页不存在时恢复原页码。
+     */
+    if (!loaded) {
+        currentIndex = oldIndex;
+        jumpPageInput.value = currentIndex;
+
+        pageInfo.textContent =
+            "第 " + currentIndex + " 页";
+    }
+}
+
+/**
+ * 判断是否已经到达页面底部。
+ */
+function isAtBottom() {
+    const scrollTop =
+        window.scrollY ||
+        document.documentElement.scrollTop;
+
+    const windowHeight = window.innerHeight;
+
+    const documentHeight =
+        document.documentElement.scrollHeight;
+
+    return scrollTop + windowHeight >= documentHeight - 8;
+}
+
+/**
+ * 在已经位于底部后继续向下滚动时刷新当前页。
+ */
+async function refreshAtBottom() {
+    if (
+        !isAtBottom() ||
+        !bottomRefreshArmed ||
+        bottomRefreshing ||
+        pageLoading
+    ) {
+        return;
+    }
+
+    bottomRefreshArmed = false;
+    bottomRefreshing = true;
+
+    const oldScrollTop =
+        window.scrollY ||
+        document.documentElement.scrollTop;
+
+    try {
+        /*
+         * 只刷新当前页，不改变页码。
+         */
+        await loadLogPage(currentIndex);
+
+        window.scrollTo(0, oldScrollTop);
+    } finally {
+        bottomRefreshing = false;
+    }
+}
+
+/**
+ * 鼠标滚轮处理。
+ */
+function handleWheel(event) {
+    if (event.deltaY > 0) {
+        refreshAtBottom();
+    } else if (!isAtBottom()) {
+        bottomRefreshArmed = true;
+    }
+}
+
+/**
+ * 触摸屏滑动开始。
+ */
+function handleTouchStart(event) {
+    if (event.touches.length > 0) {
+        lastTouchY = event.touches[0].clientY;
+    }
+}
+
+/**
+ * 触摸屏继续下滑处理。
+ */
+function handleTouchMove(event) {
+    if (
+        event.touches.length === 0 ||
+        lastTouchY === null
+    ) {
+        return;
+    }
+
+    const currentTouchY =
+        event.touches[0].clientY;
+
+    const movingDown =
+        lastTouchY > currentTouchY;
+
+    lastTouchY = currentTouchY;
+
+    if (movingDown) {
+        refreshAtBottom();
+    } else if (!isAtBottom()) {
+        bottomRefreshArmed = true;
+    }
+}
+
+function handleTouchEnd() {
+    lastTouchY = null;
+}
+
+/**
+ * 直接平滑滚动到底部。
+ */
+function scrollToBottom() {
+    window.scrollTo({
+        top: document.documentElement.scrollHeight,
+        behavior: "smooth"
+    });
+}
+
+/**
+ * 初始化分页。
+ */
+async function initPagination() {
+    prevButton.addEventListener(
+        "click",
+        async function () {
+            if (currentIndex > 0) {
+                await loadLogPage(currentIndex - 1);
+            }
+        }
+    );
+
+    nextButton.addEventListener(
+        "click",
+        async function () {
+            await loadLogPage(currentIndex + 1);
+        }
+    );
+
+    jumpPageButton.addEventListener(
+        "click",
+        jumpToPage
+    );
+
+    jumpPageInput.addEventListener(
+        "keydown",
+        function (event) {
+            if (event.key === "Enter") {
+                jumpToPage();
+            }
+        }
+    );
+
+    scrollBottomButton.addEventListener(
+        "click",
+        scrollToBottom
+    );
+
+    jumpPageInput.value = currentIndex;
+
+    /*
+     * 刷新后继续加载上一次所在页码。
+     */
+    const loaded = await loadLogPage(currentIndex);
+
+    /*
+     * 如果保存的页码不存在，则回到第 0 页。
+     */
+    if (!loaded && currentIndex !== 0) {
+        currentIndex = 0;
+        saveCurrentIndex(0);
+        jumpPageInput.value = 0;
+        await loadLogPage(0);
+    }
+}
+
+document.addEventListener(
+    "DOMContentLoaded",
+    async function () {
+        initFilter();
+
+        window.addEventListener(
+            "wheel",
+            handleWheel,
+            { passive: true }
+        );
+
+        window.addEventListener(
+            "touchstart",
+            handleTouchStart,
+            { passive: true }
+        );
+
+        window.addEventListener(
+            "touchmove",
+            handleTouchMove,
+            { passive: true }
+        );
+
+        window.addEventListener(
+            "touchend",
+            handleTouchEnd,
+            { passive: true }
+        );
+
+        /*
+         * 离开底部后，允许下一次继续下滑触发刷新。
+         */
+        window.addEventListener(
+            "scroll",
+            function () {
+                if (!isAtBottom()) {
+                    bottomRefreshArmed = true;
+                }
+            },
+            { passive: true }
+        );
+
+        await initPagination();
+    }
+);
+</script>
+
+</body>
+</html>

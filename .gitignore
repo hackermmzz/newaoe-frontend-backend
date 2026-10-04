@@ -1,6 +1,6 @@
 RunDir/
 *.txt
-*.html
+ProcessLog/
 new-aoe/
 new-aoe-judge.exe
 .diagnostic-go-cache/

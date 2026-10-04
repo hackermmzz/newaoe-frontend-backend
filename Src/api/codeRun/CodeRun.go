@@ -43,18 +43,20 @@ func CodeRun(
 	workdir := "/tmp/project"
 	container := fmt.Sprintf("coderun_%s_%d_%s", id, indices, util.UUID())
 	// 挂载文件
-	mounts := []string{
-		"-v", util.JoinPath(config.Conf.NewAOEFolder, "res.rcc") + ":" + workdir + "/res.rcc",
-		"-v", util.JoinPath(config.Conf.NewAOEFolder, "config.json") + ":" + workdir + "/config.json:ro",
-		"-v", util.JoinPath(buildDir, "newAOE") + ":" + workdir + "/newAOE:ro",
-		"-v", util.JoinPath(resultFile.Name()) + ":" + workdir + "/" + config.Conf.RunResultFileName,
-		"-v", util.JoinPath(recordFile.Name()) + ":" + workdir + "/" + config.Conf.RecordFileName,
-		"-v", util.JoinPath(debugFile.Name()) + ":" + workdir + "/" + config.Conf.RunDebugLogOutputFileName,
-		"-v", util.JoinPath(crashFile.Name()) + ":" + workdir + "/" + config.Conf.CrashLogFileName,
+	mounts := map[string]string{
+		util.JoinPath(config.Conf.NewAOEFolder, "res.rcc"):     workdir + "/res.rcc",
+		util.JoinPath(config.Conf.NewAOEFolder, "config.json"): workdir + "/config.json:ro",
+		util.JoinPath(buildDir, "newAOE"):                      workdir + "/newAOE:ro",
+		util.JoinPath(buildDir, "UsrAI.h"):                     workdir + "/UsrAI.h:ro",
+		util.JoinPath(buildDir, "UsrAI.cpp"):                   workdir + "/UsrAI.cpp:ro",
+		util.JoinPath(resultFile.Name()):                       workdir + "/" + config.Conf.RunResultFileName,
+		util.JoinPath(recordFile.Name()):                       workdir + "/" + config.Conf.RecordFileName,
+		util.JoinPath(debugFile.Name()):                        workdir + "/" + config.Conf.RunDebugLogOutputFileName,
+		util.JoinPath(crashFile.Name()):                        workdir + "/" + config.Conf.CrashLogFileName,
 	}
 	// 挂载地图
 	for _, x := range global.MapFiles {
-		mounts = append(mounts, "-v", util.JoinPath(config.Conf.NewAOEFolder, x)+":"+workdir+"/"+x+":ro")
+		mounts[util.JoinPath(config.Conf.NewAOEFolder, x)] = workdir + "/" + x + ":ro"
 	}
 	// 生成脚本
 	script, e := util.FormatFile(util.JoinPath("assets", "bash", "coderun.sh"), map[string]interface{}{
@@ -74,6 +76,16 @@ func CodeRun(
 			Err: fmt.Errorf("CodeRun生成脚本失败: %w", e),
 		}
 	}
+	//获取AOE可执行文件大小
+	AoeFileInfo, e := os.Stat(util.JoinPath(buildDir, "newAOE"))
+	if e != nil {
+		return &CodeRunRetInfo{
+			Err: fmt.Errorf("CodeRun获取AOE可执行文件大小失败: %w", e),
+		}
+	}
+	// 计算内存限制
+	memoryLimit := fmt.Sprintf("%dm", config.Conf.RunMemoryLimit+int(AoeFileInfo.Size()))
+	diskLimit := fmt.Sprintf("%dm", config.Conf.RunDiskLimit)
 	// 构建命令
 	args := []string{
 		"run",
@@ -81,11 +93,13 @@ func CodeRun(
 		"--cpus", cpuResource.GetCPUS(),
 		"--name", container,
 		"--label", "newaoe-judge",
-		"-m", config.Conf.RunMemoryLimit,
-		"--memory-swap", config.Conf.RunMemoryLimit,
-		"--tmpfs", "/tmp:rw,size=" + config.Conf.RunDiskLimit,
+		"-m", memoryLimit,
+		"--memory-swap", memoryLimit,
+		"--tmpfs", "/tmp:rw,size=" + diskLimit,
 	}
-	args = append(args, mounts...)
+	for k, v := range mounts {
+		args = append(args, "-v", k+":"+v)
+	}
 	args = append(args, "-w", workdir, config.Conf.NewAOEDockerImg, "bash", "-c", script)
 	//
 	var dockerStateCMD *exec.Cmd

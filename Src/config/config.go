@@ -28,8 +28,8 @@ type Config struct {
 	RunTimeout                      int    `yaml:"RunTimeout"`
 	JudgeSleepTimeWhenGetCodeFailed int    `yaml:"JudgeSleepTimeWhenGetCodeFailed"`
 	CodeRunStatusUploadInterval     int    `yaml:"CodeRunStatusUploadInterval"`
-	RunMemoryLimit                  string `yaml:"RunMemoryLimit"`
-	RunDiskLimit                    string `yaml:"RunDiskLimit"`
+	RunMemoryLimit                  int    `yaml:"RunMemoryLimit"`
+	RunDiskLimit                    int    `yaml:"RunDiskLimit"`
 	ProcessLogDir                   string `yaml:"ProcessLogDir"`
 	AOERunSpeed                     int    `yaml:"AOERunSpeed"`
 	ServerHome                      string `yaml:"ServerHome"`
@@ -99,8 +99,8 @@ func LoadConfig() error {
 		RunDebugLogOutputFileName:       envOr(m, "RunDebugLogOutputFileName"),
 		RecordFileName:                  envOr(m, "RecordFileName"),
 		CrashLogFileName:                envOr(m, "CrashLogFileName"),
-		RunMemoryLimit:                  envOr(m, "RunMemoryLimit"),
-		RunDiskLimit:                    envOr(m, "RunDiskLimit"),
+		RunMemoryLimit:                  atoi(envOr(m, "RunMemoryLimit"), 256),
+		RunDiskLimit:                    atoi(envOr(m, "RunDiskLimit"), 20),
 		JudgeCodeFetchQueueMaxPayload:   atoi(envOr(m, "JudgeCodeFetchQueueMaxPayload"), 10),
 		RunTimeout:                      atoi(envOr(m, "RunTimeout"), 1800),
 		JudgeSleepTimeWhenGetCodeFailed: atoi(envOr(m, "JudgeSleepTimeWhenGetCodeFailed"), 5),

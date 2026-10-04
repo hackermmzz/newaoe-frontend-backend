@@ -56,10 +56,10 @@ AOERunSpeed: 10
 JudgeCodeFetchQueueMaxPayload: 10
 
 # 限制运行内存
-RunMemoryLimit: "256m"
+RunMemoryLimit: 256
 
 # 限制磁盘使用
-RunDiskLimit: "20m"
+RunDiskLimit: 20
 
 # 超时时间，单位：秒
 RunTimeout: 1800
