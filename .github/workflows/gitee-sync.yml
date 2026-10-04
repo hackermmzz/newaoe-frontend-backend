@@ -13,14 +13,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: Sync judge branch to Gitee
         run: |
           git remote add gitee https://crackermmzz:${{ secrets.GITEE_TOKEN }}@gitee.com/crackermmzz/newaoe-frontend-backend.git
 
           # 只同步 judge 分支
-          git push gitee judge
+          git push gitee judge -f
 
           # 同步 tag（如果需要）
           git push gitee --tags
