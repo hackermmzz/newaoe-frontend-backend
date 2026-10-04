@@ -52,9 +52,6 @@ CrashLogFileName: "CrashLog.txt"
 # 运行aoe的倍速
 AOERunSpeed: 10
 
-# 判题机最大任务拉取数
-JudgeCodeFetchQueueMaxPayload: 10
-
 # 限制运行内存
 RunMemoryLimit: 256
 
@@ -63,6 +60,12 @@ RunDiskLimit: 20
 
 # 超时时间，单位：秒
 RunTimeout: 1800
+
+#当前版本号
+CurrentVersion: "1.0.0"
+
+#系统获取最新oj系统信息间隔,单位：秒
+SystemInfoFetchInterval: 5
 
 # 获取任务失败进行休眠时长，单位：秒
 JudgeSleepTimeWhenGetCodeFailed: 5

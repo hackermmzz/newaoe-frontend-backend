@@ -22,6 +22,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	Code_GetCode_FullMethodName          = "/Code/GetCode"
 	Code_CodeStatusUpdate_FullMethodName = "/Code/CodeStatusUpdate"
+	Code_OJSystemInfoGet_FullMethodName  = "/Code/OJSystemInfoGet"
 )
 
 // CodeClient is the client API for Code service.
@@ -34,6 +35,7 @@ type CodeClient interface {
 	//获取一份待批改的代码
 	GetCode(ctx context.Context, in *CodeRequest, opts ...grpc.CallOption) (*CodeReply, error)
 	CodeStatusUpdate(ctx context.Context, in *CodeStatusUpdateRequest, opts ...grpc.CallOption) (*StatusUpdateReply, error)
+	OJSystemInfoGet(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*OJSystemInfoReply, error)
 }
 
 type codeClient struct {
@@ -64,6 +66,16 @@ func (c *codeClient) CodeStatusUpdate(ctx context.Context, in *CodeStatusUpdateR
 	return out, nil
 }
 
+func (c *codeClient) OJSystemInfoGet(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*OJSystemInfoReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(OJSystemInfoReply)
+	err := c.cc.Invoke(ctx, Code_OJSystemInfoGet_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CodeServer is the server API for Code service.
 // All implementations must embed UnimplementedCodeServer
 // for forward compatibility.
@@ -74,6 +86,7 @@ type CodeServer interface {
 	//获取一份待批改的代码
 	GetCode(context.Context, *CodeRequest) (*CodeReply, error)
 	CodeStatusUpdate(context.Context, *CodeStatusUpdateRequest) (*StatusUpdateReply, error)
+	OJSystemInfoGet(context.Context, *Empty) (*OJSystemInfoReply, error)
 	mustEmbedUnimplementedCodeServer()
 }
 
@@ -89,6 +102,9 @@ func (UnimplementedCodeServer) GetCode(context.Context, *CodeRequest) (*CodeRepl
 }
 func (UnimplementedCodeServer) CodeStatusUpdate(context.Context, *CodeStatusUpdateRequest) (*StatusUpdateReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method CodeStatusUpdate not implemented")
+}
+func (UnimplementedCodeServer) OJSystemInfoGet(context.Context, *Empty) (*OJSystemInfoReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method OJSystemInfoGet not implemented")
 }
 func (UnimplementedCodeServer) mustEmbedUnimplementedCodeServer() {}
 func (UnimplementedCodeServer) testEmbeddedByValue()              {}
@@ -147,6 +163,24 @@ func _Code_CodeStatusUpdate_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Code_OJSystemInfoGet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CodeServer).OJSystemInfoGet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Code_OJSystemInfoGet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CodeServer).OJSystemInfoGet(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Code_ServiceDesc is the grpc.ServiceDesc for Code service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -161,6 +195,10 @@ var Code_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CodeStatusUpdate",
 			Handler:    _Code_CodeStatusUpdate_Handler,
+		},
+		{
+			MethodName: "OJSystemInfoGet",
+			Handler:    _Code_OJSystemInfoGet_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

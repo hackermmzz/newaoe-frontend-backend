@@ -9,6 +9,7 @@ import (
 	"io"
 	"math/big"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sync"
 	"text/template"
@@ -264,4 +265,26 @@ func RemoveFiles(filepath []string) error {
 		}
 	}
 	return errors.Join(ret...)
+}
+
+// pull目录
+func GitPull(dir string, branch string, retry int) error {
+	errs := []error{}
+	// 更新new-aoe目录
+	for i := 0; i < 3; i += 1 {
+		cmd := exec.Command(
+			"git",
+			"pull",
+			"origin",
+			branch,
+		)
+		cmd.Dir = JoinPath(dir)
+		err := cmd.Run()
+		if err != nil {
+			errs = append(errs, err)
+		} else {
+			return nil
+		}
+	}
+	return errors.Join(errs...)
 }

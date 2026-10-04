@@ -9,6 +9,7 @@ import (
 	"new-aoe-judge/Src/global"
 	grpc_api "new-aoe-judge/Src/grpc"
 	"new-aoe-judge/Src/server"
+	"new-aoe-judge/Src/system"
 	"new-aoe-judge/Src/task"
 	"os"
 	"os/exec"
@@ -103,12 +104,13 @@ func closeProcess() {
 // 打印任务情况
 func getTaskStatus() string {
 	return fmt.Sprintf(
-		"当前等待:%d 编译:%d/%d 运行:%d/%d",
-		global.Profiler.TaskWait,
-		global.Profiler.Compile,
-		len(global.CompileWaitQueue)+global.Profiler.Compile,
-		global.Profiler.Running,
-		len(global.RunWaitQueue)+global.Profiler.Running,
+		"当前等待:%d 编译:%d/%d 运行:%d/%d,所有任务:%d",
+		global.Profiler.GetTaskWait(),
+		global.Profiler.GetCompile(),
+		len(global.CompileWaitQueue)+global.Profiler.GetCompile(),
+		global.Profiler.GetRunning(),
+		len(global.RunWaitQueue)+global.Profiler.GetRunning(),
+		global.Profiler.GetTaskSem(),
 	)
 }
 func main() {
@@ -187,6 +189,8 @@ func main() {
 			}
 		}
 	}()
+	//启动system监听
+	go system.SystemRun(context.Background(), server)
 	// 启动任务处理任务
 	go task.Task(ctx, server)
 	//启动日志记录任务情况

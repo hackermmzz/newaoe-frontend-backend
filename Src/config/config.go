@@ -24,7 +24,6 @@ type Config struct {
 	RunDebugLogOutputFileName       string `yaml:"RunDebugLogOutputFileName"`
 	RecordFileName                  string `yaml:"RecordFileName"`
 	CrashLogFileName                string `yaml:"CrashLogFileName"`
-	JudgeCodeFetchQueueMaxPayload   int    `yaml:"JudgeCodeFetchQueueMaxPayload"`
 	RunTimeout                      int    `yaml:"RunTimeout"`
 	JudgeSleepTimeWhenGetCodeFailed int    `yaml:"JudgeSleepTimeWhenGetCodeFailed"`
 	CodeRunStatusUploadInterval     int    `yaml:"CodeRunStatusUploadInterval"`
@@ -33,6 +32,8 @@ type Config struct {
 	ProcessLogDir                   string `yaml:"ProcessLogDir"`
 	AOERunSpeed                     int    `yaml:"AOERunSpeed"`
 	ServerHome                      string `yaml:"ServerHome"`
+	SystemInfoFetchInterval         int    `yaml:"SystemInfoFetchInterval"`
+	CurrentVersion                  string `yaml:"CurrentVersion"`
 }
 
 var Conf Config
@@ -101,13 +102,14 @@ func LoadConfig() error {
 		CrashLogFileName:                envOr(m, "CrashLogFileName"),
 		RunMemoryLimit:                  atoi(envOr(m, "RunMemoryLimit"), 256),
 		RunDiskLimit:                    atoi(envOr(m, "RunDiskLimit"), 20),
-		JudgeCodeFetchQueueMaxPayload:   atoi(envOr(m, "JudgeCodeFetchQueueMaxPayload"), 10),
 		RunTimeout:                      atoi(envOr(m, "RunTimeout"), 1800),
 		JudgeSleepTimeWhenGetCodeFailed: atoi(envOr(m, "JudgeSleepTimeWhenGetCodeFailed"), 5),
 		CodeRunStatusUploadInterval:     atoi(envOr(m, "CodeRunStatusUploadInterval"), 1),
 		ProcessLogDir:                   envOr(m, "ProcessLogDir"),
 		AOERunSpeed:                     atoi(envOr(m, "AOERunSpeed"), 8),
 		ServerHome:                      envOr(m, "ServerHome"),
+		SystemInfoFetchInterval:         atoi(envOr(m, "SystemInfoFetchInterval"), 5),
+		CurrentVersion:                  envOr(m, "CurrentVersion"),
 	}
 	if Conf.GRPCPort == "" {
 		return errors.New("GRPCPort 不能为空")

@@ -9,6 +9,11 @@ import (
 
 type CodeRunType int64
 
+// ///////////////////////// OJSystemInfo OJ系统信息
+type OJSystemInfo struct {
+	Version string `json:"version"` //最新的版本号
+}
+
 // //////////////////////// GRPCAuthInfo gRPC 认证信息
 type GRPCAuthInfo struct {
 	ID       string `json:"id"`
@@ -60,11 +65,17 @@ type CPUResourceAllocateInfo struct {
 
 type ProfilerInfo struct {
 	//统计性能
-	mu                         sync.Mutex
-	TaskWait, Compile, Running int
+	mu       sync.Mutex
+	taskWait int
+	compile  int
+	running  int
+	//任务信号量
+	taskMu        sync.Mutex
+	taskAcquireMu sync.Mutex //锁住后任务只能减少不能增加
+	taskSem       int64
 	//分配资源
-	CompileCore *CoreInfo
-	RunCore     *CoreInfo
+	compileCore *CoreInfo
+	runCore     *CoreInfo
 }
 
 // GetCores 获取核心列表
@@ -98,11 +109,11 @@ func newCoreInfo(singleCoreInfos []SingleCoreInfo) *CoreInfo {
 // NewProfilerInfo 创建性能分析信息
 func NewProfilerInfo(compileCores []SingleCoreInfo, runCores []SingleCoreInfo) *ProfilerInfo {
 	return &ProfilerInfo{
-		TaskWait:    0,
-		Compile:     0,
-		Running:     0,
-		CompileCore: newCoreInfo(compileCores),
-		RunCore:     newCoreInfo(runCores),
+		taskWait:    0,
+		compile:     0,
+		running:     0,
+		compileCore: newCoreInfo(compileCores),
+		runCore:     newCoreInfo(runCores),
 	}
 }
 
@@ -176,16 +187,16 @@ func (p *CoreInfo) recycleResource(cpuResource CPUResourceAllocateInfo) {
 func (p *ProfilerInfo) GetResourceSnapshot() string {
 	stats := make(map[string]interface{})
 	//记录性能
-	stats["TaskWait"] = p.TaskWait
-	stats["Compile"] = p.Compile
-	stats["Running"] = p.Running
+	stats["TaskWait"] = p.taskWait
+	stats["Compile"] = p.compile
+	stats["Running"] = p.running
 	//记录资源
 	stats["CoreForCompile"] = make([]SingleCoreInfo, 0)
-	stats["CoreForCompile"] = p.CompileCore.CoreInfos
+	stats["CoreForCompile"] = p.compileCore.CoreInfos
 
 	//记录资源
 	stats["CoreForRun"] = make([]SingleCoreInfo, 0)
-	stats["CoreForRun"] = p.RunCore.CoreInfos
+	stats["CoreForRun"] = p.runCore.CoreInfos
 	//返回快照
 	dataBytes, _ := json.MarshalIndent(stats, "", "  ")
 	return string(dataBytes)
@@ -193,7 +204,7 @@ func (p *ProfilerInfo) GetResourceSnapshot() string {
 
 // 给代码编译分配资源
 func (p *ProfilerInfo) AllocateCodeCompileResource(cpus int) CPUResourceAllocateInfo {
-	res := p.CompileCore.allocateResource(cpus)
+	res := p.compileCore.allocateResource(cpus)
 	//Log资源情况
 	LogInfo(fmt.Sprintf("ProfilerInfo分配资源成功!当前资源情况: %s", p.GetResourceSnapshot()))
 	return res
@@ -201,14 +212,14 @@ func (p *ProfilerInfo) AllocateCodeCompileResource(cpus int) CPUResourceAllocate
 
 // 回收代码编译资源
 func (p *ProfilerInfo) RecycleCodeCompileResource(cpuResource CPUResourceAllocateInfo) {
-	p.CompileCore.recycleResource(cpuResource)
+	p.compileCore.recycleResource(cpuResource)
 	//Log资源情况
 	LogInfo(fmt.Sprintf("ProfilerInfo回收资源成功!当前资源情况: %s", p.GetResourceSnapshot()))
 }
 
 // 给代码运行分配资源
 func (p *ProfilerInfo) AllocateCodeRunResource(cpus int) CPUResourceAllocateInfo {
-	res := p.RunCore.allocateResource(cpus)
+	res := p.runCore.allocateResource(cpus)
 	//Log资源情况
 	LogInfo(fmt.Sprintf("ProfilerInfo分配资源成功!当前资源情况: %s", p.GetResourceSnapshot()))
 	return res
@@ -216,7 +227,7 @@ func (p *ProfilerInfo) AllocateCodeRunResource(cpus int) CPUResourceAllocateInfo
 
 // 回收代码运行资源
 func (p *ProfilerInfo) RecycleCodeRunResource(cpuResource CPUResourceAllocateInfo) {
-	p.RunCore.recycleResource(cpuResource)
+	p.runCore.recycleResource(cpuResource)
 	//Log资源情况
 	LogInfo(fmt.Sprintf("ProfilerInfo回收资源成功!当前资源情况: %s", p.GetResourceSnapshot()))
 }
@@ -233,23 +244,75 @@ func (p *ProfilerInfo) dec(field *int) {
 	}
 	p.mu.Unlock()
 }
+
+func (p *ProfilerInfo) GetTaskWait() int {
+	return p.taskWait
+}
+
 func (p *ProfilerInfo) IncreaseTaskWait() {
-	p.inc(&p.TaskWait)
+	p.inc(&p.taskWait)
 }
 func (p *ProfilerInfo) DecreaseTaskWait() {
 
-	p.dec(&p.TaskWait)
+	p.dec(&p.taskWait)
 }
+
+func (p *ProfilerInfo) GetCompile() int {
+	return p.compile
+}
+
 func (p *ProfilerInfo) IncreaseCompile() {
-	p.inc(&p.Compile)
+	p.inc(&p.compile)
 }
 func (p *ProfilerInfo) DecreaseCompile() {
-	p.dec(&p.Compile)
+	p.dec(&p.compile)
 }
+
+func (p *ProfilerInfo) GetRunning() int {
+	return p.running
+}
+
 func (p *ProfilerInfo) IncreaseRunning() {
-	p.inc(&p.Running)
+	p.inc(&p.running)
 }
 func (p *ProfilerInfo) DecreaseRunning() {
 
-	p.dec(&p.Running)
+	p.dec(&p.running)
+}
+
+// 拒绝从函数调用开始的所有任务
+func (p *ProfilerInfo) TaskRefuseMoreTask() {
+	p.taskAcquireMu.Lock()
+}
+
+func (p *ProfilerInfo) TaskAcceptMoreTask() {
+	p.taskAcquireMu.Unlock()
+}
+
+func (p *ProfilerInfo) TaskProcess() {
+	//
+	p.taskAcquireMu.Lock()
+	defer p.taskAcquireMu.Unlock()
+	//获取任务锁
+	p.taskMu.Lock()
+	defer p.taskMu.Unlock()
+	p.taskSem++
+}
+
+func (p *ProfilerInfo) TaskComplete() {
+	p.taskMu.Lock()
+	defer p.taskMu.Unlock()
+	p.taskSem--
+}
+
+func (p *ProfilerInfo) TaskAllDone() bool {
+	p.taskMu.Lock()
+	defer p.taskMu.Unlock()
+	return p.taskSem == 0
+}
+
+func (p *ProfilerInfo) GetTaskSem() int64 {
+	p.taskMu.Lock()
+	defer p.taskMu.Unlock()
+	return p.taskSem
 }

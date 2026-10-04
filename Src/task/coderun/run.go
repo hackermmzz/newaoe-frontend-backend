@@ -28,6 +28,9 @@ func Task_ProcessRun(ctx context.Context, server grpc_api.CodeClient) {
 			code = dt.(ForRunInfo)
 		}
 		func() {
+			//减少一个任务信号量(无论如何都需要减少的)
+			defer global.Profiler.TaskComplete()
+			//
 			postError := true
 			var postErrorMsg error
 			defer func() {

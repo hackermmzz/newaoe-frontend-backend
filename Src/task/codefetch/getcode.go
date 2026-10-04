@@ -16,11 +16,21 @@ import (
 // ////////////////// 获取代码
 func Task_GetStudentCode(ctx context.Context, server grpc_api.CodeClient) {
 	for {
+		//
 		select {
 		case <-ctx.Done():
 			return
 		default:
 			func() {
+				//提前申请一个任务槽
+				bAcquireTaskSem := true
+				global.Profiler.TaskProcess()
+				defer func() {
+					if bAcquireTaskSem {
+						global.Profiler.TaskComplete()
+					}
+				}()
+				//获取代码
 				res := api_codeGet.GetOneStudentCode(ctx, server)
 				sleepTime := time.Duration(config.Conf.JudgeSleepTimeWhenGetCodeFailed-rand.IntN(2)+1) * time.Second
 				if res.Error != nil {
@@ -51,6 +61,8 @@ func Task_GetStudentCode(ctx context.Context, server grpc_api.CodeClient) {
 					StudentCode: res,
 				}:
 				}
+				//保持任务信号量
+				bAcquireTaskSem = false
 			}()
 		}
 	}

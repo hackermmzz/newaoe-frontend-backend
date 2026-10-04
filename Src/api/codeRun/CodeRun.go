@@ -84,7 +84,7 @@ func CodeRun(
 		}
 	}
 	// 计算内存限制
-	memoryLimit := fmt.Sprintf("%dm", config.Conf.RunMemoryLimit+int(AoeFileInfo.Size()))
+	memoryLimit := fmt.Sprintf("%dm", config.Conf.RunMemoryLimit+int(AoeFileInfo.Size()/(1024*1024)))
 	diskLimit := fmt.Sprintf("%dm", config.Conf.RunDiskLimit)
 	// 构建命令
 	args := []string{

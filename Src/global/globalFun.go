@@ -2,6 +2,7 @@ package global
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"html"
 	"io"
@@ -18,9 +19,9 @@ import (
 
 var (
 	//backoff参数
-	sleepMS       = 100
-	MaxRetryTimes = 6
-	MaxBackOffMS  = 1000
+	backOffSleepMS       = 100
+	backOffMaxRetryTimes = 6
+	backOffMaxBackOffMS  = 1000
 	//日志参数
 	logFileLine  = 0
 	logFileIndex = 0
@@ -153,7 +154,7 @@ func PostCodeStatus(
 		return nil
 	}
 	//重试6次
-	err := backOff(sleepMS, MaxRetryTimes, MaxBackOffMS, fun)
+	err := backOff(backOffSleepMS, backOffMaxRetryTimes, backOffMaxBackOffMS, fun)
 	if err != nil {
 		return nil, err
 	}
@@ -170,6 +171,30 @@ func PostServerErrorStatus(ctx context.Context,
 		Status: Code_Status_Error,
 		Data:   fmt.Sprintf("服务器异常:%v", err),
 	}.String())
+}
+
+// 获取OJ最新的版本等状态
+func GetOJSystemInfo(ctx context.Context, server grpc_api.CodeClient) (*OJSystemInfo, error) {
+	var reply *grpc_api.OJSystemInfoReply
+	fun := func() error {
+		var err error
+		reply, err = server.OJSystemInfoGet(ctx, &grpc_api.Empty{})
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	err := backOff(backOffSleepMS, backOffMaxRetryTimes, backOffMaxBackOffMS, fun)
+	if err != nil {
+		return nil, err
+	}
+	//解析reply
+	var ojSystemInfo OJSystemInfo
+	err = json.Unmarshal([]byte(reply.Data), &ojSystemInfo)
+	if err != nil {
+		return nil, err
+	}
+	return &ojSystemInfo, nil
 }
 
 // UploadFile PUT上传本地文件，直接流式读文件，不全部加载进内存
@@ -216,7 +241,7 @@ func UploadFile(url string, filepath string) error {
 		return nil
 	}
 	//重试6次
-	err := backOff(sleepMS, MaxRetryTimes, MaxBackOffMS, fun)
+	err := backOff(backOffSleepMS, backOffMaxRetryTimes, backOffMaxBackOffMS, fun)
 	if err != nil {
 		return err
 	}
@@ -238,7 +263,7 @@ func DownloadFile(url string, filepath string) (*resty.Response, error) {
 		return nil
 	}
 	//重试6次
-	err := backOff(sleepMS, MaxRetryTimes, MaxBackOffMS, fun)
+	err := backOff(backOffSleepMS, backOffMaxRetryTimes, backOffMaxBackOffMS, fun)
 	if err != nil {
 		return nil, err
 	}

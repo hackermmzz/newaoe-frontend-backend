@@ -29,11 +29,14 @@ func Task_ProcessCompile(ctx context.Context, server grpc_api.CodeClient) {
 		}
 		//编译代码
 		func() {
+			//
 			postError := true
 			var postErrorMsg error
 			defer func() {
 				if postError {
 					global.PostServerErrorStatus(ctx, server, code.ID, code.Indices, postErrorMsg)
+					//发生错误就不会往下传递任务，故需要减少一个任务信号量
+					global.Profiler.TaskComplete()
 				}
 			}()
 			//创建编译日志文件

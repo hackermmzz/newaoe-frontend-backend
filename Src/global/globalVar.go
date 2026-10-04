@@ -53,8 +53,8 @@ func Init() error {
 		return e
 	}
 	//创建队列
-	CompileWaitQueue = make(chan interface{}, config.Conf.JudgeCodeFetchQueueMaxPayload)
-	RunWaitQueue = make(chan interface{}, config.Conf.JudgeCodeFetchQueueMaxPayload/2)
+	CompileWaitQueue = make(chan interface{}, JudgeMaxCore*2)
+	RunWaitQueue = make(chan interface{}, JudgeMaxCore*4)
 	//
 	return e
 }

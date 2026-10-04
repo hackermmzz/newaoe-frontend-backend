@@ -140,22 +140,6 @@ echo "更新new-aoe"
 git_retry /root/newaoe-frontend-backend/new-aoe main
 
 
-
-##################################
-# 编译程序
-##################################
-
-echo "编译程序"
-
-if !(
-    cd /root/newaoe-frontend-backend/ && \
-    go build -o judge ./)
-then
-    echo "编译程序失败，程序退出"
-    exit 1
-fi
-
-
 ##################################
 # cp到/tmp分区
 ##################################
@@ -179,8 +163,7 @@ cd "$dir"
 
 echo "启动judge"
 
-
-./judge
+python run.py
 
 
 exit $?

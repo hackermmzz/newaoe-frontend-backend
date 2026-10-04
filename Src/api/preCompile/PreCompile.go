@@ -46,10 +46,5 @@ func PreCompile() error {
 
 // 更新new-aoe目录
 func pullNewAOE() error {
-	cmd := exec.Command(
-		"git",
-		"pull",
-	)
-	cmd.Dir = util.JoinPath(config.Conf.NewAOEFolder)
-	return cmd.Run()
+	return util.GitPull(config.Conf.NewAOEFolder, "main", 3)
 }
