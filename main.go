@@ -113,6 +113,41 @@ func getTaskStatus() string {
 		global.Profiler.GetTaskSem(),
 	)
 }
+
+// getDockerResourceStatus 获取docker资源占用情况
+func getDockerResourceStatus() string {
+	cmd := exec.Command("docker", "stats", "--no-stream")
+	var outBytes []byte
+	var e error
+	done := make(chan struct{}, 1)
+	go func() {
+		outBytes, e = cmd.Output()
+		done <- struct{}{}
+	}()
+	// 等待子进程完成/超时
+	select {
+	case <-done:
+		if e != nil {
+			return "获取docker资源占用情况失败: " + e.Error()
+		} else {
+			return string(outBytes)
+		}
+	case <-time.After(20 * time.Second):
+		return "获取docker资源占用情况超时"
+	}
+}
+
+// 打印资源情况任务
+func logResourceStatus() {
+	for {
+		time.Sleep(3 * time.Second)
+		//打印任务情况
+		global.LogInfo(fmt.Sprintf("任务情况: %s", getTaskStatus()))
+		//打印docker资源占用情况
+		global.LogInfo(fmt.Sprintf("docker资源占用情况: ****************************\n%s\n****************************\n", getDockerResourceStatus()))
+	}
+}
+
 func main() {
 	// 初始化配置
 	if e := config.LoadConfig(); e != nil {
@@ -194,12 +229,7 @@ func main() {
 	// 启动任务处理任务
 	go task.Task(ctx, server)
 	//启动日志记录任务情况
-	go func() {
-		for {
-			time.Sleep(5 * time.Second)
-			global.LogInfo(fmt.Sprintf("任务情况: %s", getTaskStatus()))
-		}
-	}()
+	go logResourceStatus()
 	// 等待上下文取消
 	<-ctx.Done()
 }
