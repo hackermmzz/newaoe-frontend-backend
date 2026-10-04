@@ -62,7 +62,7 @@ RunDiskLimit: 20
 RunTimeout: 1800
 
 #当前版本号
-CurrentVersion: "1.0.1"
+CurrentVersion: "1.0.2"
 
 #系统获取最新oj系统信息间隔,单位：秒
 SystemInfoFetchInterval: 5
