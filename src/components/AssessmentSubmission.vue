@@ -106,7 +106,7 @@
       <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
         <h3 class="text-lg font-medium text-gray-900 mb-4">确认提交</h3>
         <p class="text-gray-700 mb-6">
-          在截至日期前你可以提交多次，请确认所填信息正确无误，否则后果自负
+          在截至日期前你只能提交一次，请确认所填信息正确无误，否则后果自负
         </p>
         <div class="flex justify-end space-x-3">
           <button @click="showConfirmation = false" 
@@ -245,7 +245,7 @@ export default {
       try {
         //拿到url链接
         const urlResponse = await fetch(`${config.codeSubmit_url}/codeassessmentsubmit`, {
-          method: 'POST',
+          method: 'GET',
           credentials: 'include',
         });
         const urlData = await urlResponse.json();
@@ -262,7 +262,7 @@ export default {
             'Content-Type':this.headerFile.type
           }
         })
-        const sourceResp=axios.put(sourceUrl,this.headerFile,{
+        const sourceResp=axios.put(sourceUrl,this.sourceFile,{
           headers:{
             'Content-Type':this.sourceFile.type
           }
@@ -273,9 +273,12 @@ export default {
         }
 
         //上传成功，告诉后端我上传好了
-        const confirmResp = await fetch(`${config.uploadConfirm_url}/Assessment`, {
+        const confirmResp = await fetch(`${config.codeSubmit_url}/codeassessmentsubmitACK`, {
           method: 'POST',
           credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          },
           body:JSON.stringify({
             "key":key,
             "teacher":this.selectedTeacher
@@ -286,7 +289,7 @@ export default {
           throw new Error(confirmData.msg || '文件提交失败，请重试' );
         }
         // 提交成功提示+重置表单
-        ElMessage.success("提交成功！可在截止日期前重新提交更新内容");
+        ElMessage.success("提交成功!");
         this.resetForm();
 
       } catch (error) {

@@ -16,6 +16,20 @@
               >
                 发布公告
               </button>
+              <button
+                type="button"
+                class="px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors"
+                @click="openOjVersionDialog"
+              >
+                OJ版本推送
+              </button>
+              <button
+                type="button"
+                class="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+                @click="openTeacherDialog"
+              >
+                添加考核教师
+              </button>
               <router-link
                 to="/home/manager/student-statistics"
                 class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
@@ -125,6 +139,132 @@
           </div>
         </div>
 
+        <div
+          v-if="ojVersionDialogOpen"
+          class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          role="presentation"
+          @click.self="closeOjVersionDialog"
+        >
+          <div
+            class="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="oj-version-update-title"
+          >
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <h2 id="oj-version-update-title" class="text-xl font-semibold text-gray-900">OJ版本推送</h2>
+                <p class="mt-1 text-sm text-gray-500">请输入要推送的最新 OJ 版本编号。</p>
+              </div>
+              <button
+                type="button"
+                class="text-2xl leading-none text-gray-400 hover:text-gray-600"
+                aria-label="关闭"
+                :disabled="updatingOjVersion"
+                @click="closeOjVersionDialog"
+              >
+                &times;
+              </button>
+            </div>
+
+            <form class="mt-6 space-y-4" @submit.prevent="updateOjVersion">
+              <div>
+                <label for="oj-version-input" class="mb-1 block text-sm font-medium text-gray-700">最新版本编号</label>
+                <input
+                  id="oj-version-input"
+                  v-model="latestVersion"
+                  type="text"
+                  maxlength="100"
+                  required
+                  :disabled="updatingOjVersion"
+                  class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="请输入最新版本编号"
+                >
+              </div>
+              <div class="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  :disabled="updatingOjVersion"
+                  @click="closeOjVersionDialog"
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  class="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  :disabled="updatingOjVersion"
+                >
+                  {{ updatingOjVersion ? '推送中...' : '确认推送' }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div
+          v-if="teacherDialogOpen"
+          class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          role="presentation"
+          @click.self="closeTeacherDialog"
+        >
+          <div
+            class="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="add-teacher-title"
+          >
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <h2 id="add-teacher-title" class="text-xl font-semibold text-gray-900">添加考核教师</h2>
+                <p class="mt-1 text-sm text-gray-500">请输入教师账号或名称，添加后即可用于学生考核。</p>
+              </div>
+              <button
+                type="button"
+                class="text-2xl leading-none text-gray-400 hover:text-gray-600"
+                aria-label="关闭"
+                :disabled="addingTeacher"
+                @click="closeTeacherDialog"
+              >
+                &times;
+              </button>
+            </div>
+
+            <form class="mt-6 space-y-4" @submit.prevent="addTeacher">
+              <div>
+                <label for="teacher-input" class="mb-1 block text-sm font-medium text-gray-700">教师</label>
+                <input
+                  id="teacher-input"
+                  v-model="teacherName"
+                  type="text"
+                  maxlength="100"
+                  required
+                  :disabled="addingTeacher"
+                  class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="请输入教师账号或名称"
+                >
+              </div>
+              <div class="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  :disabled="addingTeacher"
+                  @click="closeTeacherDialog"
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  :disabled="addingTeacher"
+                >
+                  {{ addingTeacher ? '添加中...' : '确认添加' }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
         <main class="flex-grow container mx-auto px-4 py-8">
           <router-view></router-view>
         </main>
@@ -156,7 +296,13 @@ export default {
       announcementDialogOpen: false,
       announcementTitle: '',
       announcementContent: '',
-      publishingAnnouncement: false
+      publishingAnnouncement: false,
+      ojVersionDialogOpen: false,
+      latestVersion: '',
+      updatingOjVersion: false,
+      teacherDialogOpen: false,
+      teacherName: '',
+      addingTeacher: false
     };
   },
   methods: {
@@ -166,6 +312,88 @@ export default {
     closeAnnouncementDialog() {
       if (this.publishingAnnouncement) return;
       this.announcementDialogOpen = false;
+    },
+    openOjVersionDialog() {
+      this.ojVersionDialogOpen = true;
+    },
+    closeOjVersionDialog() {
+      if (this.updatingOjVersion) return;
+      this.ojVersionDialogOpen = false;
+    },
+    openTeacherDialog() {
+      this.teacherDialogOpen = true;
+    },
+    closeTeacherDialog() {
+      if (this.addingTeacher) return;
+      this.teacherDialogOpen = false;
+    },
+    async addTeacher() {
+      const teacher = this.teacherName.trim();
+      if (!teacher || this.addingTeacher) {
+        ElMessage.warning('请输入教师账号或名称');
+        return;
+      }
+
+      this.addingTeacher = true;
+      try {
+        const requestUrl = new URL(config.teacherAdd_url);
+        requestUrl.searchParams.set('teacher', teacher);
+        const response = await fetch(requestUrl.toString(), {
+          method: 'GET',
+          credentials: 'include'
+        });
+        let result = {};
+        try {
+          result = await response.json();
+        } catch (error) {
+          if (!response.ok) throw new Error(`添加考核教师失败（HTTP ${response.status}）`);
+        }
+        if (!response.ok || result?.status === false) {
+          throw new Error(result?.msg || `添加考核教师失败（HTTP ${response.status}）`);
+        }
+
+        ElMessage.success('考核教师添加成功');
+        this.teacherName = '';
+        this.teacherDialogOpen = false;
+      } catch (error) {
+        ElMessage.error(error?.message || '添加考核教师失败');
+      } finally {
+        this.addingTeacher = false;
+      }
+    },
+    async updateOjVersion() {
+      const latestVersion = this.latestVersion.trim();
+      if (!latestVersion || this.updatingOjVersion) {
+        ElMessage.warning('请输入最新版本编号');
+        return;
+      }
+
+      this.updatingOjVersion = true;
+      try {
+        const requestUrl = new URL(config.manager_oj_version_update_url);
+        requestUrl.searchParams.set('latestVersion', latestVersion);
+        const response = await fetch(requestUrl.toString(), {
+          method: 'GET',
+          credentials: 'include'
+        });
+        let result = {};
+        try {
+          result = await response.json();
+        } catch (error) {
+          if (!response.ok) throw new Error(`OJ版本推送失败（HTTP ${response.status}）`);
+        }
+        if (!response.ok || result?.status === false) {
+          throw new Error(result?.msg || `OJ版本推送失败（HTTP ${response.status}）`);
+        }
+
+        ElMessage.success('OJ版本推送成功');
+        this.latestVersion = '';
+        this.ojVersionDialogOpen = false;
+      } catch (error) {
+        ElMessage.error(error?.message || 'OJ版本推送失败');
+      } finally {
+        this.updatingOjVersion = false;
+      }
     },
     async publishAnnouncement() {
       const title = this.announcementTitle.trim();

@@ -39,7 +39,9 @@ let feedback_url="your feedback domain here"
 let avatarUpdate_url="your avatarUpdate domain here"
 let codeSubmit_url="your codeSubmit domain here"
 let codeRun_url="your codeRun domain here"
+let uploadConfirm_url="your uploadConfirm domain here"
 let teacherFetch_url="your teacherFetch domain here"
+let teacherAdd_url="your teacherAdd domain here"
 const isTestMode =false;
 const HistoryRecordPerPage=10;
 // 如果不是测试模式，则使用生产环境的base_url
@@ -52,12 +54,14 @@ if (isTestMode) {
 download_url=base_url+"/download";
 codeSubmit_url=base_url+"/codesubmit"
 codeRun_url=base_url+"/coderun"
+uploadConfirm_url=base_url+"/uploadconfirm"
 ranking_url=codeRun_url+"/fetchrank"
 manager_url=base_url+"/vip"
 history_url=base_url+"/coderun/fetchhistory"
 feedback_url=base_url+"/home"
 avatarUpdate_url=base_url+"/home/avatarUpdate"
 teacherFetch_url=base_url+"/codesubmit/fetchteacher"
+teacherAdd_url=manager_url+"/teacherAdd"
 // 导出配置
 module.exports = {
     Code_ReleaseRun,
@@ -71,6 +75,7 @@ module.exports = {
     ranking_url,
     manager_url,
     teacherFetch_url,
+    teacherAdd_url,
     manager_student_url: manager_url + "/fetchStudentInfos",
     manager_student_search_url: manager_url + "/searchstudentbyid",
     manager_history_url: manager_url + "/getstudenthistory",
@@ -92,12 +97,14 @@ module.exports = {
     avatarUpdate_url,
     codeSubmit_url,
     codeRun_url,
+    uploadConfirm_url,
     base_url,
     download_url,
     feedback_url,
     history_url,
     fetch_announcement_url: base_url + "/home/fetchAnnouncement",
     publish_announcement_url: manager_url + "/publishAnnouncement",
+    manager_oj_version_update_url: manager_url + "/ojVersionUpdate",
     HistoryRecordPerPage,
     Code_Status_Error,
     Code_Status_Wait,
