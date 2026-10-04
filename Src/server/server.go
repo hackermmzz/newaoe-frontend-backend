@@ -2,9 +2,9 @@ package server
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"new-aoe-judge/Src/config"
+	"new-aoe-judge/Src/global"
 	"path/filepath"
 )
 
@@ -68,6 +68,6 @@ func server() {
 	fmt.Println(fmt.Sprintf("http://0.0.0.0:%d/", config.Conf.ProcessLogPort))
 
 	if err := server.ListenAndServe(); err != nil {
-		log.Fatal(err)
+		global.LogError("server.ListenAndServe: " + err.Error())
 	}
 }

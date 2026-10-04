@@ -4,7 +4,6 @@ import (
 	"errors"
 	"new-aoe-judge/Src/config"
 	"new-aoe-judge/Src/global"
-	"new-aoe-judge/Src/util"
 	"os"
 	"strconv"
 	"strings"
@@ -75,12 +74,14 @@ func updateSystem() {
 		time.Sleep(time.Second * time.Duration(1))
 	}
 	global.LogInfo("所有任务完成，开始更新系统.......")
-	//更新系统
-	err := util.GitPull("./", "judge", 3)
-	if err != nil {
-		global.LogError("更新系统失败: " + err.Error())
-		return
-	}
+	//更新系统(直接退出，会有run.py来更新的)
+	/*
+		err := util.GitPull("./", "judge", 3)
+		if err != nil {
+			global.LogError("更新系统失败: " + err.Error())
+			return
+		}
+	*/
 	global.LogSuccess("更新系统成功!")
 	//退出进程
 	os.Exit(0)

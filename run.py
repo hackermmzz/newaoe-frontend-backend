@@ -58,6 +58,20 @@ def run_project():
         raise Exception("judge运行异常")
     else:
         print("judge正常退出")
+        
+def git_pull(dir:str,branch: str, retry:int=3):
+    # 拉取最新代码
+    for i in range(retry):
+        try:
+            print(f"拉取最新代码，分支: {branch}，重试次数: {i}/{retry}")
+            subprocess.run(["git", "pull", "origin", branch], cwd=dir)
+            print("拉取最新代码成功")
+            break
+        except Exception as e:
+            print(f"拉取最新代码失败: {e}")
+            if i == retry - 1:
+                raise e
+    
 def main():
     # 自动安装缺失依赖
     begin_time = time.time()
@@ -67,6 +81,14 @@ def main():
     
     while True:
         try:
+            # 拉取最新代码(judge)的judge分支
+            print("开始拉取judge代码")
+            begin_time = time.time()
+            git_pull("./", "judge")
+            end_time = time.time()
+            print(f"judge拉取最新代码时间: {end_time - begin_time:.2f}秒")
+            print(f"judge拉取最新代码成功")
+            
             # 编译judge
             begin_time = time.time()
             try:
