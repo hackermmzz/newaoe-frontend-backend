@@ -116,25 +116,30 @@ func getTaskStatus() string {
 
 // getDockerResourceStatus 获取docker资源占用情况
 func getDockerResourceStatus() string {
-	cmd := exec.Command("docker", "stats", "--no-stream")
-	var outBytes []byte
-	var e error
-	done := make(chan struct{}, 1)
-	go func() {
-		outBytes, e = cmd.Output()
-		done <- struct{}{}
-	}()
-	// 等待子进程完成/超时
-	select {
-	case <-done:
-		if e != nil {
-			return "获取docker资源占用情况失败: " + e.Error()
-		} else {
-			return string(outBytes)
-		}
-	case <-time.After(20 * time.Second):
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		20*time.Second,
+	)
+	defer cancel()
+
+	cmd := exec.CommandContext(
+		ctx,
+		"docker",
+		"stats",
+		"--no-stream",
+	)
+
+	outBytes, err := cmd.CombinedOutput()
+
+	if ctx.Err() == context.DeadlineExceeded {
 		return "获取docker资源占用情况超时"
 	}
+
+	if err != nil {
+		return "获取docker资源占用情况失败: " + err.Error() + "\n" + string(outBytes)
+	}
+
+	return string(outBytes)
 }
 
 // 打印资源情况任务
