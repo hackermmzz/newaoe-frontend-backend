@@ -28,10 +28,8 @@ func runMonitor(
 	//声明变量
 	var runRet *api_codeRun.CodeRunRetInfo
 	var streamErr error
-	codeRunDone := make(chan struct{})
-	defer close(codeRunDone)
-	allDone := make(chan struct{})
-	defer close(allDone)
+	codeRunDone := make(chan struct{}, 1)
+	allDone := make(chan struct{}, 1)
 	var wg sync.WaitGroup
 	wg.Add(2)
 	//异步运行代码
