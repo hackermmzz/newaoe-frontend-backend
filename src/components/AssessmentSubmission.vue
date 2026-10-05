@@ -80,6 +80,27 @@
               </select>
             </div>
 
+            <!-- AI 使用率选择 -->
+            <div>
+              <label for="aiContentRatio" class="block text-sm font-medium text-gray-700 mb-1">
+                AI 使用率
+              </label>
+              <select id="aiContentRatio"
+                      v-model="aiContentRatio"
+                      class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                      required>
+                <option value="">请选择 AI 使用率</option>
+                <option v-for="option in aiContentRatioOptions"
+                        :key="option"
+                        :value="option">
+                  {{ option }}
+                </option>
+              </select>
+              <p class="mt-1 text-xs text-gray-500">
+                请根据本次提交中 AI 生成代码的实际占比选择。
+              </p>
+            </div>
+
             <!-- 提交按钮 -->
             <div class="flex justify-end">
               <button type="submit" 
@@ -108,6 +129,14 @@
         <p class="text-gray-700 mb-6">
           在截至日期前你只能提交一次，请确认所填信息正确无误，否则后果自负
         </p>
+        <div class="mb-6 rounded-md bg-amber-50 p-3 text-sm text-amber-800">
+          <p>
+            本次选择的 AI 使用率：<strong>{{ selectedAiContentRatioLabel }}</strong>
+          </p>
+          <p class="mt-1">
+            请确认 AI 使用情况与实际提交代码相符合，选择不实可能影响考核结果。
+          </p>
+        </div>
         <div class="flex justify-end space-x-3">
           <button @click="showConfirmation = false" 
                   class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
@@ -142,9 +171,22 @@ export default {
       // 授课老师列表（从接口resp.data获取，每个元素仅含name字段）
       teachers: [],
       selectedTeacher: '',
+
+      // AI 使用率：1=无，2=轻，3=重
+      aiContentRatio: '',
+      aiContentRatioOptions: [
+        '1无，没有AI生成的代码',
+        '2轻，AI生成的代码占50%以下',
+        '3重，AI生成的代码占50%以上'
+      ],
       
       // 确认提示框显示状态
       showConfirmation: false
+    }
+  },
+  computed: {
+    selectedAiContentRatioLabel() {
+      return this.aiContentRatio || '未选择';
     }
   },
   mounted() {
@@ -197,8 +239,11 @@ export default {
     // 处理表单提交，显示确认提示框
     handleSubmit() {
       // 完整信息校验
-      if (!this.headerFile || !this.sourceFile || !this.selectedTeacher) {
-        ElMessage.warning('请填写完整信息（头文件、源文件、授课老师）后再提交！');
+      const hasValidAiContentRatio = this.aiContentRatioOptions.some(
+        option => option === this.aiContentRatio
+      );
+      if (!this.headerFile || !this.sourceFile || !this.selectedTeacher || !hasValidAiContentRatio) {
+        ElMessage.warning('请填写完整信息（头文件、源文件、授课老师、AI使用率）后再提交！');
         return;
       }
       
@@ -281,7 +326,8 @@ export default {
           },
           body:JSON.stringify({
             "key":key,
-            "teacher":this.selectedTeacher
+            "teacher":this.selectedTeacher,
+            "aicontentratio":this.aiContentRatio
           }),
         });
         const confirmData=await confirmResp.json()
@@ -305,6 +351,7 @@ export default {
       this.sourceFile = null;
       this.sourceFileName = '';
       this.selectedTeacher = '';
+      this.aiContentRatio = '';
       
       // 重置文件输入框（避免重复选择同一文件时不触发change事件）
       document.getElementById('headerFile').value = '';
