@@ -8,7 +8,7 @@
               <h1 class="text-2xl font-bold text-gray-800">管理平台</h1>
               <p class="mt-1 text-sm text-gray-500">查看学生信息和提交记录</p>
             </div>
-            <div class="flex items-center gap-3">
+            <div class="flex flex-wrap items-center justify-end gap-3">
               <button
                 type="button"
                 class="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
@@ -29,6 +29,14 @@
                 @click="openTeacherDialog"
               >
                 添加考核教师
+              </button>
+              <button
+                type="button"
+                class="px-4 py-2 rounded-lg bg-orange-600 text-white hover:bg-orange-700 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                :disabled="runningAllAssessmentSubmit"
+                @click="runAllAssessmentSubmit"
+              >
+                {{ runningAllAssessmentSubmit ? '运行中...' : '运行所有考核提交' }}
               </button>
               <router-link
                 to="/home/manager/student-statistics"
@@ -59,7 +67,14 @@
               class="text-gray-600 hover:text-blue-600 transition-colors"
               active-class="text-blue-600 font-medium"
             >
-              全部提交记录
+              普通提交记录
+            </router-link>
+            <router-link
+              to="/home/manager/assessment-history"
+              class="text-gray-600 hover:text-blue-600 transition-colors"
+              active-class="text-blue-600 font-medium"
+            >
+              考核提交记录
             </router-link>
           </nav>
         </header>
@@ -302,7 +317,8 @@ export default {
       updatingOjVersion: false,
       teacherDialogOpen: false,
       teacherName: '',
-      addingTeacher: false
+      addingTeacher: false,
+      runningAllAssessmentSubmit: false
     };
   },
   methods: {
@@ -326,6 +342,32 @@ export default {
     closeTeacherDialog() {
       if (this.addingTeacher) return;
       this.teacherDialogOpen = false;
+    },
+    async runAllAssessmentSubmit() {
+      if (this.runningAllAssessmentSubmit) return;
+
+      this.runningAllAssessmentSubmit = true;
+      try {
+        const response = await fetch(config.manager_run_all_assessment_submit_url, {
+          method: 'GET',
+          credentials: 'include'
+        });
+        let result = {};
+        try {
+          result = await response.json();
+        } catch (error) {
+          if (!response.ok) throw new Error(`运行所有考核提交失败（HTTP ${response.status}）`);
+        }
+        if (!response.ok || result?.status === false) {
+          throw new Error(result?.msg || `运行所有考核提交失败（HTTP ${response.status}）`);
+        }
+
+        ElMessage.success(result?.msg || '已开始运行所有考核提交');
+      } catch (error) {
+        ElMessage.error(error?.message || '运行所有考核提交失败');
+      } finally {
+        this.runningAllAssessmentSubmit = false;
+      }
     },
     async addTeacher() {
       const teacher = this.teacherName.trim();

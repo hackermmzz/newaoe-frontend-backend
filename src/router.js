@@ -89,6 +89,23 @@ const routes = [
             }
           },
           {
+            path: 'assessment-history',
+            name: 'ManagerAssessmentHistory',
+            component: ManagerHistory,
+            props: {
+              readOnly: true,
+              historyUrl: config.manager_assessment_history_url,
+              rerunAnomalRecordUrl: '',
+              blockAllSubmitUrl: '',
+              cancelSubmitBlockUrl: '',
+              historyTitle: '所有考核提交记录',
+              backPath: '/home/manager/student-statistics',
+              showStudentId: true,
+              recordsPerPage: config.ManagerHistoryRecordPerPage,
+              requestParams: {}
+            }
+          },
+          {
             path: 'feedback',
             name: 'ManagerFeedback',
             component: () => import('./components/FeedbackRecords.vue')

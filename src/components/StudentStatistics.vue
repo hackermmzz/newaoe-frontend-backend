@@ -502,7 +502,10 @@ export default {
       isResettingAll.value = true;
       try {
         const studentIds = await fetchAllStudentIds();
-        const batchSize = Math.max(1, Number(config.resetcommonsubmitTimeBatch) || 100);
+        const configuredBatchSize = Number(config.resetcommonsubmitTimeBatch);
+        const batchSize = Number.isFinite(configuredBatchSize) && configuredBatchSize > 0
+          ? Math.max(1, Math.floor(configuredBatchSize))
+          : 100;
         for (let index = 0; index < studentIds.length; index += batchSize) {
           await requestReset(studentIds.slice(index, index + batchSize));
         }
