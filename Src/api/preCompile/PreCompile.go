@@ -10,7 +10,6 @@ import (
 )
 
 func PreCompile() error {
-	return nil
 	// 更新new-aoe目录
 	if err := pullNewAOE(); err != nil {
 		return err

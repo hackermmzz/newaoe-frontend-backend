@@ -65,7 +65,7 @@ RunDiskLimit: 20
 RunTimeout: 1800
 
 #当前版本号
-CurrentVersion: "1.0.7"
+CurrentVersion: "1.0.8"
 
 #docker容器标签
 DockerContainerLabel: "new-aoe-judge"
