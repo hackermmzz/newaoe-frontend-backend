@@ -60,7 +60,7 @@ func ReRunHistoryCode(info model.CodeRunningInfo) error {
 	if err = addCodeFile(CodeRunTaskInfo{
 		CodeRunInfo: *historInfo,
 		RunType:     info.RunType,
-	}); err != nil {
+	}, 3); err != nil {
 		return err
 	}
 	return nil

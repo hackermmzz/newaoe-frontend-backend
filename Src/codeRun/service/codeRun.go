@@ -10,8 +10,10 @@ import (
 	"newaoe/Src/codeRun/model"
 	"newaoe/Src/config"
 	database "newaoe/Src/databse"
-	"newaoe/Src/redis"
+	"newaoe/Src/mq"
 	"newaoe/Src/util"
+
+	rocketmq "github.com/apache/rocketmq-clients/golang/v5"
 )
 
 type CodeRunTaskInfo struct {
@@ -58,7 +60,7 @@ func CodeRun(indices int, id string, class int, runType int) error {
 	if err = addCodeFile(CodeRunTaskInfo{
 		CodeRunInfo: codeRunInfo,
 		RunType:     runType,
-	}); err != nil {
+	}, 3); err != nil {
 		return err
 	}
 	//
@@ -108,13 +110,35 @@ func getCodeRunMustInfo(id string, indices int, class int) (model.CodeRunInfo, e
 }
 
 // 代码文件加入待运行队列
-func addCodeFile(task CodeRunTaskInfo) error {
-	data, err := json.Marshal(task)
+func addCodeFile(task CodeRunTaskInfo, retryCount int) error {
+	data_byte, err := json.Marshal(task)
 	if err != nil {
-		return errors.New("加入队列失败!" + err.Error())
+		return errors.New("加入队列失败:序列化失败!" + err.Error())
 	}
-	if !redis.RedisListPush(context.Background(), config.Conf.Code.CodeWaitForRunQueueTopic, string(data)) {
-		return errors.New("加入队列失败!")
+	msg := &rocketmq.Message{
+		Topic: config.Conf.Code.CodeWaitForRunQueueTopic,
+		Body:  data_byte,
 	}
-	return nil
+	errs := make([]error, 0)
+	fn := func() {
+		mq.RocketMQProducer.SendAsync(
+			context.Background(),
+			msg,
+			func(ctx context.Context, result []*rocketmq.SendReceipt, err error) {
+				// 回调：发送完成后进入
+				if err != nil {
+					errs = append(errs, err)
+					return
+				}
+			},
+		)
+	}
+	//尝试N次
+	for i := 0; i < retryCount; i += 1 {
+		fn()
+		if len(errs) < i {
+			return nil
+		}
+	}
+	return errors.Join(errs...)
 }

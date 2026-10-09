@@ -15,7 +15,7 @@ import (
 	"path"
 	"time"
 
-	"github.com/apache/rocketmq-client-go/v2/primitive"
+	rocketmq "github.com/apache/rocketmq-clients/golang/v5"
 )
 
 type codeRunStatusInfoPushRedis struct {
@@ -44,7 +44,10 @@ func CodeRunStatusGetProcess(id string, indices int64, info model.CodeRunStatusI
 	//再次push到mq（只push编号）
 	indices_byte := make([]byte, 8)
 	binary.BigEndian.PutUint64(indices_byte, uint64(indices))
-	msg := primitive.NewMessage(config.Conf.Code.CodeRunStatusTopic, indices_byte)
+	msg := &rocketmq.Message{
+		Topic: config.Conf.Code.CodeRunStatusTopic,
+		Body:  indices_byte,
+	}
 	pushCodeRunStatusNeedUpdateToQueue(msg, 3) //默认重试3次
 	//
 	return ret, nil
@@ -114,15 +117,22 @@ func processCodeRunStatus(indices int, id string, codeRunstatus *model.CodeRunSt
 	return nil
 }
 
-func pushCodeRunStatusNeedUpdateToQueue(msg *primitive.Message, limit int) {
+func pushCodeRunStatusNeedUpdateToQueue(msg *rocketmq.Message, limit int) {
 	if limit <= 0 {
 		util.DebugError("代码运行状态推送队列超出最大重试次数!")
 		return
 	}
-	mq.RocketMQProducer.SendAsync(context.Background(), func(ctx context.Context, result *primitive.SendResult, err error) {
-		if err != nil {
-			util.DebugError("代码状态发送到mq失败:" + err.Error())
-			pushCodeRunStatusNeedUpdateToQueue(msg, limit)
-		}
-	}, msg)
+
+	mq.RocketMQProducer.SendAsync(
+		context.Background(),
+		msg,
+		func(ctx context.Context, result []*rocketmq.SendReceipt, err error) {
+			if err != nil {
+				util.DebugError("代码状态发送到mq失败:" + err.Error())
+
+				pushCodeRunStatusNeedUpdateToQueue(msg, limit-1)
+				return
+			}
+		},
+	)
 }

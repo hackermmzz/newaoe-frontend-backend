@@ -11,11 +11,9 @@ import (
 	"newaoe/Src/email/model"
 	"newaoe/Src/mq"
 	"newaoe/Src/util"
-	"strconv"
 
-	"github.com/apache/rocketmq-client-go/v2"
-	"github.com/apache/rocketmq-client-go/v2/consumer"
-	"github.com/apache/rocketmq-client-go/v2/primitive"
+	"github.com/apache/rocketmq-clients/golang/v5"
+	rocketmq "github.com/apache/rocketmq-clients/golang/v5"
 	"gopkg.in/gomail.v2"
 )
 
@@ -39,7 +37,7 @@ type EmailMsgInQueue struct {
 }
 
 var (
-	EmailPushConsumer rocketmq.PushConsumer
+	EmailPushConsumer golang.PushConsumer
 	// Postfix SMTP Dialer
 	// 不维持长连接，每次发送由 DialAndSend 建立连接。
 	EmailDialer *gomail.Dialer
@@ -60,23 +58,13 @@ func EmailSendServiceInit() {
 	EmailDialer.TLSConfig = &tls.Config{
 		InsecureSkipVerify: true,
 	}
-	var groups []string
-	for i := 0; i < config.Conf.Email.EmailMQGroupCount; i++ {
-		groups = append(groups, "EmailMQ_group"+strconv.Itoa(i))
-	}
 	EmailPushConsumer = mq.NewMQPushConsumer(
 		config.Conf.Email.EmailMQTopic,
-		func(ctx context.Context, msgs ...*primitive.MessageExt) (consumer.ConsumeResult, error) {
-			for _, msg := range msgs {
-				if ret := consumeEmailToEmailService(msg.Body); ret != consumer.ConsumeSuccess {
-					return ret, nil
-				}
-			}
-			return consumer.ConsumeSuccess, nil
+		func(msg *rocketmq.MessageView) rocketmq.ConsumerResult {
+			return consumeEmailToEmailService(msg.GetBody())
 		},
-		groups...,
+		"EmailMQ_group",
 	)
-
 	if err := EmailPushConsumer.Start(); err != nil {
 		panic("EmailSenderInit:" + err.Error())
 	}
@@ -113,7 +101,10 @@ func SendEmail(email EmailMsg) {
 		Indices:  indices,
 	}
 	data_byte, _ := json.Marshal(&emailInQUeue)
-	msg := primitive.NewMessage(config.Conf.Email.EmailMQTopic, data_byte)
+	msg := &rocketmq.Message{
+		Topic: config.Conf.Email.EmailMQTopic,
+		Body:  data_byte,
+	}
 	//默认重试三次
 	go sendEmailWithRetry(msg, 3)
 }
@@ -126,21 +117,20 @@ func encodeChinese(name string) string {
 }
 
 // 重试发送
-func sendEmailWithRetry(msg *primitive.Message, limit int) {
+func sendEmailWithRetry(msg *rocketmq.Message, limit int) {
 	if limit <= 0 {
 		util.DebugError("sendEmailWithRetry达到最大发送次数!", (string)(msg.Body))
 		return
 	}
 	//放入队列
-	mq.RocketMQProducer.SendAsync(context.Background(),
-		func(ctx context.Context, result *primitive.SendResult, err error) {
-			// 回调：发送完才进来
+	mq.RocketMQProducer.SendAsync(
+		context.Background(),
+		msg,
+		func(ctx context.Context, _ []*rocketmq.SendReceipt, err error) {
 			if err != nil {
 				util.DebugError("sendEmailWithRetry:", err)
-				return
 			}
 		},
-		msg,
 	)
 }
 
@@ -191,48 +181,48 @@ func wrapForHTMLEmail(email EmailMsg) *gomail.Message {
 	return msg
 }
 
-func consumeEmailToEmailService(data []byte) consumer.ConsumeResult {
+func consumeEmailToEmailService(data []byte) rocketmq.ConsumerResult {
 	var emailMsg EmailMsgInQueue
 	//解析
 	if err := json.Unmarshal(data, &emailMsg); err != nil {
 		util.DebugError("邮件消息解析失败:", err)
-		return consumer.ConsumeSuccess
+		return rocketmq.SUCCESS
 	}
 	//检查字段
 	if emailMsg.Indices == 0 || emailMsg.Email == "" || emailMsg.Subject == "" || emailMsg.Text == "" {
 		util.DebugError("邮件字段不完整")
-		return consumer.ConsumeSuccess
+		return rocketmq.SUCCESS
 	}
 	//判断是否已经发送过了
 	session := database.NewSession()
 	defer session.Close()
 	if err := session.Begin(); err != nil {
 		util.DebugError("数据库异常!")
-		return consumer.ConsumeRetryLater
+		return rocketmq.FAILURE
 	}
 	defer session.Rollback()
 	info := dao.EmailInfoGetForUpdate(session, emailMsg.Indices)
 	if info == nil {
 		util.DebugError("这是一个bug!按道理不应该为nil")
-		return consumer.ConsumeSuccess
+		return rocketmq.SUCCESS
 	}
 	if info.Send {
-		return consumer.ConsumeSuccess
+		return rocketmq.SUCCESS
 	}
 	//发送邮件
 	if err := sendEmailMsgToServer(emailMsg.EmailMsg); err != nil {
 		util.DebugError("邮件提交到 Postfix 失败:", err, " 收件人:", emailMsg.Email)
-		return consumer.ConsumeRetryLater
+		return rocketmq.FAILURE
 	}
 	//标记已经发送过了
 	ok, _ := dao.EmailInfoUpdateSendStatus(session, info.Indices, true)
 	if !ok {
 		util.DebugError("send字段修改失败!")
-		return consumer.ConsumeRetryLater
+		return rocketmq.FAILURE
 	}
 	if err := session.Commit(); err != nil {
 		util.DebugError("邮件send标记位修改失败!", err)
-		return consumer.ConsumeRetryLater
+		return rocketmq.FAILURE
 	}
-	return consumer.ConsumeSuccess
+	return rocketmq.SUCCESS
 }

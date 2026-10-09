@@ -38,6 +38,7 @@ func BatchUpdateCodeRunStatus(indices []int) {
 		}
 		//处理一下
 		dt := *dbRet
+		dt.Version = version
 		if exist {
 			var v codeRunStatusInfoPushRedis
 			err := json.Unmarshal(data, &v)
