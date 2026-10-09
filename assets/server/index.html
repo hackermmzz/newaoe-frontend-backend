@@ -602,7 +602,8 @@ function isAtBottom() {
 }
 
 /**
- * 在已经位于底部后继续向下滚动时刷新当前页。
+ * 在已经位于底部后继续向下滚动时切换到下一页。
+ * 如果下一页不存在，则刷新当前页。
  */
 async function refreshAtBottom() {
     if (
@@ -623,7 +624,25 @@ async function refreshAtBottom() {
 
     try {
         /*
-         * 只刷新当前页，不改变页码。
+         * 优先切换到下一页。
+         */
+        const nextUrl = await getProcessLogUrl(currentIndex + 1);
+
+        if (nextUrl) {
+            const loaded = await loadLogPage(currentIndex + 1);
+
+            if (loaded) {
+                window.scrollTo({
+                    top: 0,
+                    behavior: "auto"
+                });
+                bottomRefreshArmed = true;
+                return;
+            }
+        }
+
+        /*
+         * 没有下一页时，继续刷新当前页。
          */
         await loadLogPage(currentIndex);
 

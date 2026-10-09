@@ -35,6 +35,7 @@ type Config struct {
 	SystemInfoFetchInterval         int    `yaml:"SystemInfoFetchInterval"`
 	CurrentVersion                  string `yaml:"CurrentVersion"`
 	ProcessLogPort                  int    `yaml:"ProcessLogPort"`
+	DockerContainerLabel            string `yaml:"DockerContainerLabel"`
 }
 
 var Conf Config
@@ -112,6 +113,7 @@ func LoadConfig() error {
 		SystemInfoFetchInterval:         atoi(envOr(m, "SystemInfoFetchInterval"), 5),
 		CurrentVersion:                  envOr(m, "CurrentVersion"),
 		ProcessLogPort:                  atoi(envOr(m, "ProcessLogPort"), 500119),
+		DockerContainerLabel:            envOr(m, "DockerContainerLabel"),
 	}
 	if Conf.GRPCPort == "" {
 		return errors.New("GRPCPort 不能为空")

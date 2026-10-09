@@ -11,12 +11,17 @@ import (
 
 // Task任务处理任务
 func Task(ctx context.Context, server grpc_api.CodeClient) {
+	//获取代码任务
 	for i := 0; i < global.JudgeMaxCore; i += 1 {
-		//获取代码任务
 		go codefetch.Task_GetStudentCode(ctx, server)
-		//编译任务
+	}
+	//编译任务
+	for i := 0; i < global.JudgeMaxCore*100/global.CompileCPULimit; i += 1 {
 		go codecompile.Task_ProcessCompile(ctx, server)
-		//运行任务
+	}
+	//运行任务
+	for i := 0; i < global.JudgeMaxCore*100/global.RunCPULimit; i += 1 {
+
 		go coderun.Task_ProcessRun(ctx, server)
 	}
 }

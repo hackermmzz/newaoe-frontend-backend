@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"new-aoe-judge/Src/config"
 	"new-aoe-judge/Src/global"
+	"new-aoe-judge/Src/profiler"
 	"new-aoe-judge/Src/util"
 	"os"
 	"os/exec"
@@ -14,7 +15,20 @@ import (
 )
 
 func getExitReason(code int) string {
-	m := map[int]string{0: "Normal Exit", 1: "General Error", 125: "Docker Run Error", 126: "Command Cannot Execute", 127: "Command Not Found", 130: "SIGINT", 132: "SIGILL (Illegal Instruction)", 134: "SIGABRT (Abort / Assertion Failed)", 136: "SIGFPE (Arithmetic Exception / Divide by Zero)", 137: "SIGKILL (Possibly OOM / Memory Limit)", 139: "SIGSEGV (Segmentation Fault)", 143: "SIGTERM"}
+	m := map[int]string{
+		0:   "Normal Exit",
+		1:   "General Error",
+		125: "Docker Run Error",
+		126: "Command Cannot Execute",
+		127: "Command Not Found",
+		130: "SIGINT",
+		132: "SIGILL (Illegal Instruction)",
+		134: "SIGABRT (Abort / Assertion Failed)",
+		136: "SIGFPE (Arithmetic Exception / Divide by Zero)",
+		137: "SIGKILL (Possibly OOM / Memory Limit)",
+		139: "SIGSEGV (Segmentation Fault)",
+		143: "SIGTERM",
+	}
 	if x, ok := m[code]; ok {
 		return x
 	}
@@ -29,7 +43,7 @@ type CodeRunRetInfo struct {
 }
 
 func CodeRun(
-	cpuResource global.CPUResourceAllocateInfo,
+	cpuResource profiler.CPUResourceAllocateInfo,
 	id string,
 	indices int64,
 	rundir string,
@@ -92,7 +106,7 @@ func CodeRun(
 		"--cpuset-cpus", cpuResource.GetCores(),
 		"--cpus", cpuResource.GetCPUS(),
 		"--name", container,
-		"--label", "newaoe-judge",
+		"--label", config.Conf.DockerContainerLabel,
 		"-m", memoryLimit,
 		"--memory-swap", memoryLimit,
 		"--tmpfs", "/tmp:rw,size=" + diskLimit,
@@ -125,6 +139,8 @@ func CodeRun(
 				return
 			}
 		}
+		//获取退出码
+		exitCode = cmd.ProcessState.ExitCode()
 		//获取容器状态码
 		dockerStateCMD = exec.Command(
 			"docker",
@@ -137,7 +153,17 @@ func CodeRun(
 			dockerErr = fmt.Errorf("CodeRun获取容器状态失败: %w", e)
 			return
 		}
-		exitCode = dockerStateCMD.ProcessState.ExitCode()
+		//判断是否是被OOM了
+		var info []map[string]interface{}
+		if e = json.Unmarshal(outBuf.Bytes(), &info); e != nil {
+			ret = CodeRunRetInfo{
+				Err: fmt.Errorf("CodeRun解析容器状态失败: %w", e),
+			}
+		}
+		oom := info[0]["State"].(map[string]interface{})["OOMKilled"]
+		if oom.(bool) {
+			exitCode = 137
+		}
 	}()
 	//移除容器
 	defer func() {
@@ -154,17 +180,6 @@ func CodeRun(
 				Err: dockerErr,
 			}
 		} else {
-			//判断是否是被OOM了
-			var info []map[string]interface{}
-			if e = json.Unmarshal(outBuf.Bytes(), &info); e != nil {
-				ret = CodeRunRetInfo{
-					Err: fmt.Errorf("CodeRun解析容器状态失败: %w", e),
-				}
-			}
-			oom := info[0]["State"].(map[string]interface{})["OOMKilled"]
-			if oom.(bool) {
-				exitCode = 137
-			}
 			//获取退出原因
 			reason := getExitReason(exitCode)
 			ret = CodeRunRetInfo{

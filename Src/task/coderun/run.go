@@ -28,6 +28,9 @@ func Task_ProcessRun(ctx context.Context, server grpc_api.CodeClient) {
 			code = dt.(ForRunInfo)
 		}
 		func() {
+			//记录性能
+			global.Profiler.IncreaseRunning()
+			defer global.Profiler.DecreaseRunning()
 			//减少一个任务信号量(无论如何都需要减少的)
 			defer global.Profiler.TaskComplete()
 			//
@@ -57,15 +60,16 @@ func Task_ProcessRun(ctx context.Context, server grpc_api.CodeClient) {
 				return
 			}
 			defer util.CloseFiles(files)
-			//记录性能
-			global.Profiler.IncreaseRunning()
-			defer global.Profiler.DecreaseRunning()
+			//申请资源
+			resource := global.Profiler.AllocateCodeRunResource(global.RunCPULimit)
+			defer global.Profiler.RecycleCodeRunResource(resource)
 			//打印日志
 			global.LogInfo(fmt.Sprintf("%s_%d正在运行...", code.ID, code.Indices))
 			///////////////运行代码
 			err, runRet := runMonitor(
 				ctx,
 				server,
+				resource,
 				code.ID,
 				code.Indices,
 				code.RunDir,

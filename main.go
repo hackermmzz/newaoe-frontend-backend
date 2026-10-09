@@ -43,13 +43,13 @@ func cleanUp() {
 	global.LogInfo("正在清理子进程...")
 	out, e := exec.Command("docker", "ps", "-q", "--filter", "label=newaoe-judge").Output()
 	if e == nil {
-		ids := ""
+		ids := make([]string, 0)
 		for _, id := range strings.Fields(string(out)) {
-			ids += id + " "
+			ids = append(ids, id)
 		}
 		global.LogInfo(fmt.Sprintf("所有容器id为:%s", ids))
-		e0 := exec.Command("docker", "kill", ids).Run()
-		e1 := exec.Command("docker", "rm", ids).Run()
+		e0 := exec.Command("docker", append([]string{"kill"}, ids...)...).Run()
+		e1 := exec.Command("docker", append([]string{"rm"}, ids...)...).Run()
 		if e0 != nil {
 			global.LogError("清理子进程失败: " + e0.Error())
 		}
@@ -146,10 +146,15 @@ func getDockerResourceStatus() string {
 func logResourceStatus() {
 	for {
 		time.Sleep(3 * time.Second)
+		msg := ""
+		// 打印资源情况
+		msg += fmt.Sprintf("资源情况: %s\n", global.Profiler.GetResourceSnapshot())
 		//打印任务情况
-		global.LogInfo(fmt.Sprintf("任务情况: %s", getTaskStatus()))
+		msg += fmt.Sprintf("任务情况: %s\n", getTaskStatus())
 		//打印docker资源占用情况
-		global.LogInfo(fmt.Sprintf("docker资源占用情况: \n****************************\n%s\n****************************\n", getDockerResourceStatus()))
+		msg += fmt.Sprintf("docker资源占用情况: \n****************************\n%s\n****************************\n", getDockerResourceStatus())
+		// 打印日志
+		global.LogInfo(msg)
 	}
 }
 

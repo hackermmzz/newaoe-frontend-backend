@@ -2,6 +2,7 @@ package util
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"encoding/json"
 	"errors"
@@ -287,4 +288,24 @@ func GitPull(dir string, branch string, retry int) error {
 		}
 	}
 	return errors.Join(errs...)
+}
+
+// 超时模板
+func ExecuteTaskWithTimeout(timeout time.Duration, task func(ctx context.Context) error) (bool, error) {
+	var err error
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	done := make(chan struct{}, 1)
+	task_ := func() {
+		err = task(ctx)
+		done <- struct{}{}
+	}
+	go task_()
+	select {
+	case <-done:
+		return false, err
+	case <-ctx.Done():
+		return true, errors.New("Task timeout!")
+	}
 }

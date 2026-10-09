@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"new-aoe-judge/Src/config"
+	"new-aoe-judge/Src/profiler"
 	"new-aoe-judge/Src/util"
 	"os"
 	"path/filepath"
@@ -15,7 +16,7 @@ import (
 )
 
 var GRPCAuth GRPCAuthInfo
-var Profiler *ProfilerInfo
+var Profiler *profiler.ProfilerInfo
 var MapFiles []string
 var JudgeMaxCore int
 var CompileCPULimit, RunCPULimit int
@@ -72,15 +73,15 @@ func initCoreResource() error {
 	CompileCPULimit = 100
 	RunCPULimit = 100
 	//创建性能分析信息
-	compileCoreInfo := make([]SingleCoreInfo, compileOccurCore)
-	runCoreInfo := make([]SingleCoreInfo, runOccurCore)
+	compileCoreInfo := make([]profiler.SingleCoreInfo, compileOccurCore)
+	runCoreInfo := make([]profiler.SingleCoreInfo, runOccurCore)
 	for i := range compileCoreInfo {
 		compileCoreInfo[i].CoreID = i + 1
 	}
 	for i := range runCoreInfo {
 		runCoreInfo[i].CoreID = i + compileOccurCore + 1
 	}
-	Profiler = NewProfilerInfo(compileCoreInfo, runCoreInfo)
+	Profiler = profiler.NewProfilerInfo(compileCoreInfo, runCoreInfo)
 	//
 	LogInfo(fmt.Sprintf("初始化核心资源完成, 总核数:%d, 编译核数:%d, 运行核数:%d, 编译CPU限制:%d, 运行CPU限制:%d", JudgeMaxCore, compileOccurCore, runOccurCore, CompileCPULimit, RunCPULimit))
 	if JudgeMaxCore == 2 {

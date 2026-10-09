@@ -3,8 +3,8 @@ package coderun
 import (
 	"context"
 	api_codeRun "new-aoe-judge/Src/api/codeRun"
-	"new-aoe-judge/Src/global"
 	grpc_api "new-aoe-judge/Src/grpc"
+	"new-aoe-judge/Src/profiler"
 	"os"
 	"sync"
 )
@@ -12,6 +12,7 @@ import (
 func runMonitor(
 	ctx context.Context,
 	server grpc_api.CodeClient,
+	resource profiler.CPUResourceAllocateInfo,
 	id string,
 	indices int64,
 	runDir string,
@@ -22,9 +23,6 @@ func runMonitor(
 	resultFile *os.File,
 	debugFile *os.File,
 ) (error, *api_codeRun.CodeRunRetInfo) {
-	//申请资源
-	resource := global.Profiler.AllocateCodeRunResource(global.RunCPULimit)
-	defer global.Profiler.RecycleCodeRunResource(resource)
 	//声明变量
 	var runRet *api_codeRun.CodeRunRetInfo
 	var streamErr error

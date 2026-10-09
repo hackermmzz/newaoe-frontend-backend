@@ -64,12 +64,13 @@ func splitVersion(version string) (int, int, int, error) {
 	return major, minor, patch, nil
 }
 
+// 目前更新系统只要确保当前所有的任务完成了就可以了
 func updateSystem() {
 	//阻塞等待所有任务完成
 	global.LogInfo("正在等待所有任务完成.......")
 	global.Profiler.TaskRefuseMoreTask()
 	defer global.Profiler.TaskAcceptMoreTask()
-	for !global.Profiler.TaskAllDone() {
+	for global.Profiler.GetTaskSem() > 0 {
 		//等待所有任务完成
 		time.Sleep(time.Second * time.Duration(1))
 	}

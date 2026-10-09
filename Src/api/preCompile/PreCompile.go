@@ -24,7 +24,7 @@ func PreCompile() error {
 		"run",
 		"--rm",
 		"--name", fmt.Sprintf("PreCompile_%s", util.UUID()),
-		"--label", "newaoe-judge",
+		"--label", config.Conf.DockerContainerLabel,
 		"-v", config.Conf.NewAOEFolder+":/app/newaoe",
 		"-w", "/app",
 		config.Conf.NewAOEDockerImg,

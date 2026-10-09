@@ -29,7 +29,10 @@ func Task_ProcessCompile(ctx context.Context, server grpc_api.CodeClient) {
 		}
 		//编译代码
 		func() {
-			//
+			//记录性能
+			global.Profiler.IncreaseCompile()
+			defer global.Profiler.DecreaseCompile()
+			//编译出现问题不往下传递任务，故需要减少一个任务信号量且通知服务器错误
 			postError := true
 			var postErrorMsg error
 			defer func() {
@@ -51,9 +54,6 @@ func Task_ProcessCompile(ctx context.Context, server grpc_api.CodeClient) {
 			//分配资源
 			res := global.Profiler.AllocateCodeCompileResource(global.CompileCPULimit)
 			defer global.Profiler.RecycleCodeCompileResource(res)
-			//记录性能
-			global.Profiler.IncreaseCompile()
-			defer global.Profiler.DecreaseCompile()
 			//通知服务器现在正在编译
 			resp, e := global.PostCodeStatus(
 				ctx,

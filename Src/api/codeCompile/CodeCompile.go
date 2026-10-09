@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"new-aoe-judge/Src/config"
 	"new-aoe-judge/Src/global"
+	"new-aoe-judge/Src/profiler"
 	"new-aoe-judge/Src/util"
 	"os"
 	"os/exec"
@@ -16,7 +17,7 @@ type CodeCompileResult struct {
 }
 
 func CodeCompile(
-	cpuResource global.CPUResourceAllocateInfo,
+	cpuResource profiler.CPUResourceAllocateInfo,
 	id string,
 	indices int64,
 	buildDir string,
@@ -36,7 +37,7 @@ func CodeCompile(
 		"--cpuset-cpus", cpuResource.GetCores(),
 		"--cpus", cpuResource.GetCPUS(),
 		"--name", fmt.Sprintf("codecompile_%s_%d_%s", id, indices, util.UUID()),
-		"--label", "newaoe-judge",
+		"--label", config.Conf.DockerContainerLabel,
 		"--rm",
 		"-v", config.Conf.NewAOEFolder + ":/app/project:ro",
 		"-v", buildDir + ":/app/build",
