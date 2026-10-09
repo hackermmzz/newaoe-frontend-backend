@@ -32,9 +32,10 @@ type ProfilerInfo struct {
 	compile  int
 	running  int
 	//任务信号量
-	taskMu        sync.Mutex
-	taskAcquireMu sync.Mutex //锁住后任务只能减少不能增加
-	taskSem       int64
+	taskMu            sync.Mutex
+	taskAcquireMu     sync.Mutex //锁住后任务只能减少不能增加
+	taskRefuseMoreVar bool       //true表示不接受任何任务的进入
+	taskSem           int64
 	//分配资源
 	compileCore *CoreInfo
 	runCore     *CoreInfo
@@ -235,10 +236,17 @@ func (p *ProfilerInfo) DecreaseRunning() {
 // 拒绝从函数调用开始的所有任务
 func (p *ProfilerInfo) TaskRefuseMoreTask() {
 	p.taskAcquireMu.Lock()
+	p.taskRefuseMoreVar = true
 }
 
 func (p *ProfilerInfo) TaskAcceptMoreTask() {
+	p.taskRefuseMoreVar = false
 	p.taskAcquireMu.Unlock()
+}
+
+// 判断是否已经上锁
+func (p *ProfilerInfo) DoTaskRefuseMoreTask() bool {
+	return p.taskRefuseMoreVar
 }
 
 func (p *ProfilerInfo) TaskProcess() {

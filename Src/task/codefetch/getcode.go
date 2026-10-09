@@ -16,25 +16,23 @@ import (
 // ////////////////// 获取代码
 func Task_GetStudentCode(ctx context.Context, server grpc_api.CodeClient) {
 	for {
-		//
 		select {
 		case <-ctx.Done():
 			return
 		default:
 			func() {
-				//提前申请一个任务槽
-				bNeedComplete := true
+				//
 				bNeedSleep := true
-				global.Profiler.TaskProcess()
 				defer func() {
-					if bNeedComplete {
-						global.Profiler.TaskComplete()
-						if bNeedSleep {
-							sleepTime := time.Duration(config.Conf.JudgeSleepTimeWhenGetCodeFailed-rand.IntN(2)+1) * time.Second
-							time.Sleep(sleepTime)
-						}
+					if bNeedSleep {
+						sleepTime := time.Duration(config.Conf.JudgeSleepTimeWhenGetCodeFailed-rand.IntN(2)+1) * time.Second
+						time.Sleep(sleepTime)
 					}
 				}()
+				//如果阻塞了，那么就直接返回
+				if global.Profiler.DoTaskRefuseMoreTask() {
+					return
+				}
 				//获取代码
 				res := api_codeGet.GetOneStudentCode(ctx, server)
 
@@ -55,6 +53,7 @@ func Task_GetStudentCode(ctx context.Context, server grpc_api.CodeClient) {
 				//记录性能
 				global.Profiler.IncreaseTaskWait()
 				defer global.Profiler.DecreaseTaskWait()
+				global.Profiler.TaskProcess()
 				//
 				global.LogSuccess(fmt.Sprintf("获取代码成功! ID:%s Indices:%d RunType:%d", res.ID, res.Indices, res.RunType))
 				//将代码添加到编译队列
@@ -66,8 +65,6 @@ func Task_GetStudentCode(ctx context.Context, server grpc_api.CodeClient) {
 					StudentCode: res,
 				}:
 				}
-				//保持任务信号量
-				bNeedComplete = false
 			}()
 		}
 	}

@@ -143,9 +143,9 @@ func Task_ProcessCompile(ctx context.Context, server grpc_api.CodeClient) {
 					BuildDir: code.BuildDir,
 				}:
 				}
+				//取消错误报告
+				postError = false
 			}
-			//取消错误报告
-			postError = false
 		}()
 	}
 }
