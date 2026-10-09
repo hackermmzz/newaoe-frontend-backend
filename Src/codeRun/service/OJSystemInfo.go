@@ -1,12 +1,11 @@
 package service
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"newaoe/Src/codeRun/grpc/grpc_api"
-	"newaoe/Src/redis"
+	MapDao "newaoe/Src/map/dao"
 	"newaoe/Src/util"
 	"strconv"
 	"strings"
@@ -17,14 +16,13 @@ type OJSystemInfo struct {
 }
 
 func GetOJSystemInfo() (*grpc_api.OJSystemInfoReply, error) {
-	ctx := context.Background()
 	var msg OJSystemInfo
-	//从redis拿数据
-	data, exist := redis.RedisGet(ctx, "OJSystemInfo")
-	if !exist {
-		msg.Version = "1.0.0"
+	//
+	value, err := MapDao.MapGet(nil, "OJSystemInfo")
+	if err != nil {
+		return nil, err
 	} else {
-		json.Unmarshal(data, &msg)
+		json.Unmarshal([]byte(value), &msg)
 	}
 	//
 	finalMsg, _ := json.Marshal(msg)
@@ -34,11 +32,30 @@ func GetOJSystemInfo() (*grpc_api.OJSystemInfoReply, error) {
 }
 
 func SetOJSystemInfo(info OJSystemInfo) error {
-	ctx := context.Background()
 	//获取旧的version
 	oldData, err := GetOJSystemInfo()
 	if err != nil {
-		return err
+		//判断key是否存在，不存在则创建
+		exist, err := MapDao.MapExist(nil, "OJSystemInfo")
+		if err != nil {
+			return err
+		}
+		if !exist {
+			data, _ := json.Marshal(OJSystemInfo{
+				Version: "1.0.0",
+			})
+			err := MapDao.MapInsert(nil, "OJSystemInfo", string(data))
+			if err != nil {
+				return err
+			}
+			//再次查询数据
+			oldData, err = GetOJSystemInfo()
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
 	}
 	var oldStatus OJSystemInfo
 	json.Unmarshal([]byte(oldData.Data), &oldStatus)
@@ -54,11 +71,11 @@ func SetOJSystemInfo(info OJSystemInfo) error {
 	if !compareVersion([]int{oa, ob, oc}, []int{na, nb, nc}) {
 		return util.NewError(fmt.Sprintf("版本比之前的版本还旧:%v:%v", oldStatus.Version, info.Version))
 	}
-	//从redis拿数据
+	//更新数据
 	databytes, _ := json.Marshal(info)
-	ok := redis.RedisSet(ctx, "OJSystemInfo", string(databytes), redis.KeepTTL)
-	if !ok {
-		return util.NewError("SetOJSystemInfo设置key失败！")
+	err = MapDao.MapUpdate(nil, "OJSystemInfo", string(databytes))
+	if err != nil {
+		return err
 	}
 	return nil
 }

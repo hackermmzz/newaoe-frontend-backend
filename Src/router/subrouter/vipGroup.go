@@ -33,4 +33,5 @@ func routeConfig_VIPConfirm(vip_group *gin.RouterGroup) {
 	vip_group.GET("runAllAssessmentSubmit", controller.RunAllAssessmentSubmit)
 	vip_group.GET("getassessmenthistory", controller.GetAssessmentHistory)
 	vip_group.GET("fetchassessmentrank", controller.FetchAssessmentRank)
+	vip_group.GET("uploadLatestAOEPackage", controller.UploadLatestAOEPackage)
 }

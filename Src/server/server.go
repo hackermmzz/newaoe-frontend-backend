@@ -14,10 +14,8 @@ var (
 )
 
 func ServerInit() {
-	Engine = gin.Default()
-	Engine.Use(gin.Recovery()) // 关键：添加 Recovery 捕获 panic 并输出日志
-	Engine.Use(gin.Logger())   // 输出请求和错误日志
 	gin.SetMode(config.Conf.Server.ServeMode)
+	Engine = gin.Default()
 	//
 	// 配置CORS，处理OPTIONS预检请求
 	cors_Config(Engine)

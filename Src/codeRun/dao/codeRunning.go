@@ -111,3 +111,27 @@ func CodeRunningGetExpireTime(session *xorm.Session, expireDuration time.Duratio
 	}
 	return result
 }
+
+// 不包含end
+func CodeRunningGetByRange(session *xorm.Session, beg int, end int) ([]model.CodeRunningInfo, error) {
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
+
+	if beg >= end || beg < 0 {
+		return nil, nil
+	}
+
+	var result []model.CodeRunningInfo
+	err := session.
+		Asc("indices").
+		Limit(end-beg, beg).
+		Find(&result)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}

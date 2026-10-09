@@ -136,7 +136,7 @@ func addCodeFile(task CodeRunTaskInfo, retryCount int) error {
 	//尝试N次
 	for i := 0; i < retryCount; i += 1 {
 		fn()
-		if len(errs) < i {
+		if len(errs) < i+1 {
 			return nil
 		}
 	}

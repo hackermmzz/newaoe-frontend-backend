@@ -27,7 +27,7 @@ func GetStudentHistory(ctx *gin.Context) {
 	//获取查寻的id
 	student_id := ctx.Query("student_id")
 	//获取历史记录
-	submitRecords, err := service.GetHistoryRangeById(student_id, beg, end, model.Code_CommonSubmit, model.Code_ReRunSubmit)
+	submitRecords, err := service.GetHistoryRangeById(student_id, beg, end, model.Code_CommonSubmit, model.Code_ReRunSubmit, model.Code_AssessmentSubmit)
 	if err != nil {
 		util.DebugError("GetStudentHistory", err)
 		util.ResponseNAK_MSG(ctx, err.Error(), nil)
