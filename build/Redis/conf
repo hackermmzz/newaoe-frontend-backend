@@ -1,0 +1,15 @@
+# 端口
+port 6379
+# 绑定所有IP（外部可连接）
+bind 0.0.0.0
+# 密码
+requirepass newaoe
+# 最大内存 2GB
+maxmemory 2gb
+# 禁用危险命令
+rename-command CONFIG ""
+# 内存满时删除最少使用的key
+maxmemory-policy allkeys-lru
+# 关闭保护模式（允许外部连接）
+protected-mode no
+

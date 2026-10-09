@@ -1,0 +1,113 @@
+package dao
+
+import (
+	"newaoe/Src/codeRun/model"
+	database "newaoe/Src/databse"
+	"newaoe/Src/util"
+	"time"
+
+	"xorm.io/xorm"
+)
+
+func CodeRunningExist(session *xorm.Session, indices int) (bool, error) {
+	//
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
+	//
+	var info model.CodeRunningInfo
+	has, err := session.ID(indices).Get(&info)
+	if err != nil {
+		return false, err
+	}
+	return has, nil
+}
+
+func CodeRunningInsert(session *xorm.Session, data model.CodeRunningInfo) bool {
+	//
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
+	//
+	_, err := session.Insert(data)
+	if err != nil {
+		util.DebugError("CodeRunningInsert:", err)
+		return false
+	}
+	return true
+}
+
+func CodeRunningUpdate(session *xorm.Session, info model.CodeRunningInfo) (bool, error) {
+	//
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
+	//
+	affected, err := session.ID(info.Indices).Update(info)
+	if err != nil {
+		util.DebugError("CodeRunningUpdate:", err)
+		return false, err
+	}
+	return affected > 0, err
+}
+
+func CodeRunningRemove(session *xorm.Session, indices int) bool {
+	//
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
+	//
+	d := &model.CodeRunningInfo{
+		Indices: indices,
+	}
+	_, err := session.Delete(d)
+	if err != nil {
+		util.DebugError("CodeRunningRemove:", err)
+		return false
+	}
+	return true
+}
+
+func CodeRunningBatchRemove(session *xorm.Session, indices []int) bool {
+	//
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
+	//
+	if len(indices) == 0 {
+		return true
+	}
+	//
+	_, err := session.In("indices", indices).Delete(&model.CodeRunningInfo{})
+	if err != nil {
+		util.DebugError("CodeRunningBatchRemove:", err)
+		return false
+	}
+	return true
+}
+
+func CodeRunningGetExpireTime(session *xorm.Session, expireDuration time.Duration, number int) []model.CodeRunningInfo {
+	//
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
+	//
+	var result []model.CodeRunningInfo
+	// 当前时间减去超时时间
+	expireTime := time.Now().Add(-expireDuration)
+	err := session.
+		Where("submittime <= ?", expireTime).
+		Limit(number). // 最多返回 number 条
+		Find(&result)
+	if err != nil {
+		util.Debug("CodeRunningGetExpireTime:", err)
+		return nil
+	}
+	return result
+}
