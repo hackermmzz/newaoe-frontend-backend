@@ -20,11 +20,39 @@ func AssessmentRankGetByRange(session *xorm.Session, beg int, end int) []model.A
 	if beg < 0 || end <= beg {
 		return ranks
 	}
+	//先默认查询都是胜利的
 	err := session.Desc("status").Asc("frame").Desc("score").Asc("id").Limit(end-beg, beg).Find(&ranks)
 	if err != nil {
 		util.DebugError("AssessmentRankGetByRange:", err)
 		return nil
 	}
+	if len(ranks) == 0 {
+		return nil
+	}
+	//判断里面是否存在不是胜利的情况
+	l, r := 0, len(ranks)-1
+	for l <= r {
+		mid := (l + r) / 2
+		status := ranks[mid].Status
+		if status >= model.AssessmenrRankStatus_Win {
+			l = mid + 1
+		} else {
+			r = mid - 1
+		}
+	}
+	if l >= len(ranks) {
+		return ranks //结果都是胜利的
+	}
+	//如果查询里面存在不是胜利的，则需考虑其他的查询
+	var ranks1 []model.AssessmentRankInfo
+	err = session.Desc("status").Desc("score").Asc("frame").Asc("id").Limit(end-beg-l, beg+l).Find(&ranks1)
+	if err != nil {
+		util.DebugError("AssessmentRankGetByRange:", err)
+		return nil
+	}
+	//合并
+	ranks = append(ranks[:l], ranks1...)
+	//
 	return ranks
 }
 
