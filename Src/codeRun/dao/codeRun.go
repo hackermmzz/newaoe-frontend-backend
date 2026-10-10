@@ -9,7 +9,7 @@ import (
 	"xorm.io/xorm"
 )
 
-func CodeRunAdd(session *xorm.Session, c model.CodeRunInfo) int {
+func CodeRunAdd(session *xorm.Session, c model.CodeRunInfo) (int, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -18,13 +18,12 @@ func CodeRunAdd(session *xorm.Session, c model.CodeRunInfo) int {
 	//
 	_, err := session.Insert(&c)
 	if err != nil {
-		util.DebugError("CodeRunAdd:", err)
-		return 0
+		return 0, err
 	}
-	return c.Indices
+	return c.Indices, nil
 }
 
-func CodeRunExist(session *xorm.Session, indices int) bool {
+func CodeRunExist(session *xorm.Session, indices int) (bool, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -34,12 +33,12 @@ func CodeRunExist(session *xorm.Session, indices int) bool {
 	exist, err := session.Where("indices= ?", indices).Exist(&model.CodeRunInfo{})
 	if err != nil {
 		util.Debug("CodeRunExist err:", err)
-		return false
+		return false, err
 	}
-	return exist
+	return exist, nil
 }
 
-func CodeRunUpdate(session *xorm.Session, newInfo model.CodeRunInfo) bool {
+func CodeRunUpdate(session *xorm.Session, newInfo model.CodeRunInfo) (bool, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -51,13 +50,12 @@ func CodeRunUpdate(session *xorm.Session, newInfo model.CodeRunInfo) bool {
 		AllCols().
 		Update(&newInfo)
 	if err != nil {
-		util.DebugError("CodeRunUpdate:", err)
-		return false
+		return false, err
 	}
-	return affected > 0
+	return affected > 0, nil
 }
 
-func CodeRunUpdateStatusAsync(session *xorm.Session, indices int, status string) bool {
+func CodeRunUpdateStatusAsync(session *xorm.Session, indices int, status string) (bool, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -69,13 +67,12 @@ func CodeRunUpdateStatusAsync(session *xorm.Session, indices int, status string)
 	_, err := session.Where("indices=?", indices).
 		Update(info)
 	if err != nil {
-		util.DebugError("CodeRunUpdateStatusAsync:", err)
-		return false
+		return false, err
 	}
-	return true
+	return true, nil
 }
 
-func CodeRunUpdateStatusSync(session *xorm.Session, indices int, status string) bool {
+func CodeRunUpdateStatusSync(session *xorm.Session, indices int, status string) (bool, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -87,13 +84,12 @@ func CodeRunUpdateStatusSync(session *xorm.Session, indices int, status string) 
 	_, err := session.Where("indices=?", indices).
 		Update(info)
 	if err != nil {
-		util.DebugError("CodeRunUpdateStatusSync:", err)
-		return false
+		return false, err
 	}
-	return true
+	return true, nil
 }
 
-func CodeRunGetByIndices(session *xorm.Session, indices int) *model.CodeRunInfo {
+func CodeRunGetByIndices(session *xorm.Session, indices int) (*model.CodeRunInfo, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -103,13 +99,15 @@ func CodeRunGetByIndices(session *xorm.Session, indices int) *model.CodeRunInfo 
 	var ret model.CodeRunInfo
 	has, err := session.Where("indices=?", indices).Get(&ret)
 	if err != nil || !has {
-		util.DebugError("CodeRunGetByIndices:", err)
-		return nil
+		if err != nil {
+			return nil, err
+		}
+		return nil, nil
 	}
-	return &ret
+	return &ret, nil
 }
 
-func CodeRunBatchGetByIndices(session *xorm.Session, indices []int) []model.CodeRunInfo {
+func CodeRunBatchGetByIndices(session *xorm.Session, indices []int) ([]model.CodeRunInfo, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -118,18 +116,17 @@ func CodeRunBatchGetByIndices(session *xorm.Session, indices []int) []model.Code
 	//
 	var ret []model.CodeRunInfo
 	if len(indices) == 0 {
-		return ret
+		return ret, nil
 	}
 	err := session.In("indices", indices).
 		Find(&ret)
 	if err != nil {
-		util.DebugError("CodeRunBatchGetByIndices:", err)
-		return nil
+		return nil, err
 	}
-	return ret
+	return ret, nil
 }
 
-func CodeRunGetById(session *xorm.Session, id string) []model.CodeRunInfo {
+func CodeRunGetById(session *xorm.Session, id string) ([]model.CodeRunInfo, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -139,13 +136,12 @@ func CodeRunGetById(session *xorm.Session, id string) []model.CodeRunInfo {
 	var ret []model.CodeRunInfo
 	err := session.Where("id = ?", id).Find(&ret)
 	if err != nil {
-		util.DebugError("CodeRunGetById:", err)
-		return nil
+		return nil, err
 	}
-	return ret
+	return ret, nil
 }
 
-func CodeRunCountById(session *xorm.Session, id string) int64 {
+func CodeRunCountById(session *xorm.Session, id string) (int64, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -154,14 +150,13 @@ func CodeRunCountById(session *xorm.Session, id string) int64 {
 	//
 	cnt, err := session.Where("id = ?", id).Count(&model.CodeRunInfo{})
 	if err != nil {
-		util.DebugError("CodeRunCountById:", err)
-		return 0
+		return 0, err
 	}
-	return cnt
+	return cnt, nil
 }
 
 // 不包含end
-func CodeRunGetRangeById(session *xorm.Session, id string, beg int, end int, class ...int) []model.CodeRunInfo {
+func CodeRunGetRangeById(session *xorm.Session, id string, beg int, end int, class ...int) ([]model.CodeRunInfo, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -169,7 +164,7 @@ func CodeRunGetRangeById(session *xorm.Session, id string, beg int, end int, cla
 	}
 	//
 	if beg < 0 || beg >= end {
-		return nil
+		return nil, util.NewError("beg<0 or beg>=end!")
 	}
 	var ret []model.CodeRunInfo
 	query := session.Where("id = ?", id)
@@ -178,14 +173,13 @@ func CodeRunGetRangeById(session *xorm.Session, id string, beg int, end int, cla
 		Limit(end-beg, int(beg)).
 		Find(&ret)
 	if err != nil {
-		util.DebugError("CodeRunGetRangeById:", err)
-		return nil
+		return nil, err
 	}
-	return ret
+	return ret, nil
 }
 
 // 获取指定范围的提交记录(不包含end)
-func CodeRunGetByRange(session *xorm.Session, beg int, end int, class ...int) []model.CodeRunInfo {
+func CodeRunGetByRange(session *xorm.Session, beg int, end int, class ...int) ([]model.CodeRunInfo, error) {
 	if session == nil {
 		session = database.NewSession()
 		defer session.Close()
@@ -196,11 +190,10 @@ func CodeRunGetByRange(session *xorm.Session, beg int, end int, class ...int) []
 	err := session.Desc("indices").Limit(end-beg, beg).Find(&data)
 
 	if err != nil {
-		util.DebugError("CodeRunGetByRange:", err)
-		return nil
+		return nil, err
 	}
 
-	return data
+	return data, nil
 }
 
 // 生成IN class的额外条件

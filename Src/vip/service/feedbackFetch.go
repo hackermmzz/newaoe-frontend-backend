@@ -16,7 +16,10 @@ type FeedbackRecordForManagerInfo struct {
 
 func FetchFeedbackRecord(beg int, end int) ([]FeedbackRecordForManagerInfo, error) {
 	//查询反馈记录
-	record := dao.FeedbackGetRange(nil, beg, end)
+	record, err := dao.FeedbackGetRange(nil, beg, end)
+	if err != nil {
+		return nil, err
+	}
 	if record == nil {
 		return nil, util.NewError("获取记录失败!")
 	}

@@ -28,17 +28,27 @@ func UserRegist(id string, password string, email string, vip_class int, verifyC
 		return errors.New("验证码错误")
 	}
 	//移除验证码
-	dao.RegistVerifyCodeRemove(id)
+	if _, err := dao.RegistVerifyCodeRemove(id); err != nil {
+		return err
+	}
 	//查询用是否允许注册
 	if !userIdLegal(id) {
 		return errors.New("该用户不允许注册账号!")
 	}
 	//查询是否已经注册
-	if dao.UserExist(session, id) {
+	exist, err = dao.UserExist(session, id)
+	if err != nil {
+		return err
+	}
+	if exist {
 		return errors.New("用户已经注册")
 	}
 	//查询邮箱是否已经使用过
-	if dao.EmailExist(session, email) {
+	exist, err = dao.EmailExist(session, email)
+	if err != nil {
+		return err
+	}
+	if exist {
 		return errors.New("邮箱已经使用")
 	}
 	//添加用户
@@ -46,12 +56,16 @@ func UserRegist(id string, password string, email string, vip_class int, verifyC
 	if err != nil {
 		return errors.New("密码格式不合规则!")
 	}
-	if !dao.UserAdd(session, model.Student{
+	added, err := dao.UserAdd(session, model.Student{
 		Id:       id,
 		Email:    email,
 		Password: password,
 		Vip:      vip_class,
-	}) {
+	})
+	if err != nil {
+		return err
+	}
+	if !added {
 		return errors.New("注册失败")
 	}
 

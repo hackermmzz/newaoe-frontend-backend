@@ -76,17 +76,20 @@ func SendEmail(email EmailMsg) {
 	//写入数据库
 	session := database.NewSession()
 	if err := session.Begin(); err != nil {
-		util.DebugError("数据库异常!")
+		util.DebugError("SendEmail:事务开始失败!")
 		return
 	}
 	defer session.Close()
-	indices := dao.EmailInfoInsert(session, model.EmailInfo{
+	indices, err := dao.EmailInfoInsert(session, model.EmailInfo{
 		Receiver:   email.Email,
 		CreateTime: util.UTC_Time(),
 		Class:      email.Type,
 		Data:       util.TruncateString(email.Text, 16*1024), //截断为16kb
 		Send:       false,
 	})
+	if err != nil {
+		util.DebugError("EmailInfoInsert:", err)
+	}
 	if indices == 0 {
 		util.DebugError("SendEmail插入记录失败!")
 		return
@@ -148,7 +151,6 @@ func sendEmailMsgToServer(emailMsg EmailMsg) error {
 	msg.SetHeader("From", config.Conf.Email.SenderEmail)
 	err := EmailDialer.DialAndSend(msg)
 	if err != nil {
-		util.DebugError("提交邮件到 Postfix 失败:", err, " 收件人:", emailMsg.Email)
 		return err
 	}
 
@@ -201,7 +203,10 @@ func consumeEmailToEmailService(data []byte) rocketmq.ConsumerResult {
 		return rocketmq.FAILURE
 	}
 	defer session.Rollback()
-	info := dao.EmailInfoGetForUpdate(session, emailMsg.Indices)
+	info, err := dao.EmailInfoGetForUpdate(session, emailMsg.Indices)
+	if err != nil {
+		util.DebugError("EmailInfoGetForUpdate:", err)
+	}
 	if info == nil {
 		util.DebugError("这是一个bug!按道理不应该为nil")
 		return rocketmq.SUCCESS
@@ -215,7 +220,10 @@ func consumeEmailToEmailService(data []byte) rocketmq.ConsumerResult {
 		return rocketmq.FAILURE
 	}
 	//标记已经发送过了
-	ok, _ := dao.EmailInfoUpdateSendStatus(session, info.Indices, true)
+	ok, _, err := dao.EmailInfoUpdateSendStatus(session, info.Indices, true)
+	if err != nil {
+		util.DebugError("EmailInfoUpdateSendStatus:", err)
+	}
 	if !ok {
 		util.DebugError("send字段修改失败!")
 		return rocketmq.FAILURE

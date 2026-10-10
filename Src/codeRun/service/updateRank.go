@@ -73,7 +73,10 @@ func updateCommonSubmitRank(session *xorm.Session, dt []model.CodeRunInfo) error
 		data, exist := redis.RedisGet(context.Background(), key)
 		if !exist {
 			//从数据库读取
-			infoPtr := dao.CodeRunGetByIndices(nil, ind)
+			infoPtr, err := dao.CodeRunGetByIndices(nil, ind)
+			if err != nil {
+				continue //读取失败，跳过
+			}
 			if infoPtr == nil {
 				return errors.New("为什么这里是空指针!")
 			}
@@ -121,7 +124,11 @@ func updateCommonSubmitRank(session *xorm.Session, dt []model.CodeRunInfo) error
 		finalRankInfo = append(finalRankInfo, value)
 	}
 	//提交更新
-	if !dao.RankBatchUpdateOrInsertIfBetter(session, finalRankInfo) {
+	updated, err := dao.RankBatchUpdateOrInsertIfBetter(session, finalRankInfo)
+	if err != nil {
+		return err
+	}
+	if !updated {
 		return util.NewError("updateRank fail!")
 	}
 	return nil
@@ -152,7 +159,10 @@ func updateAssessmentSubmitRank(session *xorm.Session, dt []model.CodeRunInfo) e
 		data, exist := redis.RedisGet(context.Background(), key)
 		if !exist {
 			//从数据库读取
-			infoPtr := dao.CodeRunGetByIndices(nil, ind)
+			infoPtr, err := dao.CodeRunGetByIndices(nil, ind)
+			if err != nil {
+				continue //读取失败，跳过
+			}
 			if infoPtr == nil {
 				return errors.New("为什么这里是空指针!")
 			}
@@ -195,7 +205,11 @@ func updateAssessmentSubmitRank(session *xorm.Session, dt []model.CodeRunInfo) e
 		finalRankInfo = append(finalRankInfo, value)
 	}
 	//提交更新
-	if !dao.AssessmentRankBatchUpdateOrInsertIfBetter(session, finalRankInfo) {
+	updated, err := dao.AssessmentRankBatchUpdateOrInsertIfBetter(session, finalRankInfo)
+	if err != nil {
+		return err
+	}
+	if !updated {
 		return util.NewError("updateAssessmentSubmitRank fail!")
 	}
 	return nil

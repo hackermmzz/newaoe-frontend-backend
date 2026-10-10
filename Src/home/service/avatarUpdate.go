@@ -27,7 +27,11 @@ func AvatarUpdate(id string) (string, error) {
 	}
 	defer session.Rollback()
 	//写入数据库
-	if dao.UserResetAvatar(session, id, avatarNewPath) {
+	updated, err := dao.UserResetAvatar(session, id, avatarNewPath)
+	if err != nil {
+		return "", err
+	}
+	if updated {
 		if err = session.Commit(); err != nil {
 			return "", util.NewError("服务器异常!")
 		}

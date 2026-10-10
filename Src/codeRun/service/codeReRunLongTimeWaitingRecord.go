@@ -8,9 +8,12 @@ import (
 
 func ReRunLongTimeWaitRecord(expireDuration time.Duration) (int, error) {
 	// 获取超时的记录
-	runningList := dao.CodeRunningGetExpireTime(nil, expireDuration, 20)
+	runningList, err := dao.CodeRunningGetExpireTime(nil, expireDuration, 20)
+	if err != nil {
+		return 0, err
+	}
 	if len(runningList) == 0 {
-		return 0, nil
+		return 0, nil // 无超时记录
 	}
 	//遍历每个info
 	errs := make([]error, 0)

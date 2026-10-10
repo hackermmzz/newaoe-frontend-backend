@@ -8,7 +8,10 @@ import (
 
 // id和加密前的密码
 func UserCanLogin(id string, password string) error {
-	correct_password := dao.UserGetPassword(nil, id)
+	correct_password, err := dao.UserGetPassword(nil, id)
+	if err != nil {
+		return err
+	}
 	if !util.CheckPasswordSame(correct_password, password) {
 		return errors.New("账号或者密码错误!")
 	}

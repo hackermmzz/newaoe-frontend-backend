@@ -26,10 +26,14 @@ type SubmitRecord struct {
 func GetHistoryRangeById(id string, beg int, end int, class ...int) ([]SubmitRecord, error) {
 	//从数据库获取提交历史
 	var historyRecords []model.CodeRunInfo
+	var err error
 	if id != "" {
-		historyRecords = dao.CodeRunGetRangeById(nil, id, beg, end+1, class...)
+		historyRecords, err = dao.CodeRunGetRangeById(nil, id, beg, end+1, class...)
 	} else {
-		historyRecords = dao.CodeRunGetByRange(nil, beg, end+1, class...)
+		historyRecords, err = dao.CodeRunGetByRange(nil, beg, end+1, class...)
+	}
+	if err != nil {
+		return nil, err
 	}
 	if historyRecords == nil {
 		historyRecords = make([]model.CodeRunInfo, 0)

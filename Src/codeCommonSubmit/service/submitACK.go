@@ -48,8 +48,11 @@ func CodeCommonSubmitACK(id string, key string) (int64, error) {
 	}
 	defer session.Rollback()
 	//写入数据库
-	indices := int64(0)
-	if indices = dao.CodeCommonInfoAdd(session, info); indices == 0 {
+	indices, err := dao.CodeCommonInfoAdd(session, info)
+	if err != nil {
+		return int64(0), err
+	}
+	if indices == 0 {
 		return int64(0), errors.New("记录写入数据库失败!")
 	}
 	//提交事务

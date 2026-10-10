@@ -8,7 +8,7 @@ import (
 	"xorm.io/xorm"
 )
 
-func UserResetAvatar(session *xorm.Session, id string, avatarFile string) bool {
+func UserResetAvatar(session *xorm.Session, id string, avatarFile string) (bool, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -21,7 +21,7 @@ func UserResetAvatar(session *xorm.Session, id string, avatarFile string) bool {
 }
 
 // 判断用户是否已经注册
-func UserExist(session *xorm.Session, id string) bool {
+func UserExist(session *xorm.Session, id string) (bool, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -30,16 +30,13 @@ func UserExist(session *xorm.Session, id string) bool {
 	//
 	has, err := session.Where("id = ?", id).Exist(&model.Student{})
 	if (!has) || (err != nil) {
-		if err != nil {
-			util.DebugError("UserExist: ", err)
-		}
-		return false
+		return false, err
 	}
-	return true
+	return true, nil
 }
 
 // 判断邮箱是否已经使用
-func EmailExist(session *xorm.Session, email string) bool {
+func EmailExist(session *xorm.Session, email string) (bool, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -48,16 +45,13 @@ func EmailExist(session *xorm.Session, email string) bool {
 	//
 	has, err := session.Where("email = ?", email).Exist(&model.Student{})
 	if (!has) || (err != nil) {
-		if err != nil {
-			util.DebugError("EmailExist: ", err)
-		}
-		return false
+		return false, err
 	}
-	return true
+	return true, nil
 }
 
 // 添加用户
-func UserAdd(session *xorm.Session, userInfo model.Student) bool {
+func UserAdd(session *xorm.Session, userInfo model.Student) (bool, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -74,14 +68,13 @@ func UserAdd(session *xorm.Session, userInfo model.Student) bool {
 	}
 	_, err := session.Insert(data)
 	if err != nil {
-		util.DebugError("AddUser:", err)
-		return false
+		return false, err
 	}
-	return true
+	return true, nil
 }
 
 // 添加用户
-func UserAddByStudentInfo(session *xorm.Session, info model.Student) bool {
+func UserAddByStudentInfo(session *xorm.Session, info model.Student) (bool, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -90,14 +83,13 @@ func UserAddByStudentInfo(session *xorm.Session, info model.Student) bool {
 	//
 	_, err := session.Insert(info)
 	if err != nil {
-		util.DebugError("AddUser:", err)
-		return false
+		return false, err
 	}
-	return true
+	return true, nil
 }
 
 // 更新用户数据
-func UserUpdate(session *xorm.Session, id string, user model.Student) bool {
+func UserUpdate(session *xorm.Session, id string, user model.Student) (bool, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -106,14 +98,13 @@ func UserUpdate(session *xorm.Session, id string, user model.Student) bool {
 	//
 	_, err := session.Where("id = ?", id).Update(&user)
 	if err != nil {
-		util.DebugError("UserUpdate:", err)
-		return false
+		return false, err
 	}
-	return true
+	return true, nil
 }
 
 // 获取 id like 的所有用户(不包含end)
-func UserGetLikeId(session *xorm.Session, id_like string, beg int, end int) []model.Student {
+func UserGetLikeId(session *xorm.Session, id_like string, beg int, end int) ([]model.Student, error) {
 	if session == nil {
 		session = database.NewSession()
 		defer session.Close()
@@ -124,15 +115,14 @@ func UserGetLikeId(session *xorm.Session, id_like string, beg int, end int) []mo
 	err := session.Where("id LIKE ?", "%"+id_like+"%").Limit(end-beg, beg).Find(&users)
 
 	if err != nil {
-		util.DebugError("UserGetLikeId:", err)
-		return nil
+		return nil, err
 	}
 
-	return users
+	return users, nil
 }
 
 // 获取指定用户的数据
-func UserGet(session *xorm.Session, id string) *model.Student {
+func UserGet(session *xorm.Session, id string) (*model.Student, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -142,14 +132,13 @@ func UserGet(session *xorm.Session, id string) *model.Student {
 	var user model.Student
 	has, err := session.Where("id = ? ", id).Get(&user)
 	if err != nil || !has {
-		util.DebugError("UserGet:", err)
-		return nil
+		return nil, err
 	}
-	return &user
+	return &user, nil
 }
 
 // 获取指定用户的数据
-func UserGetByEmail(session *xorm.Session, email string) *model.Student {
+func UserGetByEmail(session *xorm.Session, email string) (*model.Student, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -159,14 +148,13 @@ func UserGetByEmail(session *xorm.Session, email string) *model.Student {
 	var user model.Student
 	has, err := session.Where("email = ? ", email).Get(&user)
 	if err != nil || !has {
-		util.DebugError("UserGetByEmail:", err)
-		return nil
+		return nil, err
 	}
-	return &user
+	return &user, nil
 }
 
 // 获取指定用户的数据
-func UserGetByIdOrEmail(session *xorm.Session, id_or_email string) *model.Student {
+func UserGetByIdOrEmail(session *xorm.Session, id_or_email string) (*model.Student, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -176,14 +164,13 @@ func UserGetByIdOrEmail(session *xorm.Session, id_or_email string) *model.Studen
 	var user model.Student
 	has, err := session.Where("id = ? OR email = ?", id_or_email, id_or_email).Get(&user)
 	if err != nil || !has {
-		util.DebugError("UserGetByEmail:", err)
-		return nil
+		return nil, err
 	}
-	return &user
+	return &user, nil
 }
 
 // 根据注册时间升序排序（不包括end)
-func UserGetByRangeOrderByRegistData(session *xorm.Session, beg int, end int) []model.Student {
+func UserGetByRangeOrderByRegistData(session *xorm.Session, beg int, end int) ([]model.Student, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -191,21 +178,20 @@ func UserGetByRangeOrderByRegistData(session *xorm.Session, beg int, end int) []
 	}
 	//
 	if beg < 0 || beg >= end {
-		return nil
+		return nil, util.NewError("beg<0 or beg>=end!")
 	}
 	var list []model.Student
 	// 按regist_date升序
 	// LIMIT beg, end-beg  等价于 offset beg limit count
 	err := session.Asc("registDate").Limit(end-beg, beg).Find(&list)
 	if err != nil {
-		util.DebugError("UserGetByRangeOrderByRegistData error:", err)
-		return nil
+		return nil, err
 	}
-	return list
+	return list, nil
 }
 
 // 获取指定多个用户的数据
-func UserGetByIDs(session *xorm.Session, ids []string) []model.Student {
+func UserGetByIDs(session *xorm.Session, ids []string) ([]model.Student, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -216,20 +202,19 @@ func UserGetByIDs(session *xorm.Session, ids []string) []model.Student {
 	var users []model.Student
 
 	if len(ids) == 0 {
-		return users
+		return users, nil
 	}
 
 	err := session.In("id", ids).Find(&users)
 	if err != nil {
-		util.DebugError("UserGetByIDs:", err)
-		return nil
+		return nil, err
 	}
 
-	return users
+	return users, nil
 }
 
 // 获取所有学生数据(谨慎使用)
-func UserGetAll(session *xorm.Session) []model.Student {
+func UserGetAll(session *xorm.Session) ([]model.Student, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -241,56 +226,64 @@ func UserGetAll(session *xorm.Session) []model.Student {
 	err := session.Find(&list)
 	if err != nil {
 		// 出错返回空
-		util.DebugError("UserGetAll:", err)
-		return nil
+		return nil, err
 	}
-	return list
+	return list, nil
 }
 
 // 获取用户密码(编码后的密码)
-func UserGetPassword(session *xorm.Session, id string) string {
+func UserGetPassword(session *xorm.Session, id string) (string, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
 		defer session.Close()
 	}
 	//
-	data := UserGet(session, id)
-	if data == nil {
-		return ""
+	data, err := UserGet(session, id)
+	if err != nil {
+		return "", err
 	}
-	return data.Password
+	if data == nil {
+		return "", nil
+	}
+	return data.Password, nil
 }
 
-func UserGetEmail(session *xorm.Session, id string) string {
+func UserGetEmail(session *xorm.Session, id string) (string, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
 		defer session.Close()
 	}
 	//
-	data := UserGet(session, id)
-	if data == nil {
-		return ""
+	data, err := UserGet(session, id)
+	if err != nil {
+		return "", err
 	}
-	return data.Email
+	if data == nil {
+		return "", nil
+	}
+	return data.Email, nil
 }
 
-func UserGetAvatar(session *xorm.Session, id string) string {
+func UserGetAvatar(session *xorm.Session, id string) (string, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
 		defer session.Close()
 	}
 	//
-	data := UserGet(session, id)
-	if data == nil {
-		return ""
+	data, err := UserGet(session, id)
+	if err != nil {
+		return "", err
 	}
-	return data.Avatar
+	if data == nil {
+		return "", nil
+	}
+	return data.Avatar, nil
 }
 
-func UserResetPassword(session *xorm.Session, id string, new_password string) bool {
+func UserResetPassword(session *xorm.Session, id string, new_password string) (bool, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -303,9 +296,9 @@ func UserResetPassword(session *xorm.Session, id string, new_password string) bo
 }
 
 // 获取 [beg, end)，不包含 end
-func UserGetRangeIDs(session *xorm.Session, beg int, end int) []string {
+func UserGetRangeIDs(session *xorm.Session, beg int, end int) ([]string, error) {
 	if beg < 0 || end <= beg {
-		return nil
+		return nil, util.NewError("beg<0 or beg>=end!")
 	}
 
 	if session == nil {
@@ -322,9 +315,8 @@ func UserGetRangeIDs(session *xorm.Session, beg int, end int) []string {
 		Find(&ids)
 
 	if err != nil {
-		util.DebugError("UserGetRangeIDs:", err)
-		return nil
+		return nil, err
 	}
 
-	return ids
+	return ids, nil
 }

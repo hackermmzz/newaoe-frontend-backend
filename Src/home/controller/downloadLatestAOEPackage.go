@@ -11,6 +11,7 @@ func DownloadLatestAOEPackage(ctx *gin.Context) {
 	//直接查数据库
 	value, err := dao.MapGet(nil, "newaoe-latest-version")
 	if err != nil {
+		util.DebugError("MapGet:", err)
 		util.ResponseNAK_MSG(ctx, err.Error(), nil)
 		return
 	}

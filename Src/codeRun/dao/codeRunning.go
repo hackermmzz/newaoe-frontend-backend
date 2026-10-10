@@ -3,7 +3,6 @@ package dao
 import (
 	"newaoe/Src/codeRun/model"
 	database "newaoe/Src/databse"
-	"newaoe/Src/util"
 	"time"
 
 	"xorm.io/xorm"
@@ -24,7 +23,7 @@ func CodeRunningExist(session *xorm.Session, indices int) (bool, error) {
 	return has, nil
 }
 
-func CodeRunningInsert(session *xorm.Session, data model.CodeRunningInfo) bool {
+func CodeRunningInsert(session *xorm.Session, data model.CodeRunningInfo) (bool, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -33,10 +32,9 @@ func CodeRunningInsert(session *xorm.Session, data model.CodeRunningInfo) bool {
 	//
 	_, err := session.Insert(data)
 	if err != nil {
-		util.DebugError("CodeRunningInsert:", err)
-		return false
+		return false, err
 	}
-	return true
+	return true, nil
 }
 
 func CodeRunningUpdate(session *xorm.Session, info model.CodeRunningInfo) (bool, error) {
@@ -48,13 +46,12 @@ func CodeRunningUpdate(session *xorm.Session, info model.CodeRunningInfo) (bool,
 	//
 	affected, err := session.ID(info.Indices).Update(info)
 	if err != nil {
-		util.DebugError("CodeRunningUpdate:", err)
 		return false, err
 	}
 	return affected > 0, err
 }
 
-func CodeRunningRemove(session *xorm.Session, indices int) bool {
+func CodeRunningRemove(session *xorm.Session, indices int) (bool, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -66,13 +63,12 @@ func CodeRunningRemove(session *xorm.Session, indices int) bool {
 	}
 	_, err := session.Delete(d)
 	if err != nil {
-		util.DebugError("CodeRunningRemove:", err)
-		return false
+		return false, err
 	}
-	return true
+	return true, nil
 }
 
-func CodeRunningBatchRemove(session *xorm.Session, indices []int) bool {
+func CodeRunningBatchRemove(session *xorm.Session, indices []int) (bool, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -80,18 +76,17 @@ func CodeRunningBatchRemove(session *xorm.Session, indices []int) bool {
 	}
 	//
 	if len(indices) == 0 {
-		return true
+		return true, nil
 	}
 	//
 	_, err := session.In("indices", indices).Delete(&model.CodeRunningInfo{})
 	if err != nil {
-		util.DebugError("CodeRunningBatchRemove:", err)
-		return false
+		return false, err
 	}
-	return true
+	return true, nil
 }
 
-func CodeRunningGetExpireTime(session *xorm.Session, expireDuration time.Duration, number int) []model.CodeRunningInfo {
+func CodeRunningGetExpireTime(session *xorm.Session, expireDuration time.Duration, number int) ([]model.CodeRunningInfo, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -106,10 +101,9 @@ func CodeRunningGetExpireTime(session *xorm.Session, expireDuration time.Duratio
 		Limit(number). // 最多返回 number 条
 		Find(&result)
 	if err != nil {
-		util.Debug("CodeRunningGetExpireTime:", err)
-		return nil
+		return nil, err
 	}
-	return result
+	return result, nil
 }
 
 // 不包含end
@@ -132,6 +126,5 @@ func CodeRunningGetByRange(session *xorm.Session, beg int, end int) ([]model.Cod
 	if err != nil {
 		return nil, err
 	}
-
 	return result, nil
 }

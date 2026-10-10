@@ -51,7 +51,13 @@ func pullOneCodefunc() (*CodeRunTaskInfo, error) {
 	}
 	//判断是否已经处理过了(只有CodeRunning表里面没有，且CodeRun表有才算成功跑结束，取反就是下面这个)
 	has0, err := dao.CodeRunningExist(nil, codeinfo.Indices)
-	has1 := dao.CodeRunExist(nil, codeinfo.Indices)
+	if err != nil {
+		return nil, util.NewError(err)
+	}
+	has1, err := dao.CodeRunExist(nil, codeinfo.Indices)
+	if err != nil {
+		return nil, util.NewError(err)
+	}
 	if err != nil {
 		return nil, util.NewError(err)
 	}

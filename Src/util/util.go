@@ -15,7 +15,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"uuid"
+
+	"github.com/google/uuid"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"

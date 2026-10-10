@@ -16,7 +16,11 @@ func PublishAnnouncement(title string, content string, enabled bool) error {
 		CreateTime: curTime,
 		UpdateTime: curTime,
 	}
-	if 0 == dao.AnnouncementAdd(nil, data) {
+	indices, err := dao.AnnouncementAdd(nil, data)
+	if err != nil {
+		return err
+	}
+	if 0 == indices {
 		return util.NewError("数据库异常!")
 	}
 	return nil

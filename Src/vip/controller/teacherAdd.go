@@ -13,6 +13,7 @@ func TeacherAdd(ctx *gin.Context) {
 	//这里比较简单，直接走dao
 	err := dao.TeacherAdd(nil, teacher)
 	if err != nil {
+		util.DebugError("TeacherAdd:", err)
 		util.ResponseNAK_MSG(ctx, err.Error(), nil)
 		return
 	}

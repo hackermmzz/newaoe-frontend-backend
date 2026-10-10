@@ -3,13 +3,12 @@ package dao
 import (
 	"newaoe/Src/codeRun/model"
 	database "newaoe/Src/databse"
-	"newaoe/Src/util"
 
 	"xorm.io/xorm"
 )
 
 // end不包括
-func RankGetByRange(session *xorm.Session, beg int, end int) []model.RankInfo {
+func RankGetByRange(session *xorm.Session, beg int, end int) ([]model.RankInfo, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -18,18 +17,17 @@ func RankGetByRange(session *xorm.Session, beg int, end int) []model.RankInfo {
 	//
 	var ranks []model.RankInfo
 	if beg < 0 || end <= beg {
-		return ranks
+		return ranks, nil
 	}
 	err := session.Desc("win").Asc("frame").Desc("score").Asc("id").Limit(end-beg, beg).Find(&ranks)
 	if err != nil {
-		util.DebugError("RankGetByRange:", err)
-		return nil
+		return nil, err
 	}
 	//
-	return ranks
+	return ranks, nil
 }
 
-func RankUpdateOrInsert(session *xorm.Session, rank *model.RankInfo) bool {
+func RankUpdateOrInsert(session *xorm.Session, rank *model.RankInfo) (bool, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -39,23 +37,21 @@ func RankUpdateOrInsert(session *xorm.Session, rank *model.RankInfo) bool {
 	affected, err := session.Where("id = ?", rank.ID).AllCols().Update(rank)
 
 	if err != nil {
-		util.DebugError("RankUpdateOrInsert Update:", err)
-		return false
+		return false, err
 	}
 
 	// 没有对应 ID，则插入
 	if affected == 0 {
 		_, err = session.Insert(rank)
 		if err != nil {
-			util.DebugError("RankUpdateOrInsert Insert:", err)
-			return false
+			return false, err
 		}
 	}
 
-	return true
+	return true, nil
 }
 
-func RankBatchUpdateOrInsert(session *xorm.Session, ranks []model.RankInfo) bool {
+func RankBatchUpdateOrInsert(session *xorm.Session, ranks []model.RankInfo) (bool, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -63,7 +59,7 @@ func RankBatchUpdateOrInsert(session *xorm.Session, ranks []model.RankInfo) bool
 	}
 	//
 	if len(ranks) == 0 {
-		return true
+		return true, nil
 	}
 	// 1. 收集所有 ID
 	ids := make([]string, 0, len(ranks))
@@ -74,8 +70,7 @@ func RankBatchUpdateOrInsert(session *xorm.Session, ranks []model.RankInfo) bool
 	var existRanks []model.RankInfo
 	err := session.In("id", ids).Cols("id").Find(&existRanks)
 	if err != nil {
-		util.DebugError("RankBatchUpdateOrInsert Find:", err)
-		return false
+		return false, err
 	}
 	// 3. 建立存在 ID 的集合
 	existMap := make(map[string]bool, len(existRanks))
@@ -96,8 +91,7 @@ func RankBatchUpdateOrInsert(session *xorm.Session, ranks []model.RankInfo) bool
 	if len(insertRanks) > 0 {
 		_, err = session.Insert(&insertRanks)
 		if err != nil {
-			util.DebugError("RankBatchUpdateOrInsert Insert:", err)
-			return false
+			return false, err
 		}
 	}
 	// 6. Update
@@ -105,14 +99,13 @@ func RankBatchUpdateOrInsert(session *xorm.Session, ranks []model.RankInfo) bool
 		rank := &updateRanks[i]
 		_, err = session.ID(rank.ID).AllCols().Update(rank)
 		if err != nil {
-			util.DebugError("RankBatchUpdateOrInsert Update:", err)
-			return false
+			return false, err
 		}
 	}
-	return true
+	return true, nil
 }
 
-func RankBatchUpdateOrInsertIfBetter(session *xorm.Session, ranks []model.RankInfo) bool {
+func RankBatchUpdateOrInsertIfBetter(session *xorm.Session, ranks []model.RankInfo) (bool, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -120,7 +113,7 @@ func RankBatchUpdateOrInsertIfBetter(session *xorm.Session, ranks []model.RankIn
 	}
 	//
 	if len(ranks) == 0 {
-		return true
+		return true, nil
 	}
 	// 1. 收集 ID
 	ids := make([]string, 0, len(ranks))
@@ -134,8 +127,7 @@ func RankBatchUpdateOrInsertIfBetter(session *xorm.Session, ranks []model.RankIn
 
 	err := session.In("id", ids).Find(&existRanks)
 	if err != nil {
-		util.DebugError("RankBatchUpdateOrInsertIfBetter Find:", err)
-		return false
+		return false, err
 	}
 
 	// 3. ID -> 旧 Rank
@@ -169,8 +161,7 @@ func RankBatchUpdateOrInsertIfBetter(session *xorm.Session, ranks []model.RankIn
 		_, err = session.Insert(&insertRanks)
 
 		if err != nil {
-			util.DebugError("RankBatchUpdateOrInsertIfBetter Insert:", err)
-			return false
+			return false, err
 		}
 	}
 
@@ -181,14 +172,13 @@ func RankBatchUpdateOrInsertIfBetter(session *xorm.Session, ranks []model.RankIn
 		_, err = session.ID(rank.ID).AllCols().Update(rank)
 
 		if err != nil {
-			util.DebugError("RankBatchUpdateOrInsertIfBetter Update:", err)
-			return false
+			return false, err
 		}
 	}
-	return true
+	return true, nil
 }
 
-func RankGetCount(session *xorm.Session) int {
+func RankGetCount(session *xorm.Session) (int, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -197,10 +187,9 @@ func RankGetCount(session *xorm.Session) int {
 	//
 	count, err := session.Count(&model.RankInfo{})
 	if err != nil {
-		util.DebugError("RankGetCount:", err)
-		return 0
+		return 0, err
 	}
-	return int(count)
+	return int(count), nil
 }
 
 func RankIsBetter(newRank *model.RankInfo, oldRank *model.RankInfo) bool {

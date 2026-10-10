@@ -10,7 +10,10 @@ import (
 
 func SendRegistCode(keyID string, email string) error {
 	//判断是否可以发送验证码
-	ttl := dao.RegistVerifyCodeCanSendTTL(keyID)
+	ttl, err := dao.RegistVerifyCodeCanSendTTL(keyID)
+	if err != nil {
+		return err
+	}
 	if ttl > 0 {
 		return util.NewError(fmt.Sprintf("请等待%v秒后重试!", ttl))
 	}
@@ -24,7 +27,9 @@ func SendRegistCode(keyID string, email string) error {
 	}
 	service.SendEmail(emailMsg)
 	//插入Redis
-	dao.RegistVerifyCodeAdd(keyID, code)
+	if err := dao.RegistVerifyCodeAdd(keyID, code); err != nil {
+		return err
+	}
 	//
 	return nil
 }

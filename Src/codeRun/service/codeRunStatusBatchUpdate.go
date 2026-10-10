@@ -31,7 +31,11 @@ func BatchUpdateCodeRunStatus(indices []int) {
 	for ind := range distinctIndices {
 		data, exist := redis.RedisGet(ctx, fmt.Sprintf("CodeRun:%v", ind))
 		//获取数据库里面的数据
-		dbRet := dao.CodeRunGetByIndices(nil, ind)
+		dbRet, err := dao.CodeRunGetByIndices(nil, ind)
+		if err != nil {
+			util.DebugError("CodeRunGetByIndices:", err)
+			continue
+		}
 		if dbRet == nil {
 			util.DebugError("为什么获取不到这个indice的数据呢?", ind)
 			continue
@@ -145,11 +149,19 @@ func removeCodeRunRecordAlreadyFinish(session *xorm.Session, dt []model.CodeRunI
 		needRemove = append(needRemove, ind)
 	}
 	//批量删除
-	if !dao.CodeRunningBatchRemove(session, needRemove) {
+	removed, err := dao.CodeRunningBatchRemove(session, needRemove)
+	if err != nil {
+		util.DebugError("CodeRunningBatchRemove:", err)
+	}
+	if !removed {
 		util.DebugError("批量移除CodeRunning失败!执行单个单个删除操作!")
 		//单个单个移除
 		for _, ind := range needRemove {
-			if !dao.CodeRunningRemove(session, ind) {
+			removed, err := dao.CodeRunningRemove(session, ind)
+			if err != nil {
+				util.DebugError("CodeRunningRemove:", err)
+			}
+			if !removed {
 				util.DebugError("单个删除CodeRunning表记录失败!")
 			}
 		}

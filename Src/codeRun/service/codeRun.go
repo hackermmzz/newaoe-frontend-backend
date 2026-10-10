@@ -40,16 +40,23 @@ func CodeRun(indices int, id string, class int, runType int) error {
 	}
 	defer session.Rollback()
 	//向数据库插入一条运行记录
-	codeRunInfo.Indices = dao.CodeRunAdd(session, codeRunInfo)
+	codeRunInfo.Indices, err = dao.CodeRunAdd(session, codeRunInfo)
+	if err != nil {
+		return err
+	}
 	if codeRunInfo.Indices == 0 {
 		return errors.New("插入CodeRunAdd记录失败!")
 	}
 	//插入一条记录（以防止崩溃可以恢复）
-	if !dao.CodeRunningInsert(session, model.CodeRunningInfo{
+	inserted, err := dao.CodeRunningInsert(session, model.CodeRunningInfo{
 		Indices:    codeRunInfo.Indices,
 		SubmitTime: codeRunInfo.SubmitTime,
 		RunType:    runType,
-	}) {
+	})
+	if err != nil {
+		return err
+	}
+	if !inserted {
 		return errors.New("插入CodeRunningInsert记录失败!")
 	}
 	//提交事务
@@ -79,7 +86,10 @@ func getCodeRunMustInfo(id string, indices int, class int) (model.CodeRunInfo, e
 	switch class {
 	case model.Code_CommonSubmit:
 		//查表拿到数据
-		data := codeCommonDao.CodeCommonGetByIndices(nil, indices)
+		data, err := codeCommonDao.CodeCommonGetByIndices(nil, indices)
+		if err != nil {
+			return codeRunInfo, err
+		}
 		if data == nil || data.ID != id {
 			return codeRunInfo, errors.New("有人想作假:" + id)
 		}
@@ -87,7 +97,10 @@ func getCodeRunMustInfo(id string, indices int, class int) (model.CodeRunInfo, e
 		codeRunInfo.Source = data.Source
 		codeRunInfo.Description = data.Description
 	case model.Code_AssessmentSubmit:
-		data := codeAssessmentDao.CodeAssessmentGetByIndices(nil, indices)
+		data, err := codeAssessmentDao.CodeAssessmentGetByIndices(nil, indices)
+		if err != nil {
+			return codeRunInfo, err
+		}
 		if data == nil || data.ID != id {
 			return codeRunInfo, errors.New("有人想作假:" + id)
 		}
@@ -95,7 +108,10 @@ func getCodeRunMustInfo(id string, indices int, class int) (model.CodeRunInfo, e
 		codeRunInfo.Source = data.Source
 		codeRunInfo.Description = ""
 	case model.Code_ReRunSubmit:
-		data := dao.CodeRunGetByIndices(nil, indices)
+		data, err := dao.CodeRunGetByIndices(nil, indices)
+		if err != nil {
+			return codeRunInfo, err
+		}
 		if data == nil || data.ID != id {
 			return codeRunInfo, errors.New("有人想作假:" + id)
 		}

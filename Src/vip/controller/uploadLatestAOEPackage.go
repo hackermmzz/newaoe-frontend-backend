@@ -25,6 +25,7 @@ func UploadLatestAOEPackage(ctx *gin.Context) {
 	//更新数据库
 	err := dao.MapUpdateOrInsert(nil, "newaoe-latest-version", filepath)
 	if err != nil {
+		util.DebugError("MapUpdateOrInsert:", err)
 		util.ResponseNAK_MSG(ctx, err.Error(), nil)
 		return
 	}

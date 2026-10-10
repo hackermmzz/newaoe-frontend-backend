@@ -13,7 +13,11 @@ import (
 // 返回插入的数据库唯一键
 func AssessmentSubmitACK(id string, key string, teacherSelected string, aiContentRatio string) (int64, error) {
 	//判断教师存在不存在
-	if !dao.TeacherExist(nil, teacherSelected) {
+	teacherExist, err := dao.TeacherExist(nil, teacherSelected)
+	if err != nil {
+		return int64(0), err
+	}
+	if !teacherExist {
 		return int64(0), errors.New("教师" + teacherSelected + "不存在!")
 	}
 	//获取对应的文件路径
@@ -48,8 +52,11 @@ func AssessmentSubmitACK(id string, key string, teacherSelected string, aiConten
 		SourceSize:     sourceInfo.Size,
 		AIContentRatio: aiContentRatio,
 	}
-	indices := int64(0)
-	if indices = dao.CodeAssessmentAdd(session, info); indices == 0 {
+	indices, err := dao.CodeAssessmentAdd(session, info)
+	if err != nil {
+		return int64(0), err
+	}
+	if indices == 0 {
 		return int64(0), errors.New("写入数据库失败!")
 	}
 	//提交事务

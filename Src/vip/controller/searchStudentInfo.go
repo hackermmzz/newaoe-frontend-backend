@@ -30,6 +30,11 @@ func SearchStudentInfo(ctx *gin.Context) {
 		return
 	}
 	//获取学生信息
-	data := dao.UserGetLikeId(nil, id, beg, end+1)
+	data, err := dao.UserGetLikeId(nil, id, beg, end+1)
+	if err != nil {
+		util.DebugError("UserGetLikeId:", err)
+		util.ResponseNAK_MSG(ctx, err.Error(), nil)
+		return
+	}
 	util.ResponseACK_MSG(ctx, "搜索成功!", data)
 }

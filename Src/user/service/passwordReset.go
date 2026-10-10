@@ -16,11 +16,19 @@ func PasswordReset(id string, targetEmail string, newPasword string, verifyCode 
 	}
 	defer session.Rollback()
 	//检查用户名是否存在
-	if !dao.UserExist(session, id) {
+	exist, err := dao.UserExist(session, id)
+	if err != nil {
+		return err
+	}
+	if !exist {
 		return errors.New("用户不存在")
 	}
 	//检查用户名是否与用户邮箱匹配
-	if dao.UserGetEmail(session, id) != targetEmail {
+	userEmail, err := dao.UserGetEmail(session, id)
+	if err != nil {
+		return err
+	}
+	if userEmail != targetEmail {
 		return errors.New("用户名与邮箱不匹配")
 	}
 	//
@@ -33,7 +41,9 @@ func PasswordReset(id string, targetEmail string, newPasword string, verifyCode 
 		return errors.New("验证码错误")
 	}
 	//移除验证码
-	dao.PasswordForgetVerifyCodeRemove(id)
+	if _, err := dao.PasswordForgetVerifyCodeRemove(id); err != nil {
+		return err
+	}
 	//检查密码是否符合格式
 	if !passwordLegal(newPasword) {
 		return errors.New("密码格式错误!")
@@ -43,7 +53,11 @@ func PasswordReset(id string, targetEmail string, newPasword string, verifyCode 
 	if err != nil {
 		return errors.New("密码格式不合规则!")
 	}
-	if !dao.UserResetPassword(session, id, newEncodePassword) {
+	updated, err := dao.UserResetPassword(session, id, newEncodePassword)
+	if err != nil {
+		return err
+	}
+	if !updated {
 		return errors.New("重置密码失败")
 	}
 	//提交业务

@@ -37,7 +37,10 @@ func CodeGrpcServerAuthConfirm(auth string) (bool, string) {
 		return true, info.Auth
 	}
 	//获取账号
-	info_user := UserDao.UserGetByIdOrEmail(nil, info.ID)
+	info_user, err := UserDao.UserGetByIdOrEmail(nil, info.ID)
+	if err != nil {
+		util.DebugError("UserGetByIdOrEmail:", err)
+	}
 	if info_user == nil {
 		util.DebugError("codeGrpcServerAuthConfirm", "查无此用户!", info.ID)
 		return false, ""

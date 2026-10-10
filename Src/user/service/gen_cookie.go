@@ -12,7 +12,10 @@ import (
 
 func UserGenCookie(id string, ip string) (string, error) {
 	//获取用户信息
-	user := dao.UserGet(nil, id)
+	user, err := dao.UserGet(nil, id)
+	if err != nil {
+		return "", err
+	}
 	if user == nil {
 		return "", errors.New("数据库异常!")
 	}

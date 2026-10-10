@@ -8,6 +8,11 @@ import (
 )
 
 func StudentGetTeacher(ctx *gin.Context) {
-	teacher := dao.TeacherGetAll(nil)
+	teacher, err := dao.TeacherGetAll(nil)
+	if err != nil {
+		util.DebugError("TeacherGetAll:", err)
+		util.ResponseNAK_MSG(ctx, err.Error(), nil)
+		return
+	}
 	util.ResponseACK_MSG(ctx, "获取成功", teacher)
 }

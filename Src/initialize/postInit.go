@@ -20,7 +20,11 @@ func registerSuperUser() {
 		return
 	}
 	for _, userId := range config.Conf.Other.SuperUser {
-		if !dao.UserExist(nil, userId) {
+		exist, err := dao.UserExist(nil, userId)
+		if err != nil {
+			util.DebugError("UserExist:", err)
+		}
+		if !exist {
 			for i := 0; i < 3; i++ {
 				session := database.NewSession()
 				defer session.Rollback()
@@ -37,7 +41,11 @@ func registerSuperUser() {
 					Avatar:     util.GetRandomAvatar(),
 					Vip:        model.VIP_SUPER,
 				}
-				if !dao.UserAddByStudentInfo(session, info) {
+				added, err := dao.UserAddByStudentInfo(session, info)
+				if err != nil {
+					util.DebugError("UserAddByStudentInfo:", err)
+				}
+				if !added {
 					util.DebugError("超级用户", userId, "注册失败", err)
 					continue
 				}

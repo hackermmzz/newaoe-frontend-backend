@@ -9,7 +9,12 @@ import (
 
 func FetchAnnouncement(ctx *gin.Context) {
 	//直接获取最新的版本
-	data := dao.AnnouncementGetLatest(nil)
+	data, err := dao.AnnouncementGetLatest(nil)
+	if err != nil {
+		util.DebugError("AnnouncementGetLatest:", err)
+		util.ResponseNAK_MSG(ctx, err.Error(), nil)
+		return
+	}
 	if data == nil {
 		util.ResponseACK_MSG(ctx, "暂无数据!", nil)
 		return

@@ -48,7 +48,10 @@ func ExcelInfoExport() (string, error) {
 	records := make([]CodeRunModel.AssessmentRankInfo, 0)
 	step := 100
 	for i := 0; ; i += step {
-		extra_records := CodeRunDao.AssessmentRankGetByRange(session, i, i+step)
+		extra_records, err := CodeRunDao.AssessmentRankGetByRange(session, i, i+step)
+		if err != nil {
+			return "", err
+		}
 		if len(extra_records) == 0 {
 			break
 		}
@@ -97,7 +100,10 @@ func ExcelInfoExport() (string, error) {
 		data := processFinalDataInfo(v.ID, info.Msg)
 		data.ID = v.ID
 		//查询ai使用情况和所属老师
-		record := CodeAssessmentDao.CodeAssessmentGetByID(session, v.ID)
+		record, err := CodeAssessmentDao.CodeAssessmentGetByID(session, v.ID)
+		if err != nil {
+			return "", err
+		}
 		if len(record) == 0 {
 			return "", util.NewError("查询指定id的提交记录出错！", v.ID)
 		}

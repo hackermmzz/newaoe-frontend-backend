@@ -7,7 +7,6 @@ import (
 	"newaoe/Src/codeAssessmentSubmit/model"
 	database "newaoe/Src/databse"
 	"newaoe/Src/redis"
-	"newaoe/Src/util"
 	"time"
 
 	"xorm.io/xorm"
@@ -33,16 +32,16 @@ func TeacherAdd(session *xorm.Session, teacher string) error {
 	return nil
 }
 
-func TeacherGetAll(session *xorm.Session) []model.Teacher {
+func TeacherGetAll(session *xorm.Session) ([]model.Teacher, error) {
 	//查缓存
 	dataBytes, exist := redis.RedisGet(context.Background(), "TeacherGetAll")
 	if exist {
 		var ret []model.Teacher
 		err := json.Unmarshal(dataBytes, &ret)
 		if err == nil {
-			return ret
+			return ret, nil
 		}
-		util.DebugError("TeacherGetAll", err)
+		return nil, err
 	}
 	//
 	if session == nil {
@@ -53,26 +52,25 @@ func TeacherGetAll(session *xorm.Session) []model.Teacher {
 	var teachers []model.Teacher
 	err := session.Find(&teachers)
 	if err != nil {
-		util.DebugError("TeacherGetAll:", err)
-		return nil
+		return nil, err
 	}
 	//返回数据写入缓存
 	db, _ := json.Marshal(teachers)
 	redis.RedisSet(context.Background(), "TeacherGetAll", db, time.Duration(1)*time.Hour)
 	//
-	return teachers
+	return teachers, nil
 }
 
-func TeacherExist(session *xorm.Session, name string) (ret bool) {
+func TeacherExist(session *xorm.Session, name string) (ret bool, err error) {
 	//查缓存
 	key := fmt.Sprintf("TeacherExist:%v", name)
 	v, ext := redis.RedisGet(context.Background(), key)
 	if ext {
 		err := json.Unmarshal(v, &ret)
 		if err == nil {
-			return ret
+			return ret, nil
 		}
-		util.DebugError("TeacherExist", err)
+		return false, err
 	}
 	//
 	defer func() {
@@ -85,16 +83,19 @@ func TeacherExist(session *xorm.Session, name string) (ret bool) {
 		defer session.Close()
 	}
 	//
-	teacher := TeacherGetAll(session)
+	teacher, err := TeacherGetAll(session)
+	if err != nil {
+		return false, err
+	}
 	if len(teacher) == 0 {
-		return false
+		return false, nil
 	}
 	//
 	for _, id := range teacher {
 		if id.Name == name {
-			return true
+			return true, nil
 		}
 	}
 	//
-	return false
+	return false, nil
 }

@@ -24,11 +24,15 @@ func ReRunHistoryCode(info model.CodeRunningInfo) error {
 	}
 	//没有则插入，好在运行异常可以恢复
 	if !has {
-		if !dao.CodeRunningInsert(session, model.CodeRunningInfo{
+		inserted, err := dao.CodeRunningInsert(session, model.CodeRunningInfo{
 			Indices:    info.Indices,
 			SubmitTime: util.UTC_Time(),
 			RunType:    info.RunType,
-		}) {
+		})
+		if err != nil {
+			return err
+		}
+		if !inserted {
 			return errors.New("插入CodeRunning表失败!")
 		}
 	} else {
@@ -39,17 +43,26 @@ func ReRunHistoryCode(info model.CodeRunningInfo) error {
 		}
 		//有则更新提交时间
 		if ok, err := dao.CodeRunningUpdate(session, newInfo); err != nil || !ok {
+			if err != nil {
+				return err
+			}
 			return util.NewError(fmt.Sprintf("更新CodeRunning表失败!oldInfo:%v ,newInfo:%v , Err:%v", info, newInfo, err))
 		}
 	}
 	//查询以前历史记录
-	historInfo := dao.CodeRunGetByIndices(session, info.Indices)
+	historInfo, err := dao.CodeRunGetByIndices(session, info.Indices)
+	if err != nil {
+		return err
+	}
 	if historInfo == nil {
 		return errors.New("查询以前历史记录失败!")
 	}
 	//擦除以前的历史记录状态
-	if !dao.CodeRunUpdateStatusAsync(session, info.Indices, model.NewCodeRunStatusInfo().Marshal()) {
-		util.DebugError("RunUserCode update status fail!")
+	updated, err := dao.CodeRunUpdateStatusAsync(session, info.Indices, model.NewCodeRunStatusInfo().Marshal())
+	if err != nil {
+		return err
+	}
+	if !updated {
 		return errors.New("擦除以前历史状态失败!")
 	}
 	//提交记录

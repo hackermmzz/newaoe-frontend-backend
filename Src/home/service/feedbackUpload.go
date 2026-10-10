@@ -15,7 +15,10 @@ import (
 
 func FeedbackGetDownloadLink(indices int, html string) (string, error) {
 	//获取反馈的基础路径
-	feedbackinfo := dao.FeedbackGetByIndices(nil, indices)
+	feedbackinfo, err := dao.FeedbackGetByIndices(nil, indices)
+	if err != nil {
+		return "", err
+	}
 	if feedbackinfo == nil {
 		return "", util.NewError("数据库获取反馈记录失败!", indices)
 	}
@@ -83,7 +86,10 @@ func FeedbackGetUploadUrls(id string, images []string, files []string, videos []
 		BaseFolder: dir,
 	}
 	defer session.Rollback()
-	indices := dao.FeedbackInsert(session, info)
+	indices, err := dao.FeedbackInsert(session, info)
+	if err != nil {
+		return nil, err
+	}
 	if indices == 0 {
 
 	}

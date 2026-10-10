@@ -25,7 +25,10 @@ func RankFetch(beg int, end int) ([]RankFetchInfo, error) {
 	}
 	defer session.Rollback()
 	//获取RankInfo
-	info := dao.RankGetByRange(session, beg, end)
+	info, err := dao.RankGetByRange(session, beg, end)
+	if err != nil {
+		return nil, err
+	}
 	if info == nil {
 		info = make([]model.RankInfo, 0)
 	}
@@ -35,7 +38,10 @@ func RankFetch(beg int, end int) ([]RankFetchInfo, error) {
 	for i, d := range info {
 		ids[i] = d.ID
 	}
-	avatars := UserDao.UserGetByIDs(nil, ids)
+	avatars, err := UserDao.UserGetByIDs(nil, ids)
+	if err != nil {
+		return nil, err
+	}
 	if len(avatars) != len(info) {
 		return nil, errors.New("服务器异常!")
 	}
