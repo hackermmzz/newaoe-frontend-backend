@@ -70,7 +70,10 @@ func updateCommonSubmitRank(session *xorm.Session, dt []model.CodeRunInfo) error
 			continue
 		}
 		//获取当前状态
-		data, exist := redis.RedisGet(context.Background(), key)
+		data, exist, err := redis.RedisGet(context.Background(), key)
+		if err != nil {
+			return err
+		}
 		if !exist {
 			//从数据库读取
 			infoPtr, err := dao.CodeRunGetByIndices(nil, ind)
@@ -83,7 +86,9 @@ func updateCommonSubmitRank(session *xorm.Session, dt []model.CodeRunInfo) error
 			info = *infoPtr
 			//写入redis
 			data, err = json.Marshal(info)
-			redis.RedisSet(context.Background(), key, string(data), time.Duration(30)*time.Minute)
+			if _, err := redis.RedisSet(context.Background(), key, string(data), time.Duration(30)*time.Minute); err != nil {
+				return err
+			}
 		}
 		err = json.Unmarshal(data, &info)
 		if err != nil {
@@ -156,7 +161,10 @@ func updateAssessmentSubmitRank(session *xorm.Session, dt []model.CodeRunInfo) e
 			return errors.New("Why codeRunStatusInfo.Unmarshal([]byte(status)) fail?")
 		}
 		//获取当前状态
-		data, exist := redis.RedisGet(context.Background(), key)
+		data, exist, err := redis.RedisGet(context.Background(), key)
+		if err != nil {
+			return err
+		}
 		if !exist {
 			//从数据库读取
 			infoPtr, err := dao.CodeRunGetByIndices(nil, ind)
@@ -169,7 +177,9 @@ func updateAssessmentSubmitRank(session *xorm.Session, dt []model.CodeRunInfo) e
 			info = *infoPtr
 			//写入redis
 			data, err = json.Marshal(info)
-			redis.RedisSet(context.Background(), key, string(data), time.Duration(30)*time.Minute)
+			if _, err := redis.RedisSet(context.Background(), key, string(data), time.Duration(30)*time.Minute); err != nil {
+				return err
+			}
 		}
 		err = json.Unmarshal(data, &info)
 		if err != nil {
@@ -205,12 +215,9 @@ func updateAssessmentSubmitRank(session *xorm.Session, dt []model.CodeRunInfo) e
 		finalRankInfo = append(finalRankInfo, value)
 	}
 	//提交更新
-	updated, err := dao.AssessmentRankBatchUpdateOrInsertIfBetter(session, finalRankInfo)
+	err = dao.AssessmentRankBatchUpdateOrInsertIfBetter(session, finalRankInfo)
 	if err != nil {
 		return err
-	}
-	if !updated {
-		return util.NewError("updateAssessmentSubmitRank fail!")
 	}
 	return nil
 }

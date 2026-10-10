@@ -7,6 +7,7 @@ import (
 	"newaoe/Src/codeRun/model"
 	database "newaoe/Src/databse"
 	"newaoe/Src/redis"
+	"newaoe/Src/util"
 	"time"
 
 	"xorm.io/xorm"
@@ -47,7 +48,7 @@ func incrVersion() error {
 }
 
 // end不包括
-func AssessmentRankGetByRange(session *xorm.Session, beg int, end int) ([]model.AssessmentRankInfo, error) {
+func AssessmentRankGetByRange(session *xorm.Session, beg int, end int) (ret []model.AssessmentRankInfo, err error) {
 	//
 	//先查询缓存
 	version, err := getVersion()
@@ -55,7 +56,10 @@ func AssessmentRankGetByRange(session *xorm.Session, beg int, end int) ([]model.
 		return nil, err
 	}
 	key := fmt.Sprintf("AssessmentRankGetByRange_%d/%d/%d", version, beg, end)
-	dataBytes, exist := redis.RedisGet(context.Background(), key)
+	dataBytes, exist, err := redis.RedisGet(context.Background(), key)
+	if err != nil {
+		return nil, err
+	}
 	if exist {
 		var ranks []model.AssessmentRankInfo
 		err := json.Unmarshal(dataBytes, &ranks)
@@ -64,17 +68,19 @@ func AssessmentRankGetByRange(session *xorm.Session, beg int, end int) ([]model.
 		}
 		return nil, err
 	}
+	//写入缓存
+	defer func() {
+		data, _ := json.Marshal(ret)
+		if _, err := redis.RedisSet(context.Background(), key, data, time.Duration(5)*time.Minute); err != nil {
+			util.DebugError("AssessmentRank cache set:", err)
+		}
+	}()
 	//
 	if session == nil {
 		session = database.NewSession()
 		defer session.Close()
 	}
 	var ranks []model.AssessmentRankInfo
-	//写入缓存
-	defer func() {
-		data, _ := json.Marshal(ranks)
-		redis.RedisSet(context.Background(), key, data, time.Duration(5)*time.Minute)
-	}()
 	//
 	if beg < 0 || end <= beg {
 		return ranks, nil
@@ -113,7 +119,15 @@ func AssessmentRankGetByRange(session *xorm.Session, beg int, end int) ([]model.
 	return ranks, nil
 }
 
-func AssessmentRankBatchUpdateOrInsertIfBetter(session *xorm.Session, ranks []model.AssessmentRankInfo) (bool, error) {
+func AssessmentRankBatchUpdateOrInsertIfBetter(session *xorm.Session, ranks []model.AssessmentRankInfo) (err error) {
+	defer func() {
+		//提高版本
+		if err == nil {
+			if err := incrVersion(); err != nil {
+				util.DebugError("AssessmentRank incrVersion:", err)
+			}
+		}
+	}()
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -121,7 +135,7 @@ func AssessmentRankBatchUpdateOrInsertIfBetter(session *xorm.Session, ranks []mo
 	}
 	//
 	if len(ranks) == 0 {
-		return true, nil
+		return nil
 	}
 	// 1. 收集 ID
 	ids := make([]string, 0, len(ranks))
@@ -133,9 +147,9 @@ func AssessmentRankBatchUpdateOrInsertIfBetter(session *xorm.Session, ranks []mo
 	// 2. 一次性查询数据库中已有的数据
 	var existRanks []model.AssessmentRankInfo
 
-	err := session.In("id", ids).Find(&existRanks)
+	err = session.In("id", ids).Find(&existRanks)
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	// 3. ID -> 旧 Rank
@@ -168,7 +182,7 @@ func AssessmentRankBatchUpdateOrInsertIfBetter(session *xorm.Session, ranks []mo
 	if len(insertRanks) > 0 {
 		_, err = session.Insert(&insertRanks)
 		if err != nil {
-			return false, err
+			return err
 		}
 	}
 
@@ -179,14 +193,10 @@ func AssessmentRankBatchUpdateOrInsertIfBetter(session *xorm.Session, ranks []mo
 		_, err = session.ID(rank.ID).AllCols().Update(rank)
 
 		if err != nil {
-			return false, err
+			return err
 		}
 	}
-	//提高版本
-	if err := incrVersion(); err != nil {
-		return true, err
-	}
-	return true, nil
+	return nil
 }
 
 func AssessmentRankIsBetter(newRank *model.AssessmentRankInfo, oldRank *model.AssessmentRankInfo) bool {

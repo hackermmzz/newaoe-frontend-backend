@@ -118,7 +118,10 @@ func VerifyCodeRemove(keyID string, class int8) (bool, error) {
 		KeyID: keyID,
 		Class: class,
 	}
-	ok0 := redis.RedisDel(context.Background(), data.String())
+	ok0, err := redis.RedisDel(context.Background(), data.String())
+	if err != nil {
+		return false, err
+	}
 	//ok1 := redis.RedisDel(context.Background(), data.Tag())//冷却不删
 	return ok0, nil
 }

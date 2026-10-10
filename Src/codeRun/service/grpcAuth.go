@@ -28,7 +28,12 @@ func CodeGrpcServerAuthConfirm(auth string) (bool, string) {
 		return false, ""
 	}
 	//获取auth判断是否可信
-	if redis.RedisExist(context.Background(), info.Auth) {
+	exist, err := redis.RedisExist(context.Background(), info.Auth)
+	if err != nil {
+		util.DebugError("CodeGrpcServerAuthConfirm RedisExist:", err)
+		return false, ""
+	}
+	if exist {
 		//获取过期时间
 		if err := processGrpcAuth(info.Auth); err != nil {
 			util.DebugError("CodeGrpcServerAuthConfirm processGrpcAuth", err)
@@ -58,7 +63,10 @@ func CodeGrpcServerAuthConfirm(auth string) (bool, string) {
 	}
 	//加入redis
 	newAuth := util.UUID()
-	redis.RedisSet(context.Background(), newAuth, nil, time.Duration(config.Conf.Code.CodeAuthExpireTime)*time.Minute)
+	if _, err := redis.RedisSet(context.Background(), newAuth, nil, time.Duration(config.Conf.Code.CodeAuthExpireTime)*time.Minute); err != nil {
+		util.DebugError("CodeGrpcServerAuthConfirm RedisSet:", err)
+		return false, ""
+	}
 	//
 	return true, newAuth
 }
@@ -73,8 +81,8 @@ func processGrpcAuth(auth string) error {
 	//判断剩余时间是否低于一半
 	expireTime := time.Duration(config.Conf.Code.CodeAuthExpireTime) * time.Minute
 	if ttl <= expireTime/2 {
-		if !redis.RedisExpire(context.Background(), auth, expireTime) {
-			return util.NewError("重置auth的ttl失败!")
+		if _, err := redis.RedisExpire(context.Background(), auth, expireTime); err != nil {
+			return err
 		}
 	}
 	return nil

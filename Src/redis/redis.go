@@ -21,7 +21,7 @@ const KeepTTL = redis.KeepTTL
 var redisRDB *redis.Client
 
 // ConnectRedis 生产级 Redis 初始化（连接池 + 重试 + 健康检查）
-func ConnectRedis() {
+func ConnectRedis() error {
 	conf := config.Conf.Redis
 
 	// 核心：连接池配置（大厂标准）
@@ -52,15 +52,15 @@ func ConnectRedis() {
 		if err = redisRDB.Ping(ctx).Err(); err == nil {
 			break
 		}
-		util.DebugError(fmt.Sprintf("Redis 重试连接 %d/10: %v", i+1, err))
 		time.Sleep(1 * time.Second)
 	}
 
 	if err != nil {
-		panic(fmt.Sprintf("Redis 连接最终失败: %v", err))
+		return fmt.Errorf("Redis 连接最终失败: %w", err)
 	}
 
 	util.DebugSuccess("Redis连接池初始化成功")
+	return nil
 }
 
 // 获取上下文
@@ -92,41 +92,37 @@ func RedisLua(ctx context.Context, script string, keys []string, args ...interfa
 }
 
 // RedisGet 带 ctx 规范获取（支持链路超时、链路追踪）
-func RedisGet(ctx context.Context, key string) ([]byte, bool) {
+func RedisGet(ctx context.Context, key string) ([]byte, bool, error) {
 	val, err := redisRDB.Get(ctx, key).Bytes()
 
 	// key不存在不算异常，不打日志
 	if err == redis.Nil {
-		return nil, false
+		return nil, false, nil
 	}
 
-	// 真正异常才打日志
 	if err != nil {
-		util.DebugError(fmt.Sprintf("[RedisGet] err: %v, key: %s", err, key))
-		return nil, false
+		return nil, false, err
 	}
 
-	return val, true
+	return val, true, nil
 }
 
 // RedisExist 判断key是否存在
-func RedisExist(ctx context.Context, key string) bool {
+func RedisExist(ctx context.Context, key string) (bool, error) {
 	count, err := redisRDB.Exists(ctx, key).Result()
 	if err != nil {
-		util.DebugError(fmt.Sprintf("[RedisExist] err: %v, key: %s", err, key))
-		return false
+		return false, err
 	}
-	return count > 0
+	return count > 0, nil
 }
 
 // RedisSet 标准set（带ctx、带过期）
-func RedisSet(ctx context.Context, key string, value any, expiration time.Duration) bool {
+func RedisSet(ctx context.Context, key string, value any, expiration time.Duration) (bool, error) {
 	err := redisRDB.Set(ctx, key, value, expiration).Err()
 	if err != nil {
-		util.DebugError(fmt.Sprintf("[RedisSet] err: %v, key: %s", err, key))
-		return false
+		return false, err
 	}
-	return true
+	return true, nil
 }
 
 // 自增
@@ -148,57 +144,52 @@ func RedisDecrease(ctx context.Context, key string) (int, error) {
 }
 
 // RedisChange,只改value
-func RedisChange(ctx context.Context, key string, value any) bool {
+func RedisChange(ctx context.Context, key string, value any) (bool, error) {
 	err := redisRDB.Set(ctx, key, value, redis.KeepTTL).Err()
 	if err != nil {
-		util.DebugError(fmt.Sprintf("[RedisChange] err: %v, key: %s", err, key))
-		return false
+		return false, err
 	}
-	return true
+	return true, nil
 }
 
 // RedisDel 删除key
-func RedisDel(ctx context.Context, key string) bool {
+func RedisDel(ctx context.Context, key string) (bool, error) {
 	err := redisRDB.Del(ctx, key).Err()
 	if err != nil {
-		util.DebugError(fmt.Sprintf("[RedisDel] err: %v, key: %s", err, key))
-		return false
+		return false, err
 	}
-	return true
+	return true, nil
 }
 
 // RedisExpire 给key设置过期时间
-func RedisExpire(ctx context.Context, key string, expiration time.Duration) bool {
+func RedisExpire(ctx context.Context, key string, expiration time.Duration) (bool, error) {
 
 	err := redisRDB.Expire(ctx, key, expiration).Err()
 	if err != nil {
-		util.DebugError(fmt.Sprintf("[RedisExpire] err: %v, key: %s", err, key))
-		return false
+		return false, err
 	}
-	return true
+	return true, nil
 }
 
-func RedisListPush(ctx context.Context, queue string, data string) bool {
+func RedisListPush(ctx context.Context, queue string, data string) (bool, error) {
 	err := redisRDB.LPush(
 		ctx,
 		queue,
 		data,
 	).Err()
 	if err != nil {
-		util.DebugError(fmt.Sprintf("[RedisListPush] err: %v, queue: %s", err, queue))
-		return false
+		return false, err
 	}
-	return true
+	return true, nil
 }
 
-func RedisListPop(ctx context.Context, queue string) (string, bool) {
+func RedisListPop(ctx context.Context, queue string) (string, bool, error) {
 	val, err := redisRDB.RPop(ctx, queue).Result()
 	if err == redis.Nil {
-		return "", false
+		return "", false, nil
 	}
 	if err != nil {
-		util.DebugError(fmt.Sprintf("[RedisListPop] err: %v, queue: %s", err, queue))
-		return "", false
+		return "", false, err
 	}
-	return val, true
+	return val, true, nil
 }

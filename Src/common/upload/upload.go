@@ -50,7 +50,12 @@ func UploadFileWithCachePath(id string, filePath []string, expireDuration time.D
 	key = fmt.Sprintf("%v_%v", id, util.SHA256(key)) + util.UUID()
 	//redis 设置key
 	data_bytes, _ := json.Marshal(filePath)
-	if !redis.RedisSet(context.Background(), key, data_bytes, expireDuration) {
+	ok, err := redis.RedisSet(context.Background(), key, data_bytes, expireDuration)
+	if err != nil {
+		util.DebugError("设置Redis key失败:", err)
+		return nil, ""
+	}
+	if !ok {
 		util.DebugError("设置Redis key失败!")
 		return nil, ""
 	}
@@ -59,17 +64,26 @@ func UploadFileWithCachePath(id string, filePath []string, expireDuration time.D
 
 // 根据ctx字段里面的key解析获取得到文件的数组(不会发送消息)
 func UploadParseAndDelKey(key string) []string {
-	byte_data, exist := redis.RedisGet(context.Background(), key)
+	byte_data, exist, err := redis.RedisGet(context.Background(), key)
+	if err != nil {
+		util.DebugError("UploadParseKey:读取Redis key失败:", err)
+		return nil
+	}
 	if !exist {
 		util.DebugError("UploadParseKey:redis key不存在!")
 		return nil
 	}
 	fileNameArr := make([]string, 0)
-	err := json.Unmarshal(byte_data, &fileNameArr)
+	err = json.Unmarshal(byte_data, &fileNameArr)
 	if err != nil {
 		util.DebugError("UploadParseKey:", err)
 	}
-	if !redis.RedisDel(context.Background(), key) {
+	ok, err := redis.RedisDel(context.Background(), key)
+	if err != nil {
+		util.DebugError("UploadParseKey:Redis key 删除出问题:", err)
+		return fileNameArr
+	}
+	if !ok {
 		util.DebugError("UploadParseKey:Redis key 删除出问题!")
 	}
 	return fileNameArr

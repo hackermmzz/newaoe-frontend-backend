@@ -68,7 +68,11 @@ func codeRunRecordTTL(id string) int64 {
 }
 
 func codeRunRecordAdd(id string) bool {
-	ok := redis.RedisSet(context.Background(), fmt.Sprintf("CodeRunOrSubmit:%v", id), "", time.Duration(config.Conf.Code.CodeSubmitInterval)*time.Second)
+	ok, err := redis.RedisSet(context.Background(), fmt.Sprintf("CodeRunOrSubmit:%v", id), "", time.Duration(config.Conf.Code.CodeSubmitInterval)*time.Second)
+	if err != nil {
+		util.DebugError("CodeRunRecordAdd:", err)
+		return false
+	}
 	//
 	return ok
 }

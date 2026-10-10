@@ -39,8 +39,11 @@ func CodeRunStatusGetProcess(id string, indices int64, info model.CodeRunStatusI
 	}
 	byte_data, _ := json.Marshal(redisData)
 	ctx1 := context.Background()
-	duration := time.Duration(60) * time.Minute                                   //设置60分钟过期
-	redis.RedisSet(ctx1, fmt.Sprintf("CodeRun:%v", indices), byte_data, duration) //这里肯定不会乱序，因为judge那边是同步发送的
+	duration := time.Duration(60) * time.Minute //设置60分钟过期
+	if _, err := redis.RedisSet(ctx1, fmt.Sprintf("CodeRun:%v", indices), byte_data, duration); err != nil {
+		util.DebugError("CodeRunStatusGetProcess RedisSet:", err)
+		return ret, err
+	}
 	//再次push到mq（只push编号）
 	indices_byte := make([]byte, 8)
 	binary.BigEndian.PutUint64(indices_byte, uint64(indices))

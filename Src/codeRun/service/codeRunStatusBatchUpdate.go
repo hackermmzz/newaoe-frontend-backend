@@ -29,7 +29,11 @@ func BatchUpdateCodeRunStatus(indices []int) {
 	version := util.UTC_Time().UnixNano()
 	statusIndicesMap := make(map[int]codeRunStatusInfoPushRedis)
 	for ind := range distinctIndices {
-		data, exist := redis.RedisGet(ctx, fmt.Sprintf("CodeRun:%v", ind))
+		data, exist, err := redis.RedisGet(ctx, fmt.Sprintf("CodeRun:%v", ind))
+		if err != nil {
+			util.DebugError("RedisGet CodeRun status:", err)
+			continue
+		}
 		//获取数据库里面的数据
 		dbRet, err := dao.CodeRunGetByIndices(nil, ind)
 		if err != nil {
