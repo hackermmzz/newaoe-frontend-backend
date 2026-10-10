@@ -25,6 +25,7 @@ func RankGetByRange(session *xorm.Session, beg int, end int) []model.RankInfo {
 		util.DebugError("RankGetByRange:", err)
 		return nil
 	}
+	//
 	return ranks
 }
 
