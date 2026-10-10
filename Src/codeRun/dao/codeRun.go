@@ -208,6 +208,9 @@ func getExtraClassInCondition(session *xorm.Session, class ...int) *xorm.Session
 	if len(class) == 0 {
 		return session
 	}
+	if len(class) == 1 {
+		return session.Where("class = ?", class[0])
+	}
 	placeholders := make([]string, len(class))
 	for i := range placeholders {
 		placeholders[i] = "?"
