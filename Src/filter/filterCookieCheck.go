@@ -24,7 +24,7 @@ func FilterCookieCheck() gin.HandlerFunc {
 		data := util.GetTokenInfo(token)
 		dt0, _ := json.Marshal(data)
 		err = json.Unmarshal(dt0, &student)
-		if err != nil || student.Id == "" {
+		if err != nil || student.ID == "" {
 			util.DebugError("有人伪造Token信息!", data)
 			util.Response401_NotAuth(c, "cookie过期或者错误!")
 			c.Abort()

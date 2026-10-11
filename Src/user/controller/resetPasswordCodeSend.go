@@ -27,7 +27,7 @@ func UserPasswordForgetCodeSend(ctx *gin.Context) {
 		return
 	}
 	//发送验证码
-	err = service.PasswordResetCodeSend(info.Id, info.Email)
+	err = service.PasswordResetCodeSend(info.ID, info.Email)
 	if err != nil {
 		util.DebugError("密码重置验证码发送失败!")
 		util.ResponseNAK_MSG(ctx, err.Error(), nil)

@@ -128,7 +128,7 @@ func UserAdd(session *database.Session, userInfo model.Student) (ok bool, err er
 	defer func() {
 		if err == nil {
 			session.PostTransactionAdd(func() {
-				deleteUserCache(userInfo.Id)
+				deleteUserCache(userInfo.ID)
 				incrUserCacheVersion()
 			})
 		}
@@ -140,7 +140,7 @@ func UserAdd(session *database.Session, userInfo model.Student) (ok bool, err er
 	}
 	//
 	data := &model.Student{
-		Id:         userInfo.Id,
+		ID:         userInfo.ID,
 		Password:   userInfo.Password,
 		Email:      userInfo.Email,
 		Vip:        userInfo.Vip,
@@ -159,7 +159,7 @@ func UserAddByStudentInfo(session *database.Session, info model.Student) (ok boo
 	defer func() {
 		if err == nil {
 			session.PostTransactionAdd(func() {
-				deleteUserCache(info.Id)
+				deleteUserCache(info.ID)
 				incrUserCacheVersion()
 			})
 		}

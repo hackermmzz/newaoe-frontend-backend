@@ -10,7 +10,7 @@ var (
 )
 
 type Student struct {
-	Id         string    `json:"id" xorm:"id"`
+	ID         string    `json:"id" xorm:"id"`
 	Password   string    `json:"password" xorm:"password"`
 	Email      string    `json:"email" xorm:"email"`
 	Avatar     string    `json:"avatar" xorm:"avatar"`

@@ -39,7 +39,7 @@ func RankFetch(beg int, end int) ([]RankFetchInfo, error) {
 	}
 	idToAvatar := make(map[string]string)
 	for _, d := range avatars {
-		idToAvatar[d.Id] = d.Avatar
+		idToAvatar[d.ID] = d.Avatar
 	}
 
 	finaldata := make([]RankFetchInfo, 0, len(info))

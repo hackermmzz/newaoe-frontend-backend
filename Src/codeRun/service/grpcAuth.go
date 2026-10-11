@@ -56,7 +56,7 @@ func CodeGrpcServerAuthConfirm(auth string) (bool, string) {
 		return false, ""
 	}
 	//判断密码正确与否
-	err = UserService.UserCanLogin(info_user.Id, info.Password)
+	err = UserService.UserCanLogin(info_user.ID, info.Password)
 	if err != nil {
 		util.DebugError("codeGrpcServerAuthConfirm", info, err)
 		return false, ""

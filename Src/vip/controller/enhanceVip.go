@@ -27,7 +27,7 @@ func EnhanceVip(ctx *gin.Context) {
 		return
 	}
 	//更新vip等级
-	ok, err := dao.UserUpdate(nil, idOrEmail, model.Student{
+	ok, err := dao.UserUpdate(nil, student.ID, model.Student{
 		Vip: model.VIP_SUPER,
 	})
 	if err != nil {

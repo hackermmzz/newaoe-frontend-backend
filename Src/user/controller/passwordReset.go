@@ -30,7 +30,7 @@ func UserResetPassword(ctx *gin.Context) {
 		return
 	}
 	//
-	err = service.PasswordReset(info.Id, info.Email, dt.Password, dt.Verifycode)
+	err = service.PasswordReset(info.ID, info.Email, dt.Password, dt.Verifycode)
 	if err != nil {
 		util.DebugError("重置密码失败:", err)
 		util.ResponseNAK_MSG(ctx, err.Error(), nil)

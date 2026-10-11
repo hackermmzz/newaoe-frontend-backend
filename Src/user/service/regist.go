@@ -57,7 +57,7 @@ func UserRegist(id string, password string, email string, vip_class int, verifyC
 		return errors.New("密码格式不合规则!")
 	}
 	added, err := dao.UserAdd(session, model.Student{
-		Id:       id,
+		ID:       id,
 		Email:    email,
 		Password: password,
 		Vip:      vip_class,

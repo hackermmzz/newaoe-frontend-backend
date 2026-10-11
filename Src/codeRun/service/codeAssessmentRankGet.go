@@ -39,7 +39,7 @@ func AssessmentRankFetch(beg int, end int) ([]AssessmentRankFetchInfo, error) {
 	}
 	idToAvatar := make(map[string]string)
 	for _, d := range avatars {
-		idToAvatar[d.Id] = d.Avatar
+		idToAvatar[d.ID] = d.Avatar
 	}
 
 	finaldata := make([]AssessmentRankFetchInfo, 0, len(info))
