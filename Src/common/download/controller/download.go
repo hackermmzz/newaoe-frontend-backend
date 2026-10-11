@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"errors"
 	"newaoe/Src/common/download/service"
 	"newaoe/Src/config"
 	"newaoe/Src/util"
@@ -21,16 +22,30 @@ func FileDownload(ctx *gin.Context) {
 		util.ResponseNAK_MSG(ctx, "服务器异常!", nil)
 		return
 	}
+	//鉴权
+	id := userInfo["id"].(string)
+	vip := int(userInfo["vip"].(float64))
+	ok, err := service.DownloadAuth(id, vip, filePath)
+	if !ok || err != nil {
+		if err == nil {
+			err = errors.New("下载权限不足!")
+		}
+		util.ResponseNAK_MSG(ctx, err.Error(), nil)
+		return
+	}
 	//资源下载
 	url := ""
 	download_type := service.DownloadURLType_UnKnown
 	switch category {
 	//公共文件下载
 	case config.Conf.OSS.PublicBaseFolder:
-		url, download_type = service.PublicFileDownload(filePath, userInfo, attachment)
+		url, download_type = service.PublicFileDownload(filePath, id, attachment)
 	//私人文件下载
 	case config.Conf.OSS.PrivateBaseFolder:
-		url, download_type = service.PrivateFileDownload(filePath, userInfo, attachment)
+		url, download_type = service.PrivateFileDownload(filePath, id, attachment)
+	//其他文件
+	default:
+		url, download_type = service.PublicFileDownload(filePath, id, attachment)
 	}
 	//返回下载链接
 	if url == "" {
