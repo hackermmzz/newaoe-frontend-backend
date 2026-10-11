@@ -55,7 +55,8 @@ func GetHistoryRangeById(id string, beg int, end int, class ...int) ([]SubmitRec
 		headerInfo := fileInfos[history.Header]
 		sourceInfo := fileInfos[history.Source]
 		if headerInfo == nil || sourceInfo == nil {
-			return nil, util.NewError("怎么可能出现文件不存在的情况呢?")
+			util.DebugError("StudentHistoryGet: file not exist: " + history.Header + " or " + history.Source)
+			continue //跳过这个记录
 		}
 		//
 		record.ID = history.ID
