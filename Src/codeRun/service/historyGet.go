@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"newaoe/Src/codeRun/dao"
 	"newaoe/Src/codeRun/model"
 	"newaoe/Src/oss"
@@ -48,6 +49,7 @@ func GetHistoryRangeById(id string, beg int, end int, class ...int) ([]SubmitRec
 	}
 	fileInfos := oss.OssCheckFilesExist(allfiles)
 	//
+	unExpectedInfo := make([]error, 0)
 	for _, v := range historyRecords {
 		record := SubmitRecord{}
 		history := v
@@ -55,7 +57,7 @@ func GetHistoryRangeById(id string, beg int, end int, class ...int) ([]SubmitRec
 		headerInfo := fileInfos[history.Header]
 		sourceInfo := fileInfos[history.Source]
 		if headerInfo == nil || sourceInfo == nil {
-			util.DebugError("StudentHistoryGet: file not exist: " + history.Header + " or " + history.Source)
+			unExpectedInfo = append(unExpectedInfo, util.NewError(" file not exist: "+history.Header+" or "+history.Source))
 			continue //跳过这个记录
 		}
 		//
@@ -71,10 +73,13 @@ func GetHistoryRangeById(id string, beg int, end int, class ...int) ([]SubmitRec
 		err := record.Status.Unmarshal([]byte(history.Status))
 		// 解析状态失败，跳过（兼容以前的格式)
 		if err != nil {
-			util.DebugError("StudentHistoryGet: unmarshal status failed:" + err.Error())
+			unExpectedInfo = append(unExpectedInfo, util.NewError(" unmarshal status failed:"+err.Error()))
 			continue
 		}
 		submitRecords = append(submitRecords, record)
 	}
+	//打印异常信息
+	util.DebugError(errors.Join(unExpectedInfo...))
+	//
 	return submitRecords, nil
 }

@@ -23,6 +23,40 @@ func incrCodeAssessmentCacheVersion() {
 	}
 }
 
+func CodeAssessmentRemoveByID(session *database.Session, id string) (err error) {
+	var data model.CodeAssessmentInfo
+	data.ID = id
+	defer func() {
+		if err != nil {
+			return
+		}
+		session.PostTransactionAdd(func() {
+			keys := []string{
+				fmt.Sprintf("CodeAssessmentGetByIndices:%d", data.Indices),
+				fmt.Sprintf("CodeAssessmentGetByID:%s", id),
+			}
+			for _, key := range keys {
+				if _, cacheErr := redis.RedisDel(context.Background(), key); cacheErr != nil {
+					util.DebugError("CodeAssessmentAdd cache del:", cacheErr)
+				}
+			}
+			incrCodeAssessmentCacheVersion()
+		})
+	}()
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
+	affected, err := session.Where("id = ?", id).Delete(&data)
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return util.NewError("删除失败，查无该记录")
+	}
+	return nil
+}
+
 func CodeAssessmentAdd(session *database.Session, data model.CodeAssessmentInfo) (indices int64, err error) {
 	defer func() {
 		if err != nil {

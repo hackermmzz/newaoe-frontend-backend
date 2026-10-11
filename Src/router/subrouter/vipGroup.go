@@ -35,4 +35,5 @@ func routeConfig_VIPConfirm(vip_group *gin.RouterGroup) {
 	vip_group.GET("fetchassessmentrank", controller.FetchAssessmentRank)
 	vip_group.GET("uploadLatestAOEPackage", controller.UploadLatestAOEPackage)
 	vip_group.GET("enhanceVip", controller.EnhanceVip)
+	vip_group.GET("resetassessmentsubmit", controller.ResetAssessmentSubmit)
 }
