@@ -402,9 +402,6 @@ export default {
       const ids = studentIds
         .map(id => String(id ?? '').trim())
         .filter(Boolean);
-      if (!ids.length) {
-        throw new Error('没有可重置的学生');
-      }
 
       const response = await fetch(config.manager_reset_common_submit_time_url, {
         method: 'POST',
@@ -418,37 +415,6 @@ export default {
       if (!response.ok || !data?.status) {
         throw new Error(data?.msg || `重置失败（HTTP ${response.status}）`);
       }
-    };
-
-    const fetchAllStudentIds = async () => {
-      const studentIds = [];
-      let page = 1;
-      let hasMore = true;
-
-      while (hasMore) {
-        const beg = (page - 1) * pageSize;
-        const end = beg + pageSize - 1;
-        const requestUrl = new URL(config.manager_student_url);
-        requestUrl.searchParams.set('range', `${beg}:${end}`);
-        const response = await fetch(requestUrl.toString(), {
-          method: 'GET',
-          credentials: 'include'
-        });
-        const data = await response.json();
-        if (!response.ok || !data?.status || !Array.isArray(data?.data)) {
-          throw new Error(data?.msg || `获取学生列表失败（HTTP ${response.status}）`);
-        }
-
-        const pageIds = data.data
-          .map(normalizeStudent)
-          .map(student => student.id)
-          .filter(Boolean);
-        studentIds.push(...pageIds);
-        hasMore = data.data.length >= pageSize;
-        if (hasMore) page += 1;
-      }
-
-      return [...new Set(studentIds)];
     };
 
     const resetSelectedStudentCommonSubmitTime = async () => {
@@ -492,19 +458,8 @@ export default {
 
       isResettingAll.value = true;
       try {
-        const studentIds = await fetchAllStudentIds();
-        const configuredBatchSize = Number(config.resetcommonsubmitTimeBatch);
-        const batchSize = Number.isFinite(configuredBatchSize) && configuredBatchSize > 0
-          ? Math.max(1, Math.floor(configuredBatchSize))
-          : 100;
-        for (let index = 0; index < studentIds.length; index += batchSize) {
-          await requestReset(studentIds.slice(index, index + batchSize));
-        }
-        ElMessage.success(
-          studentIds.length
-            ? `所有人的普通提交次数已重置（共 ${studentIds.length} 人）`
-            : '暂无学生可重置'
-        );
+        await requestReset([]);
+        ElMessage.success('所有人的普通提交次数已重置');
       } catch (error) {
         ElMessage.error(error?.message || '重置所有人次数失败');
       } finally {

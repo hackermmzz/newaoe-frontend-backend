@@ -351,8 +351,8 @@
 import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick, defineProps } from 'vue';
 import config from '../config.js';
 import { ElMessage } from 'element-plus';
-import axios from 'axios';
 import { downloadFile as requestDownload } from '../utils/download';
+import { uploadFiles } from '../utils/upload';
 
 const props = defineProps({
   readOnly: {
@@ -892,29 +892,16 @@ const submitFiles = async () => {
     //获取url
     const key=resData.data.key;
     const urls=resData.data.urls;
-    const headerURL=urls[0]
-    const sourceURL=urls[1]
-    const descURL=urls[2]
     //上传三个文件
-    const p1=axios.put(headerURL,headerFile.value,{
-      headers:{
-        'Content-Type':headerFile.value.type
-      }
-    })
-    const p2=axios.put(sourceURL,sourceFile.value,{
-      headers:{
-        'Content-Type':sourceFile.value.type
-      }
-    })
-    const p3=axios.put(descURL,description.value ||"原神启动!" ,{
-      headers:{
-        'Content-Type':'text/plain'
-      }
-    })
-    const [r0,r1,r2]=await Promise.all([p1,p2,p3])
-    if (!r0.status || !r1.status || !r2.status){
-       throw new Error('文件提交失败，请重试');
-    }
+    const descriptionFile = new File(
+      [description.value || '原神启动!'],
+      'description.txt',
+      { type: 'text/plain' }
+    );
+    await uploadFiles(
+      [headerFile.value, sourceFile.value, descriptionFile],
+      urls
+    );
     //告诉服务器上传成功了
     const tellServer=await fetch(`${config.codeSubmit_url}/codecommonsubmitACK`,{
       method:'POST',
@@ -951,7 +938,9 @@ const submitFiles = async () => {
     toggleUploadForm();
 
   } catch (error) {
-    ElMessage.error(error.message || '文件提交失败，请重试');
+    if (!error?.notified) {
+      ElMessage.error(error.message || '文件提交失败，请重试');
+    }
   } finally {
     isSubmitting.value = false;
   }

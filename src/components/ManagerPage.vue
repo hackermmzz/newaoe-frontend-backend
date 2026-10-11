@@ -469,7 +469,7 @@
                   autocomplete="off"
                   :disabled="enhancingVip"
                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  placeholder="请输入用户 ID"
+                  placeholder="请输入用户 ID 或者邮箱"
                 >
               </div>
               <div class="flex justify-end gap-3 pt-2">
@@ -513,6 +513,7 @@
 import VipOnly from './VipOnly.vue';
 import config from '../config';
 import { ElMessage } from 'element-plus';
+import { uploadFiles } from '../utils/upload';
 
 export default {
   name: 'ManagerPage',
@@ -597,28 +598,16 @@ export default {
           throw new Error(result?.msg || `获取新版包上传链接失败（HTTP ${response.status}）`);
         }
 
-        const uploadUrl = typeof result?.data?.url === 'string'
-          ? result.data.url.trim()
-          : '';
-        if (!uploadUrl) throw new Error('服务器未返回有效的新版包上传链接');
-
-        const uploadResponse = await fetch(uploadUrl, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': file.type || 'application/octet-stream'
-          },
-          body: file
-        });
-        if (!uploadResponse.ok) {
-          throw new Error(`新版包上传失败（HTTP ${uploadResponse.status}）`);
-        }
+        await uploadFiles([file], [result?.data]);
 
         ElMessage.success('新版包发布成功');
         this.latestPackageDialogOpen = false;
         this.latestPackageFile = null;
         this.latestPackageDetail = '';
       } catch (error) {
-        ElMessage.error(error?.message || '新版包发布失败');
+        if (!error?.notified) {
+          ElMessage.error(error?.message || '新版包发布失败');
+        }
       } finally {
         this.uploadingLatestPackage = false;
       }

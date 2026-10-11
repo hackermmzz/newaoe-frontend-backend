@@ -155,7 +155,7 @@
 <script>
 import { ElMessage } from 'element-plus';
 import config from '../config.js';
-import axios from 'axios';
+import { uploadFiles } from '../utils/upload';
 export default {
   name: 'AssessmentSubmission',
   data() {
@@ -300,22 +300,7 @@ export default {
         //根据上传链接上传
         const key=urlData.data.key;
         const urls=urlData.data.urls;
-        const headerUrl=urls[0]
-        const sourceUrl=urls[1]
-        const headerResp=axios.put(headerUrl,this.headerFile,{
-          headers:{
-            'Content-Type':this.headerFile.type
-          }
-        })
-        const sourceResp=axios.put(sourceUrl,this.sourceFile,{
-          headers:{
-            'Content-Type':this.sourceFile.type
-          }
-        })
-        const [r0,r1]=await Promise.all([headerResp,sourceResp])
-        if (!r0.status || !r1.status ){
-          throw new Error('文件提交失败，请重试');
-        }
+        await uploadFiles([this.headerFile, this.sourceFile], urls);
 
         //上传成功，告诉后端我上传好了
         const confirmResp = await fetch(`${config.codeSubmit_url}/codeassessmentsubmitACK`, {
@@ -339,7 +324,9 @@ export default {
         this.resetForm();
 
       } catch (error) {
-        ElMessage.error(error.message || '提交考核失败，请检查网络后重试');
+        if (!error?.notified) {
+          ElMessage.error(error.message || '提交考核失败，请检查网络后重试');
+        }
       }
     },
     

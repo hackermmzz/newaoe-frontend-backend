@@ -204,8 +204,8 @@
 import { ref, onMounted, reactive } from 'vue';
 import config from '../config'; // 引入配置文件
 import { ElMessage } from 'element-plus';
-import axios from 'axios'
 import { downloadFile, getDownloadUrl } from '../utils/download';
+import { uploadFiles } from '../utils/upload';
 export default {
   name: 'StudentHome',
   
@@ -401,21 +401,15 @@ export default {
                 throw new Error(result.msg || '上传失败，请重试');
             }
             // 上传到指定链接
-            const uploadUrl=result.data.url;
-            const resp=await axios.put(uploadUrl,file,{
-              headers:{
-                'Content-Type':file.type
-              }
-            })
-            if (!resp.status){
-              throw new Error('上传失败，请重试',resp.status);
-            }
+            await uploadFiles([file], [result.data.url]);
             //
             ElMessage.success('头像上传成功！');
 
             } catch (error) {
             // 上传失败：恢复原来的头像（假设之前有有效的头像地址）
-            ElMessage.error('上传失败：' + error.message);
+            if (!error?.notified) {
+              ElMessage.error('上传失败：' + error.message);
+            }
             }
             //刷新界面
             fetchUserInfo()
@@ -604,14 +598,6 @@ export default {
       return result?.data && typeof result.data === 'object' ? result.data : result;
     };
 
-    const uploadAttachment = async (url, file) => {
-      await axios.put(url, file, {
-        headers: {
-          'Content-Type': file.type || 'application/octet-stream'
-        }
-      });
-    };
-
     // 反馈提交处理函数
     const submitFeedback = async () => {
       if (!feedbackContent.value.trim()) {
@@ -674,11 +660,10 @@ export default {
         }
 
         // 第二步：把图片和普通文件上传到各自对应的链接。
-        await Promise.all([
-          ...images.map((image, index) => uploadAttachment(imageUploadUrls[index], image)),
-          ...videos.map((video, index) => uploadAttachment(videoUploadUrls[index], video)),
-          ...files.map((file, index) => uploadAttachment(fileUploadUrls[index], file))
-        ]);
+        await uploadFiles(
+          [...images, ...videos, ...files],
+          [...imageUploadUrls, ...videoUploadUrls, ...fileUploadUrls]
+        );
 
         // HTML 直接引用服务器返回的下载地址。
         const embeddedImages = images.map((image, index) => ({
@@ -725,7 +710,9 @@ export default {
         if (feedbackFileInput.value) feedbackFileInput.value.value = '';
       } catch (error) {
         console.error('提交反馈出错:', error);
-        ElMessage.error(error?.apiMessage || error?.response?.data?.msg || '网络异常');
+        if (!error?.notified) {
+          ElMessage.error(error?.apiMessage || error?.response?.data?.msg || error?.message || '网络异常');
+        }
       } finally {
         submitting.value = false;
       }

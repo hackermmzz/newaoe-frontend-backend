@@ -9,7 +9,7 @@
         type="button"
         class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         :disabled="isLoading"
-        @click="loadFeedback(currentPage)"
+        @click="refreshFeedback"
       >
         {{ isLoading ? '加载中...' : '刷新列表' }}
       </button>
@@ -19,56 +19,8 @@
       {{ errorMessage }}
     </div>
 
-    <!-- 分页控件放在记录上方，避免翻页时需要滚动到页面底部。 -->
-    <div
-      v-if="!isLoading"
-      class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-y border-gray-200 py-4"
-    >
-      <p class="feedback-records__muted text-sm text-gray-500">
-        第 {{ currentPage }} 页，本页 {{ feedbackList.length }} 条
-      </p>
-
-      <div class="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          class="px-3 py-1.5 border border-gray-300 rounded-md text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          :disabled="isLoading || currentPage <= 1"
-          @click="handlePrevPage"
-        >
-          上一页
-        </button>
-
-        <div class="flex items-center gap-1">
-          <input
-            v-model.number="targetPage"
-            type="number"
-            :min="1"
-            class="feedback-records__page-input w-16 px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-            aria-label="跳转页码"
-          >
-          <button
-            type="button"
-            class="px-2 py-1.5 border border-gray-300 rounded-md text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            :disabled="isLoading"
-            @click="handlePageJump"
-          >
-            跳转
-          </button>
-        </div>
-
-        <button
-          type="button"
-          class="px-3 py-1.5 border border-gray-300 rounded-md text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          :disabled="isLoading || !hasNextPage"
-          @click="handleNextPage"
-        >
-          下一页
-        </button>
-      </div>
-    </div>
-
-    <div v-if="isLoading" class="feedback-records__muted py-16 text-center text-gray-500">
-      正在加载第 {{ currentPage }} 页反馈记录...
+    <div v-if="isLoading && !feedbackList.length" class="feedback-records__muted py-16 text-center text-gray-500">
+      正在加载反馈记录...
     </div>
 
     <div v-else-if="!feedbackList.length" class="feedback-records__muted py-16 text-center text-gray-500">
@@ -117,21 +69,33 @@
         </div>
       </article>
     </div>
+
+    <div
+      ref="loadMoreTrigger"
+      v-show="feedbackList.length"
+      class="feedback-records__muted py-5 text-center text-sm text-gray-500"
+      aria-live="polite"
+    >
+      <span v-if="isLoading">正在加载更多反馈记录...</span>
+      <span v-else-if="hasNextPage">下滑加载更多</span>
+      <span v-else>已加载全部反馈记录</span>
+    </div>
   </section>
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import config from '../config';
 
 const pageSize = config.ManagerFeedbackRecordPerPage || config.HistoryRecordPerPage || 10;
 const currentPage = ref(1);
-const targetPage = ref(1);
 const hasNextPage = ref(true);
 const isLoading = ref(false);
 const errorMessage = ref('');
 const feedbackList = ref([]);
+const loadMoreTrigger = ref(null);
+let loadMoreObserver = null;
 
 const formatDate = value => {
   if (value === null || value === undefined || value === '') return '未知时间';
@@ -169,7 +133,7 @@ const sortBySubmitTime = records => records
   })
   .map(({ record }) => record);
 
-const loadFeedback = async (page = currentPage.value) => {
+const loadFeedback = async (page = 1, append = false) => {
   if (isLoading.value || !Number.isInteger(page) || page < 1) return;
   isLoading.value = true;
   errorMessage.value = '';
@@ -192,43 +156,50 @@ const loadFeedback = async (page = currentPage.value) => {
 
     const rawRecords = extractRecords(Array.isArray(result) ? result : (result?.data ?? result));
     if (!rawRecords.length && page > 1) {
-      if (page === currentPage.value + 1) hasNextPage.value = false;
-      targetPage.value = currentPage.value;
+      hasNextPage.value = false;
       return;
     }
 
-    feedbackList.value = sortBySubmitTime(rawRecords);
+    const sortedRecords = sortBySubmitTime(rawRecords);
+    feedbackList.value = append
+      ? [...feedbackList.value, ...sortedRecords]
+      : sortedRecords;
     currentPage.value = page;
-    targetPage.value = page;
     hasNextPage.value = rawRecords.length >= pageSize;
   } catch (error) {
     errorMessage.value = error?.message || '加载反馈记录失败';
-    targetPage.value = currentPage.value;
     ElMessage.error(errorMessage.value);
   } finally {
     isLoading.value = false;
   }
 };
 
-const handlePrevPage = () => {
-  if (currentPage.value > 1) loadFeedback(currentPage.value - 1);
+const refreshFeedback = () => {
+  if (isLoading.value) return;
+  currentPage.value = 1;
+  hasNextPage.value = true;
+  loadFeedback(1, false);
 };
 
-const handleNextPage = () => {
-  if (hasNextPage.value) loadFeedback(currentPage.value + 1);
+const loadNextFeedback = () => {
+  if (isLoading.value || !hasNextPage.value) return;
+  loadFeedback(currentPage.value + 1, true);
 };
 
-const handlePageJump = () => {
-  const page = Number(targetPage.value);
-  if (!Number.isInteger(page) || page < 1) {
-    ElMessage.warning('请输入合法的页码');
-    targetPage.value = currentPage.value;
-    return;
-  }
-  if (page !== currentPage.value) loadFeedback(page);
-};
+onMounted(() => {
+  loadMoreObserver = new IntersectionObserver(
+    entries => {
+      if (entries.some(entry => entry.isIntersecting)) loadNextFeedback();
+    },
+    { rootMargin: '240px 0px' }
+  );
+  if (loadMoreTrigger.value) loadMoreObserver.observe(loadMoreTrigger.value);
+  loadFeedback(1, false);
+});
 
-onMounted(() => loadFeedback(1));
+onBeforeUnmount(() => {
+  loadMoreObserver?.disconnect();
+});
 </script>
 
 <style>
@@ -308,13 +279,6 @@ html[data-theme='dark'] .feedback-records .border-gray-300:not(:disabled),
 html[data-theme='effect'] .feedback-records .border-gray-300:not(:disabled) {
   color: #e2e8f0;
   background: rgba(30, 41, 59, 0.82);
-}
-
-html[data-theme='dark'] .feedback-records .feedback-records__page-input,
-html[data-theme='effect'] .feedback-records .feedback-records__page-input {
-  border-color: rgba(148, 163, 184, 0.46) !important;
-  color: #f8fafc !important;
-  background: rgba(15, 23, 42, 0.86) !important;
 }
 
 html[data-theme='dark'] .feedback-records .feedback-records__error,

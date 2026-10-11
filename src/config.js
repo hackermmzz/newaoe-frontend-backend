@@ -98,8 +98,6 @@ module.exports = {
     manager_feedback_url: manager_url + "/fetchfeedback",
     manager_info_export_url: manager_url + "/infoExport",
     manager_reset_common_submit_time_url: manager_url + "/resetcommonsubmittime",
-    // “重置所有人次数”接口每次请求处理的学生数量
-    resetcommonsubmitTimeBatch: 100,
     ManagerStudentRecordPerPage: 10,
     ManagerHistoryRecordPerPage: 10,
     ManagerFeedbackRecordPerPage: 10,
