@@ -35,8 +35,8 @@ func EnhanceVip(ctx *gin.Context) {
 		return
 	}
 	if !ok {
-		util.ResponseNAK_MSG(ctx, "更新失败", nil)
+		util.ResponseNAK_MSG(ctx, "权限更新失败", nil)
 		return
 	}
-	util.ResponseACK_MSG(ctx, "更新成功", "")
+	util.ResponseACK_MSG(ctx, "权限更新成功", "")
 }

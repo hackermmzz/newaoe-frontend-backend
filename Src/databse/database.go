@@ -61,11 +61,10 @@ func (p *Session) PostTransactionAdd(task func()) {
 	if task == nil {
 		return
 	}
-	if !p.IsInTx() {
-		task()
-		return
-	}
 	p.taskQueue = append(p.taskQueue, task)
+	if !p.IsInTx() {
+		p.PostTransaction()
+	}
 }
 
 // PostTransaction executes and clears all registered tasks exactly once.
