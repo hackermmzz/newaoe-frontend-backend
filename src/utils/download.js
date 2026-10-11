@@ -17,6 +17,21 @@ export const getDownloadUrl = async (
   { signal, forceDownload = false } = {}
 ) => {
   let identifier = normalizeIdentifier(fileIdentifier);
+
+  // 部分接口会直接返回已签名的完整下载地址，而不是统一下载接口的文件标识。
+  if (/^https?:\/\//i.test(identifier)) {
+    return {
+      url: identifier,
+      download_type: config.DownloadURLType_UnKnown,
+      toString() {
+        return this.url;
+      },
+      valueOf() {
+        return this.url;
+      }
+    };
+  }
+
   const requestUrl = new URL(`${config.download_url}/${identifier}`);
   if (forceDownload) {
     requestUrl.searchParams.set('attachment', 'true');

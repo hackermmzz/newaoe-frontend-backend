@@ -11,6 +11,7 @@ import ManagerHistory from './components/ManagerHistory.vue'
 import AssessmentSubmission from './components/AssessmentSubmission.vue'
 import SystemBoard from './components/SystemBoard.vue'
 import Ranking from './components/Ranking.vue'
+import AssessmentRank from './components/AssessmentRank.vue'
 import ManagerPage from './components/ManagerPage.vue'
 import config from './config'
 // 可以先导入一个空组件作为其他页面的占位
@@ -104,6 +105,11 @@ const routes = [
               recordsPerPage: config.ManagerHistoryRecordPerPage,
               requestParams: {}
             }
+          },
+          {
+            path: 'assessment-ranking',
+            name: 'ManagerAssessmentRanking',
+            component: AssessmentRank
           },
           {
             path: 'feedback',

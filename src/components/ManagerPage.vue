@@ -25,10 +25,32 @@
               </button>
               <button
                 type="button"
+                class="px-4 py-2 rounded-lg bg-cyan-600 text-white hover:bg-cyan-700 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                :disabled="uploadingLatestPackage"
+                @click="openLatestPackageDialog"
+              >
+                {{ uploadingLatestPackage ? '发版中...' : '发版新版包' }}
+              </button>
+              <input
+                ref="latestPackageInput"
+                type="file"
+                class="hidden"
+                :disabled="uploadingLatestPackage"
+                @change="handleLatestPackageFileChange"
+              >
+              <button
+                type="button"
                 class="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
                 @click="openTeacherDialog"
               >
                 添加考核教师
+              </button>
+              <button
+                type="button"
+                class="px-4 py-2 rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition-colors"
+                @click="openEnhanceVipDialog"
+              >
+                提升管理员
               </button>
               <button
                 type="button"
@@ -37,6 +59,30 @@
                 @click="runAllAssessmentSubmit"
               >
                 {{ runningAllAssessmentSubmit ? '运行中...' : '运行所有考核提交' }}
+              </button>
+              <button
+                type="button"
+                class="px-4 py-2 rounded-lg bg-orange-500 text-white hover:bg-orange-600 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                :disabled="rerunningAnomalRecord"
+                @click="rerunAnomalRecord"
+              >
+                {{ rerunningAnomalRecord ? '重新运行中...' : '重新运行异常记录' }}
+              </button>
+              <button
+                type="button"
+                class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                :disabled="blockingAllSubmit"
+                @click="blockAllSubmit"
+              >
+                {{ blockingAllSubmit ? '阻塞中...' : '阻塞提交' }}
+              </button>
+              <button
+                type="button"
+                class="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                :disabled="cancellingSubmitBlock"
+                @click="cancelSubmitBlock"
+              >
+                {{ cancellingSubmitBlock ? '取消中...' : '取消阻塞' }}
               </button>
               <router-link
                 to="/home/manager/student-statistics"
@@ -75,6 +121,13 @@
               active-class="text-blue-600 font-medium"
             >
               考核提交记录
+            </router-link>
+            <router-link
+              to="/home/manager/assessment-ranking"
+              class="text-gray-600 hover:text-blue-600 transition-colors"
+              active-class="text-blue-600 font-medium"
+            >
+              考核排行榜
             </router-link>
           </nav>
         </header>
@@ -218,6 +271,102 @@
         </div>
 
         <div
+          v-if="latestPackageDialogOpen"
+          class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          role="presentation"
+          @click.self="closeLatestPackageDialog"
+        >
+          <div
+            class="w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="latest-package-title"
+          >
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <div class="flex items-center gap-3">
+                  <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-100 text-cyan-700">
+                    <i class="fa fa-cloud-upload text-lg" aria-hidden="true"></i>
+                  </span>
+                  <div>
+                    <h2 id="latest-package-title" class="text-xl font-semibold text-gray-900">发版新版包</h2>
+                    <p class="mt-1 text-sm text-gray-500">上传后会立即作为用户可下载的最新版包。</p>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                class="text-2xl leading-none text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                aria-label="关闭"
+                :disabled="uploadingLatestPackage"
+                @click="closeLatestPackageDialog"
+              >
+                &times;
+              </button>
+            </div>
+
+            <form class="mt-6 space-y-5" @submit.prevent="uploadLatestPackage">
+              <div>
+                <label class="mb-2 block text-sm font-medium text-gray-700">新版包文件</label>
+                <div class="flex items-center gap-3 rounded-xl border border-dashed border-cyan-300 bg-cyan-50/60 p-4">
+                  <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white text-cyan-600 shadow-sm">
+                    <i class="fa fa-file-archive-o text-xl" aria-hidden="true"></i>
+                  </span>
+                  <div class="min-w-0 flex-1">
+                    <p class="truncate text-sm font-medium text-gray-800">
+                      {{ latestPackageFile ? latestPackageFile.name : '尚未选择文件' }}
+                    </p>
+                    <p class="mt-1 text-xs text-gray-500">请选择要发布的 AOE 安装包或压缩包</p>
+                  </div>
+                  <button
+                    type="button"
+                    class="shrink-0 rounded-lg border border-cyan-600 px-3 py-2 text-sm font-medium text-cyan-700 transition-colors hover:bg-cyan-100 disabled:opacity-50"
+                    :disabled="uploadingLatestPackage"
+                    @click="selectLatestPackage"
+                  >
+                    {{ latestPackageFile ? '重新选择' : '选择文件' }}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label for="latest-package-detail" class="mb-2 block text-sm font-medium text-gray-700">版本详情</label>
+                <textarea
+                  id="latest-package-detail"
+                  v-model="latestPackageDetail"
+                  rows="4"
+                  maxlength="500"
+                  required
+                  :disabled="uploadingLatestPackage"
+                  class="w-full resize-y rounded-xl border border-gray-300 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  placeholder="例如：修复启动问题，更新地图资源……"
+                ></textarea>
+                <p class="mt-1.5 text-xs text-gray-500">这段文字会作为 detail 参数提交给发版接口。</p>
+              </div>
+
+              <div class="flex justify-end gap-3 border-t border-gray-100 pt-4">
+                <button
+                  type="button"
+                  class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  :disabled="uploadingLatestPackage"
+                  @click="closeLatestPackageDialog"
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  class="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  :disabled="uploadingLatestPackage || !latestPackageFile"
+                >
+                  <i v-if="uploadingLatestPackage" class="fa fa-spinner fa-spin mr-1" aria-hidden="true"></i>
+                  {{ uploadingLatestPackage ? '发布中...' : '确认发版' }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div
           v-if="teacherDialogOpen"
           class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
           role="presentation"
@@ -280,6 +429,70 @@
           </div>
         </div>
 
+        <div
+          v-if="enhanceVipDialogOpen"
+          class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          role="presentation"
+          @click.self="closeEnhanceVipDialog"
+        >
+          <div
+            class="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="enhance-vip-title"
+          >
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <h2 id="enhance-vip-title" class="text-xl font-semibold text-gray-900">提升管理员</h2>
+                <p class="mt-1 text-sm text-gray-500">请输入需要提升管理员权限的用户 ID。</p>
+              </div>
+              <button
+                type="button"
+                class="text-2xl leading-none text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                aria-label="关闭"
+                :disabled="enhancingVip"
+                @click="closeEnhanceVipDialog"
+              >
+                &times;
+              </button>
+            </div>
+
+            <form class="mt-6 space-y-4" @submit.prevent="enhanceVip">
+              <div>
+                <label for="enhance-vip-id-input" class="mb-1 block text-sm font-medium text-gray-700">用户 ID</label>
+                <input
+                  id="enhance-vip-id-input"
+                  v-model="enhanceVipUserId"
+                  type="text"
+                  maxlength="100"
+                  required
+                  autocomplete="off"
+                  :disabled="enhancingVip"
+                  class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  placeholder="请输入用户 ID"
+                >
+              </div>
+              <div class="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  :disabled="enhancingVip"
+                  @click="closeEnhanceVipDialog"
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  class="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  :disabled="enhancingVip"
+                >
+                  {{ enhancingVip ? '提升中...' : '确认提升' }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
         <main class="flex-grow container mx-auto px-4 py-8">
           <router-view></router-view>
         </main>
@@ -315,10 +528,20 @@ export default {
       ojVersionDialogOpen: false,
       latestVersion: '',
       updatingOjVersion: false,
+      uploadingLatestPackage: false,
+      latestPackageDialogOpen: false,
+      latestPackageFile: null,
+      latestPackageDetail: '',
       teacherDialogOpen: false,
       teacherName: '',
       addingTeacher: false,
-      runningAllAssessmentSubmit: false
+      enhanceVipDialogOpen: false,
+      enhanceVipUserId: '',
+      enhancingVip: false,
+      runningAllAssessmentSubmit: false,
+      rerunningAnomalRecord: false,
+      blockingAllSubmit: false,
+      cancellingSubmitBlock: false
     };
   },
   methods: {
@@ -336,12 +559,117 @@ export default {
       if (this.updatingOjVersion) return;
       this.ojVersionDialogOpen = false;
     },
+    openLatestPackageDialog() {
+      if (this.uploadingLatestPackage) return;
+      this.latestPackageDialogOpen = true;
+      this.latestPackageFile = null;
+      this.latestPackageDetail = '';
+    },
+    closeLatestPackageDialog() {
+      if (this.uploadingLatestPackage) return;
+      this.latestPackageDialogOpen = false;
+      this.latestPackageFile = null;
+      this.latestPackageDetail = '';
+    },
+    selectLatestPackage() {
+      if (this.uploadingLatestPackage) return;
+      this.$refs.latestPackageInput?.click();
+    },
+    handleLatestPackageFileChange(event) {
+      this.latestPackageFile = event.target.files?.[0] || null;
+      event.target.value = '';
+    },
+    async uploadLatestPackage() {
+      const file = this.latestPackageFile;
+      const detail = this.latestPackageDetail.trim();
+      if (!file || !detail || this.uploadingLatestPackage) return;
+
+      this.uploadingLatestPackage = true;
+      try {
+        const requestUrl = new URL(config.manager_upload_latest_aoe_package_url);
+        requestUrl.searchParams.set('detail', detail);
+        const response = await fetch(requestUrl.toString(), {
+          method: 'GET',
+          credentials: 'include'
+        });
+        const result = await response.json();
+        if (!response.ok || result?.status === false) {
+          throw new Error(result?.msg || `获取新版包上传链接失败（HTTP ${response.status}）`);
+        }
+
+        const uploadUrl = typeof result?.data?.url === 'string'
+          ? result.data.url.trim()
+          : '';
+        if (!uploadUrl) throw new Error('服务器未返回有效的新版包上传链接');
+
+        const uploadResponse = await fetch(uploadUrl, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': file.type || 'application/octet-stream'
+          },
+          body: file
+        });
+        if (!uploadResponse.ok) {
+          throw new Error(`新版包上传失败（HTTP ${uploadResponse.status}）`);
+        }
+
+        ElMessage.success('新版包发布成功');
+        this.latestPackageDialogOpen = false;
+        this.latestPackageFile = null;
+        this.latestPackageDetail = '';
+      } catch (error) {
+        ElMessage.error(error?.message || '新版包发布失败');
+      } finally {
+        this.uploadingLatestPackage = false;
+      }
+    },
     openTeacherDialog() {
       this.teacherDialogOpen = true;
     },
     closeTeacherDialog() {
       if (this.addingTeacher) return;
       this.teacherDialogOpen = false;
+    },
+    openEnhanceVipDialog() {
+      this.enhanceVipDialogOpen = true;
+    },
+    closeEnhanceVipDialog() {
+      if (this.enhancingVip) return;
+      this.enhanceVipDialogOpen = false;
+    },
+    async enhanceVip() {
+      const id = this.enhanceVipUserId.trim();
+      if (!id || this.enhancingVip) {
+        ElMessage.warning('请输入用户 ID');
+        return;
+      }
+
+      this.enhancingVip = true;
+      try {
+        const requestUrl = new URL(config.manager_enhance_vip_url);
+        requestUrl.searchParams.set('id', id);
+        const response = await fetch(requestUrl.toString(), {
+          method: 'GET',
+          credentials: 'include'
+        });
+        let result = {};
+        try {
+          result = await response.json();
+        } catch (error) {
+          if (!response.ok) throw new Error(`提升管理员失败（HTTP ${response.status}）`);
+        }
+        if (!response.ok || result?.status === false) {
+          throw new Error(result?.msg || `提升管理员失败（HTTP ${response.status}）`);
+        }
+
+        ElMessage.success(result?.msg || '管理员权限提升成功');
+        this.enhanceVipUserId = '';
+        this.enhanceVipDialogOpen = false;
+      } catch (error) {
+        ElMessage.error(error?.message || '提升管理员失败');
+      } finally {
+        this.enhancingVip = false;
+      }
     },
     async runAllAssessmentSubmit() {
       if (this.runningAllAssessmentSubmit) return;
@@ -367,6 +695,78 @@ export default {
         ElMessage.error(error?.message || '运行所有考核提交失败');
       } finally {
         this.runningAllAssessmentSubmit = false;
+      }
+    },
+    async rerunAnomalRecord() {
+      if (this.rerunningAnomalRecord) return;
+      this.rerunningAnomalRecord = true;
+      try {
+        const response = await fetch(config.manager_rerun_anomal_record_url, {
+          method: 'GET',
+          credentials: 'include'
+        });
+        let result = {};
+        try {
+          result = await response.json();
+        } catch (error) {
+          if (!response.ok) throw new Error(`重新运行异常记录失败（HTTP ${response.status}）`);
+        }
+        if (!response.ok || result?.status === false) {
+          throw new Error(result?.msg || `重新运行异常记录失败（HTTP ${response.status}）`);
+        }
+        ElMessage.success('异常记录已重新运行');
+      } catch (error) {
+        ElMessage.error(error?.message || '重新运行异常记录失败');
+      } finally {
+        this.rerunningAnomalRecord = false;
+      }
+    },
+    async blockAllSubmit() {
+      if (this.blockingAllSubmit) return;
+      this.blockingAllSubmit = true;
+      try {
+        const response = await fetch(config.manager_block_all_submit_url, {
+          method: 'GET',
+          credentials: 'include'
+        });
+        let result = {};
+        try {
+          result = await response.json();
+        } catch (error) {
+          if (!response.ok) throw new Error(`阻塞提交失败（HTTP ${response.status}）`);
+        }
+        if (!response.ok || result?.status === false) {
+          throw new Error(result?.msg || `阻塞提交失败（HTTP ${response.status}）`);
+        }
+        ElMessage.success('已阻塞所有提交');
+      } catch (error) {
+        ElMessage.error(error?.message || '阻塞提交失败');
+      } finally {
+        this.blockingAllSubmit = false;
+      }
+    },
+    async cancelSubmitBlock() {
+      if (this.cancellingSubmitBlock) return;
+      this.cancellingSubmitBlock = true;
+      try {
+        const response = await fetch(config.manager_cancel_submit_block_url, {
+          method: 'GET',
+          credentials: 'include'
+        });
+        let result = {};
+        try {
+          result = await response.json();
+        } catch (error) {
+          if (!response.ok) throw new Error(`取消阻塞失败（HTTP ${response.status}）`);
+        }
+        if (!response.ok || result?.status === false) {
+          throw new Error(result?.msg || `取消阻塞失败（HTTP ${response.status}）`);
+        }
+        ElMessage.success('已取消提交阻塞');
+      } catch (error) {
+        ElMessage.error(error?.message || '取消阻塞失败');
+      } finally {
+        this.cancellingSubmitBlock = false;
       }
     },
     async addTeacher() {

@@ -13,36 +13,6 @@
         >
           返回学生统计
         </router-link>
-        <button
-          v-if="rerunAnomalRecordUrl"
-          type="button"
-          @click="handleRerunAnomalRecord"
-          :disabled="isRerunningAnomalRecord"
-          class="bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <i v-if="isRerunningAnomalRecord" class="fa fa-spinner fa-spin mr-2"></i>
-          {{ isRerunningAnomalRecord ? '重新运行中...' : '重新运行异常记录' }}
-        </button>
-        <button
-          v-if="blockAllSubmitUrl"
-          type="button"
-          @click="handleBlockAllSubmit"
-          :disabled="isBlockingAllSubmit"
-          class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <i v-if="isBlockingAllSubmit" class="fa fa-spinner fa-spin mr-2"></i>
-          {{ isBlockingAllSubmit ? '阻塞中...' : '阻塞提交' }}
-        </button>
-        <button
-          v-if="cancelSubmitBlockUrl"
-          type="button"
-          @click="handleCancelSubmitBlock"
-          :disabled="isCancellingSubmitBlock"
-          class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <i v-if="isCancellingSubmitBlock" class="fa fa-spinner fa-spin mr-2"></i>
-          {{ isCancellingSubmitBlock ? '取消中...' : '取消阻塞' }}
-        </button>
         <button 
           v-if="!isReadOnly"
           @click="toggleUploadForm"
@@ -206,6 +176,13 @@
                 >
                   学生 ID：{{ item.id || '未知' }}
                 </span>
+                <span
+                  v-if="showSubmissionType && getSubmissionTypeLabel(item)"
+                  class="px-2 py-1 text-xs font-medium rounded-full"
+                  :class="getSubmissionTypeClass(item)"
+                >
+                  {{ getSubmissionTypeLabel(item) }}
+                </span>
                 <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
                   已提交
                 </span>
@@ -337,11 +314,12 @@
                 </button>
                 <button 
                   v-if="!isReadOnly"
+                  type="button"
                   @click="handleRun(item)" 
                   class="text-sm px-3 py-1.5 text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded transition-colors"
-                  :disabled="!item.header || !item.source" 
+                  :disabled="!item.header || !item.source || isRerunning(item)"
                 >
-                  <span >重新运行</span>
+                  <span>{{ isRerunning(item) ? '运行中...' : '重新运行' }}</span>
                 </button>
               </div>
             </div>
@@ -413,6 +391,10 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  showSubmissionType: {
+    type: Boolean,
+    default: false
+  },
   recordsPerPage: {
     type: Number,
     default: 0
@@ -434,6 +416,7 @@ const isReadOnly = computed(() => props.readOnly === true);
 const historyTitle = computed(() => props.historyTitle || '代码提交历史');
 const backPath = computed(() => props.backPath || '');
 const showStudentId = computed(() => props.showStudentId === true);
+const showSubmissionType = computed(() => props.showSubmissionType === true);
 
 // ======================== 原有状态保留 ========================
 const showUploadForm = ref(false);
@@ -442,9 +425,8 @@ const sourceFile = ref(null);
 const description = ref('');
 const isDebugRun = ref(false);
 const isSubmitting = ref(false);
-const isRerunningAnomalRecord = ref(false);
-const isBlockingAllSubmit = ref(false);
-const isCancellingSubmitBlock = ref(false);
+// 防止同一条记录在上一次重新运行请求返回前被重复点击。
+const rerunningIndices = ref(new Set());
 const isLoading = ref(true);
 const historyList = ref([]);
 const searchQuery = ref('');
@@ -482,6 +464,22 @@ const updateStatusOverflow = async () => {
 };
 
 const hasStatusOverflow = (index) => Boolean(statusOverflow.value[index]);
+
+// 提交类别标签仅由管理历史页开启。普通提交和重新运行共用“普通提交”标签。
+const getSubmissionTypeLabel = (item) => {
+  const submissionClass = Number(item?.class);
+  if (submissionClass === config.Code_AssessmentSubmit) return '考核提交';
+  if ([config.Code_CommonSubmit, config.Code_ReRunSubmit].includes(submissionClass)) {
+    return '普通提交';
+  }
+  return '';
+};
+
+const getSubmissionTypeClass = (item) => (
+  Number(item?.class) === config.Code_AssessmentSubmit
+    ? 'bg-amber-100 text-amber-800'
+    : 'bg-slate-100 text-slate-700'
+);
 
 watch([historyList, searchQuery], updateStatusOverflow, { flush: 'post' });
 onMounted(() => {
@@ -798,8 +796,13 @@ const toggleExpand = (index) => {
   updateStatusOverflow();
 };
 
+const getRunKey = (item) => String(item?.indices ?? '');
+const isRerunning = (item) => rerunningIndices.value.has(getRunKey(item));
 const handleRun = async (item) => {
   if (isReadOnly.value) return;
+  const runKey = getRunKey(item);
+  if (!runKey || isRerunning(item)) return;
+  rerunningIndices.value = new Set(rerunningIndices.value).add(runKey);
   try {
     historyList.value = [...historyList.value];
     const resp = await fetch(`${config.codeRun_url}/coderun`, {
@@ -825,6 +828,9 @@ const handleRun = async (item) => {
     ElMessage.error(error.message || '运行出错');
 
   } finally {
+    const nextRerunningIndices = new Set(rerunningIndices.value);
+    nextRerunningIndices.delete(runKey);
+    rerunningIndices.value = nextRerunningIndices;
     historyList.value = [...historyList.value];
     // 重置展开状态
     for (const key in expandedItems.value) {
@@ -833,98 +839,6 @@ const handleRun = async (item) => {
         break;
       }
     }
-  }
-};
-
-const handleRerunAnomalRecord = async () => {
-  if (!props.rerunAnomalRecordUrl || isRerunningAnomalRecord.value) return;
-
-  isRerunningAnomalRecord.value = true;
-  try {
-    const response = await fetch(props.rerunAnomalRecordUrl, {
-      method: 'GET',
-      credentials: 'include'
-    });
-    let result = {};
-    try {
-      result = await response.json();
-    } catch (error) {
-      if (!response.ok) {
-        throw new Error(`重新运行异常记录失败（HTTP ${response.status}）`);
-      }
-    }
-
-    if (!response.ok || result?.status === false) {
-      throw new Error(result?.msg || `重新运行异常记录失败（HTTP ${response.status}）`);
-    }
-
-    ElMessage.success('异常记录已重新运行');
-    const records = await GetHistory(currentPage.value, pageSize.value);
-    if (Array.isArray(records)) historyList.value = records;
-  } catch (error) {
-    ElMessage.error(error?.message || '重新运行异常记录失败');
-  } finally {
-    isRerunningAnomalRecord.value = false;
-  }
-};
-
-const handleBlockAllSubmit = async () => {
-  if (!props.blockAllSubmitUrl || isBlockingAllSubmit.value) return;
-
-  isBlockingAllSubmit.value = true;
-  try {
-    const response = await fetch(props.blockAllSubmitUrl, {
-      method: 'GET',
-      credentials: 'include'
-    });
-    let result = {};
-    try {
-      result = await response.json();
-    } catch (error) {
-      if (!response.ok) {
-        throw new Error(`阻塞提交失败（HTTP ${response.status}）`);
-      }
-    }
-
-    if (!response.ok || result?.status === false) {
-      throw new Error(result?.msg || `阻塞提交失败（HTTP ${response.status}）`);
-    }
-
-    ElMessage.success('已阻塞所有提交');
-  } catch (error) {
-    ElMessage.error(error?.message || '阻塞提交失败');
-  } finally {
-    isBlockingAllSubmit.value = false;
-  }
-};
-
-const handleCancelSubmitBlock = async () => {
-  if (!props.cancelSubmitBlockUrl || isCancellingSubmitBlock.value) return;
-
-  isCancellingSubmitBlock.value = true;
-  try {
-    const response = await fetch(props.cancelSubmitBlockUrl, {
-      method: 'GET',
-      credentials: 'include'
-    });
-    let result = {};
-    try {
-      result = await response.json();
-    } catch (error) {
-      if (!response.ok) {
-        throw new Error(`取消阻塞失败（HTTP ${response.status}）`);
-      }
-    }
-
-    if (!response.ok || result?.status === false) {
-      throw new Error(result?.msg || `取消阻塞失败（HTTP ${response.status}）`);
-    }
-
-    ElMessage.success('已取消提交阻塞');
-  } catch (error) {
-    ElMessage.error(error?.message || '取消阻塞失败');
-  } finally {
-    isCancellingSubmitBlock.value = false;
   }
 };
 

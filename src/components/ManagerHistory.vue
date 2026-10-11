@@ -50,6 +50,10 @@ export default {
       type: Boolean,
       default: false
     },
+    showSubmissionType: {
+      type: Boolean,
+      default: true
+    },
     recordsPerPage: {
       type: Number,
       default: config.ManagerHistoryRecordPerPage

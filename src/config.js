@@ -19,6 +19,14 @@ let Code_Status_Success         = 6 //运行胜利
 let Code_Status_Fail            = 7 //游戏失败
 let Code_Status_Crash           = 8 //游戏崩溃
 
+// 考核排行榜状态
+let AssessmenrRankStatus_Error       = -2 //考核错误
+let AssessmenrRankStatus_CompileFail = -1 //考核编译失败
+let AssessmenrRankStatus_Crash       = 0 //考核崩溃
+let AssessmenrRankStatus_Fail        = 1 //考核失败
+let AssessmenrRankStatus_Win         = 2 //考核胜利
+
+
 //特权配置
 let VIP_TOURIST = -1 //游客用户(只看查看，不可提交)
 let VIP_NONE  = 0 //没有特权
@@ -81,10 +89,12 @@ module.exports = {
     manager_history_url: manager_url + "/getstudenthistory",
     manager_all_history_url: manager_url + "/fetchSubmitRecord",
     manager_assessment_history_url: manager_url + "/getassessmenthistory",
+    manager_assessment_rank_url: manager_url + "/fetchassessmentrank",
     manager_run_all_assessment_submit_url: manager_url + "/runAllAssessmentSubmit",
     manager_rerun_anomal_record_url: manager_url + "/rerunAnomalRecord",
     manager_block_all_submit_url: manager_url + "/blockAllSubmit",
     manager_cancel_submit_block_url: manager_url + "/cancelSubmitBlock",
+    manager_enhance_vip_url: manager_url + "/enhanceVip",
     manager_feedback_url: manager_url + "/fetchfeedback",
     manager_info_export_url: manager_url + "/infoExport",
     manager_reset_common_submit_time_url: manager_url + "/resetcommonsubmittime",
@@ -108,6 +118,8 @@ module.exports = {
     fetch_announcement_url: base_url + "/home/fetchAnnouncement",
     publish_announcement_url: manager_url + "/publishAnnouncement",
     manager_oj_version_update_url: manager_url + "/ojVersionUpdate",
+    manager_upload_latest_aoe_package_url: manager_url + "/uploadLatestAOEPackage",
+    download_latest_aoe_package_url: base_url + "/home/downloadLatestAOEPackage",
     HistoryRecordPerPage,
     Code_Status_Error,
     Code_Status_Wait,
@@ -118,4 +130,9 @@ module.exports = {
     Code_Status_Success,
     Code_Status_Fail,
     Code_Status_Crash,
+    AssessmenrRankStatus_Error,
+    AssessmenrRankStatus_CompileFail,
+    AssessmenrRankStatus_Crash,
+    AssessmenrRankStatus_Fail,
+    AssessmenrRankStatus_Win,
 };

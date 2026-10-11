@@ -8,14 +8,6 @@
       <div class="flex items-center gap-2">
         <button
           type="button"
-          class="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          :disabled="isExporting"
-          @click="exportStudentInfo"
-        >
-          {{ isExporting ? '导出中...' : '导出信息' }}
-        </button>
-        <button
-          type="button"
           class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           :disabled="isLoading || isResettingAll"
           @click="refreshStudents"
@@ -186,7 +178,6 @@ export default {
     const router = useRouter();
     const students = ref([]);
     const isLoading = ref(false);
-    const isExporting = ref(false);
     const isResettingStudent = ref(false);
     const isResettingAll = ref(false);
     const selectedStudent = ref(null);
@@ -521,61 +512,6 @@ export default {
       }
     };
 
-    const triggerDownload = url => {
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', '');
-      link.target = '_self';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    };
-
-    const exportStudentInfo = async () => {
-      if (isExporting.value) return;
-      isExporting.value = true;
-      try {
-        const response = await fetch(config.manager_info_export_url, {
-          method: 'GET',
-          credentials: 'include'
-        });
-        let result = {};
-        try {
-          result = await response.json();
-        } catch (error) {
-          throw new Error('导出接口返回格式错误');
-        }
-
-        if (!response.ok || result?.status === false) {
-          throw new Error(result?.msg || '网络异常');
-        }
-
-        const payload = result?.data ?? result;
-        const downloadReference = typeof payload === 'string'
-          ? payload.trim()
-          : String(
-            payload?.url
-            || payload?.downloadUrl
-            || payload?.downloadurl
-            || payload?.path
-            || payload?.file
-            || ''
-          ).trim();
-
-        if (!downloadReference) {
-          throw new Error(result?.msg || '下载链接无效');
-        }
-
-        const downloadUrl = new URL(downloadReference, `${config.base_url}/`).toString();
-        triggerDownload(downloadUrl);
-        ElMessage.success('学生信息导出成功，正在下载');
-      } catch (error) {
-        ElMessage.error(error?.message || '网络异常');
-      } finally {
-        isExporting.value = false;
-      }
-    };
-
     onMounted(() => {
       loadMoreObserver = new IntersectionObserver(
         entries => {
@@ -599,11 +535,9 @@ export default {
       errorMessage,
       activeSearchId,
       currentPage,
-      exportStudentInfo,
       formatDate,
       hasNextPage,
       isLoading,
-      isExporting,
       isResettingStudent,
       isResettingAll,
       loadStudents,

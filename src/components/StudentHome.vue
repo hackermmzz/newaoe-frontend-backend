@@ -74,8 +74,24 @@
           修改密码
         </router-link>
       </div>
+
+      <!-- 5. 最新版 AOE 包 -->
+      <div class="mb-8 bg-gray-50 p-6 rounded-lg flex items-center justify-between gap-4">
+        <div>
+          <p class="font-medium text-gray-900">最新版 AOE 包</p>
+          <p class="mt-1 text-sm text-gray-500">下载管理员发布的最新客户端安装包</p>
+        </div>
+        <button
+          type="button"
+          class="shrink-0 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+          :disabled="downloadingLatestPackage"
+          @click="downloadLatestPackage"
+        >
+          {{ downloadingLatestPackage ? '获取中...' : '下载最新版包' }}
+        </button>
+      </div>
       
-      <!-- 5. 反馈建议模块（游客也可以提交反馈） -->
+      <!-- 6. 反馈建议模块（游客也可以提交反馈） -->
       <div>
         <h3 class="text-xl font-semibold mb-4 text-center">反馈与建议</h3>
         <div class="bg-gray-50 p-6 rounded-lg">
@@ -189,7 +205,7 @@ import { ref, onMounted, reactive } from 'vue';
 import config from '../config'; // 引入配置文件
 import { ElMessage } from 'element-plus';
 import axios from 'axios'
-import { getDownloadUrl } from '../utils/download';
+import { downloadFile, getDownloadUrl } from '../utils/download';
 export default {
   name: 'StudentHome',
   
@@ -212,6 +228,7 @@ export default {
     const feedbackVideoInput = ref(null);
     const feedbackFileInput = ref(null);
     const submitting = ref(false);
+    const downloadingLatestPackage = ref(false);
     const announcement = ref(null);
 
     const isAnnouncementEnabled = value => (
@@ -294,6 +311,34 @@ export default {
         // 即使浏览器禁用了本地存储，也先关闭当前公告。
       }
       announcement.value = null;
+    };
+
+    const downloadLatestPackage = async () => {
+      if (downloadingLatestPackage.value) return;
+
+      downloadingLatestPackage.value = true;
+      try {
+        const response = await fetch(config.download_latest_aoe_package_url, {
+          method: 'GET',
+          credentials: 'include'
+        });
+        const result = await response.json();
+        if (!response.ok || result?.status === false) {
+          throw new Error(result?.msg || `获取最新版包下载链接失败（HTTP ${response.status}）`);
+        }
+
+        const downloadUrl = typeof result?.data?.url === 'string'
+          ? result.data.url.trim()
+          : '';
+        if (!downloadUrl) throw new Error('服务器未返回有效的最新版包下载链接');
+
+        await downloadFile(downloadUrl);
+        ElMessage.success('已开始下载最新版包');
+      } catch (error) {
+        ElMessage.error(error?.message || '最新版包下载失败');
+      } finally {
+        downloadingLatestPackage.value = false;
+      }
     };
     
     // 从网络获取用户信息
@@ -697,9 +742,11 @@ export default {
       feedbackVideoInput,
       feedbackFileInput,
       submitting,
+      downloadingLatestPackage,
       announcement,
       acknowledgeAnnouncement,
       handleAvatarChange,
+      downloadLatestPackage,
       handleFeedbackImages,
       handleFeedbackVideos,
       handleFeedbackFiles,
