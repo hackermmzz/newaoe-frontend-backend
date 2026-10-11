@@ -72,6 +72,7 @@ func VerifyCodeAdd(keyID string, code string, class int8) error {
 	return nil
 }
 
+// 校验验证码是否存在并删除
 func VerifyCodeCheckExistAndDel(keyID string, code string, class int8) (bool, error) {
 	data := model.VerifyCode{
 		KeyID: keyID,
