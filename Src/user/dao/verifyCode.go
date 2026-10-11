@@ -24,6 +24,7 @@ if info.retrycount <= 0 then
 end
 
 if ARGV[1] == info.code then
+    redis.call("DEL", KEYS[1])
     return {1, info.retrycount}
 end
 
@@ -71,7 +72,7 @@ func VerifyCodeAdd(keyID string, code string, class int8) error {
 	return nil
 }
 
-func VerifyCodeExist(keyID string, code string, class int8) (bool, error) {
+func VerifyCodeCheckExistAndDel(keyID string, code string, class int8) (bool, error) {
 	data := model.VerifyCode{
 		KeyID: keyID,
 		Class: class,
@@ -113,34 +114,17 @@ func VerifyCodeCanSendTTL(keyID string, class int8) (int64, error) {
 	return int64(ttl.Seconds()), nil
 }
 
-func VerifyCodeRemove(keyID string, class int8) (bool, error) {
-	data := model.VerifyCode{
-		KeyID: keyID,
-		Class: class,
-	}
-	ok0, err := redis.RedisDel(context.Background(), data.String())
-	if err != nil {
-		return false, err
-	}
-	//ok1 := redis.RedisDel(context.Background(), data.Tag())//冷却不删
-	return ok0, nil
-}
-
 // 注册
 func RegistVerifyCodeAdd(keyID string, code string) error {
 	return VerifyCodeAdd(keyID, code, model.VerifyCode_Class_Regist)
 }
 
-func RegistVerifyCodeExist(keyID string, code string) (bool, error) {
-	return VerifyCodeExist(keyID, code, model.VerifyCode_Class_Regist)
+func RegistVerifyCodeExistAndDel(keyID string, code string) (bool, error) {
+	return VerifyCodeCheckExistAndDel(keyID, code, model.VerifyCode_Class_Regist)
 }
 
 func RegistVerifyCodeCanSendTTL(keyID string) (int64, error) {
 	return VerifyCodeCanSendTTL(keyID, model.VerifyCode_Class_Regist)
-}
-
-func RegistVerifyCodeRemove(keyID string) (bool, error) {
-	return VerifyCodeRemove(keyID, model.VerifyCode_Class_Regist)
 }
 
 // 忘记密码重置验证码
@@ -148,13 +132,10 @@ func PasswordForgetVerifyCodeAdd(keyID string, code string) error {
 	return VerifyCodeAdd(keyID, code, model.VerifyCode_Class_PasswordForget)
 }
 
-func PasswordForgetVerifyCodeExist(keyID string, code string) (bool, error) {
-	return VerifyCodeExist(keyID, code, model.VerifyCode_Class_PasswordForget)
+func PasswordForgetVerifyCodeExistAndDel(keyID string, code string) (bool, error) {
+	return VerifyCodeCheckExistAndDel(keyID, code, model.VerifyCode_Class_PasswordForget)
 }
 
 func PasswordForgetVerifyCodeCanSendTTL(keyID string) (int64, error) {
 	return VerifyCodeCanSendTTL(keyID, model.VerifyCode_Class_PasswordForget)
-}
-func PasswordForgetVerifyCodeRemove(keyID string) (bool, error) {
-	return VerifyCodeRemove(keyID, model.VerifyCode_Class_PasswordForget)
 }

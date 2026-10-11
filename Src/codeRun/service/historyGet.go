@@ -39,7 +39,7 @@ func GetHistoryRangeById(id string, beg int, end int, class ...int) ([]SubmitRec
 		historyRecords = make([]model.CodeRunInfo, 0)
 	}
 	//编辑数据
-	submitRecords := make([]SubmitRecord, len(historyRecords))
+	submitRecords := make([]SubmitRecord, 0)
 	//判断文件是否存在
 	allfiles := make([]string, len(historyRecords)*2)
 	for i, d := range historyRecords {
@@ -48,9 +48,9 @@ func GetHistoryRangeById(id string, beg int, end int, class ...int) ([]SubmitRec
 	}
 	fileInfos := oss.OssCheckFilesExist(allfiles)
 	//
-	for i := 0; i < len(submitRecords); i += 1 {
-		record := &submitRecords[i]
-		history := historyRecords[i]
+	for _, v := range historyRecords {
+		record := SubmitRecord{}
+		history := v
 		//
 		headerInfo := fileInfos[history.Header]
 		sourceInfo := fileInfos[history.Source]
@@ -73,6 +73,7 @@ func GetHistoryRangeById(id string, beg int, end int, class ...int) ([]SubmitRec
 			util.DebugError("StudentHistoryGet: unmarshal status failed:" + err.Error())
 			continue
 		}
+		submitRecords = append(submitRecords, record)
 	}
 	return submitRecords, nil
 }

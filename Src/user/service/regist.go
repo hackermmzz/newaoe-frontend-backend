@@ -20,16 +20,12 @@ func UserRegist(id string, password string, email string, vip_class int, verifyC
 		return errors.New("密码格式错误!")
 	}
 	//检查验证码是否正确
-	exist, err := dao.RegistVerifyCodeExist(keyID, verifyCode)
+	exist, err := dao.RegistVerifyCodeExistAndDel(keyID, verifyCode)
 	if err != nil {
 		return err
 	}
 	if !exist {
 		return errors.New("验证码错误")
-	}
-	//移除验证码
-	if _, err := dao.RegistVerifyCodeRemove(keyID); err != nil {
-		return err
 	}
 	//查询用是否允许注册
 	if !userIdLegal(id) {

@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"newaoe/Src/common/upload"
 	"newaoe/Src/config"
 	"newaoe/Src/oss"
@@ -11,7 +12,7 @@ import (
 )
 
 func CodeCommonSubmit(id string) ([]*oss.UploadPolicyResult, string, error) {
-	prefix := util.UUID()
+	prefix := fmt.Sprintf("CommonSubmit_%s", util.UUID())
 	base_dir := path.Join(config.Conf.OSS.PrivateBaseFolder, id, config.Conf.User.UserCodeFolder, prefix)
 	header := path.Join(base_dir, "mmzz.h")
 	source := path.Join(base_dir, "mmzz.cpp")

@@ -18,7 +18,7 @@ func AssessmentSubmit(id string) ([]*oss.UploadPolicyResult, string, error) {
 	header := path.Join(base_dir, "mmzz.h")
 	source := path.Join(base_dir, "mmzz.cpp")
 	//
-	duration := time.Duration(config.Conf.Other.CodeCommonSubmitUrlExpireTime) * time.Second
+	duration := time.Duration(config.Conf.Other.AssessmentCodeSubmitUrlExpireTime) * time.Second
 	urls, key := upload.UploadFileWithCachePath(id, []string{header, source}, duration, 0, config.Conf.Server.MaxFilsSizeUserUpload)
 	if len(urls) != 2 {
 		return nil, "", errors.New("返回链接失败!")

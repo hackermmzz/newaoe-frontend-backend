@@ -69,11 +69,6 @@ func setUserVersionedCache(key string, value any, name string) {
 
 func UserResetAvatar(session *database.Session, id string, avatarFile string) (bool, error) {
 	//
-	if session == nil {
-		session = database.NewSession()
-		defer session.Close()
-	}
-	//
 	return UserUpdate(session, id, model.Student{
 		Avatar: avatarFile,
 	})

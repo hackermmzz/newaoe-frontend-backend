@@ -94,7 +94,7 @@ func FeedbackGetUploadUrls(id string, images []string, files []string, videos []
 		return nil, err
 	}
 	if indices == 0 {
-
+		return nil, util.NewError("数据库插入反馈记录失败!")
 	}
 	if err := session.Commit(); err != nil {
 		return nil, util.NewError("服务器异常!", err)

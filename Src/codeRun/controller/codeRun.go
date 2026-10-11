@@ -32,6 +32,5 @@ func CodeRun(ctx *gin.Context) {
 		return
 	}
 	//
-	util.DebugSuccess("代码运行成功!")
 	util.ResponseACK_MSG(ctx, "运行成功!", nil)
 }

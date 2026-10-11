@@ -33,16 +33,12 @@ func PasswordReset(id string, targetEmail string, newPasword string, verifyCode 
 	}
 	//
 	//检查验证码是否正确
-	ok, err := dao.PasswordForgetVerifyCodeExist(id, verifyCode)
+	ok, err := dao.PasswordForgetVerifyCodeExistAndDel(id, verifyCode)
 	if err != nil {
 		return err
 	}
 	if !ok {
 		return errors.New("验证码错误")
-	}
-	//移除验证码
-	if _, err := dao.PasswordForgetVerifyCodeRemove(id); err != nil {
-		return err
 	}
 	//检查密码是否符合格式
 	if !passwordLegal(newPasword) {

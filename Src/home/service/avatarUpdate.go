@@ -14,8 +14,9 @@ import (
 
 func AvatarUpdate(id string) (*oss.UploadPolicyResult, error) {
 	avatarname := fmt.Sprintf("avatar_%s.png", util.UUID())
+
 	avatarNewPath := path.Join(config.Conf.OSS.PrivateBaseFolder, id, config.Conf.User.UserAvatarFolder, avatarname)
-	url := upload.UploadPostPolicyFile(avatarNewPath, time.Duration(30)*time.Minute, 0, config.Conf.Server.MaxFilsSizeUserUpload) //30分钟过期
+	url := upload.UploadPostPolicyFile(avatarNewPath, time.Duration(config.Conf.Other.AvatarUploadUrlExpireTime)*time.Minute, 0, config.Conf.Server.MaxFilsSizeUserUpload) //30分钟过期
 	if url == nil {
 		return nil, util.NewError("获取上传头像凭证失败!")
 	}
