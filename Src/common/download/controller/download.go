@@ -16,7 +16,7 @@ func FileDownload(ctx *gin.Context) {
 	//获取路径以及路径类别
 	filePath := strings.TrimLeft(ctx.Param("filepath"), "/")
 	attachment := ctx.Query("attachment") == "true"
-	category := service.GetFilePathCategory(filePath)
+	category := getFilePathCategory(filePath)
 	if category == "" {
 		util.DebugError("category未知!", category, filePath)
 		util.ResponseNAK_MSG(ctx, "服务器异常!", nil)
@@ -56,4 +56,18 @@ func FileDownload(ctx *gin.Context) {
 		"url":           url,
 		"download_type": download_type,
 	})
+}
+
+// 获取路径的类别category
+func getFilePathCategory(path string) string {
+	categories := []string{
+		config.Conf.OSS.PublicBaseFolder,
+		config.Conf.OSS.PrivateBaseFolder,
+	}
+	for _, category := range categories {
+		if util.IsPrefix(path, category) {
+			return category
+		}
+	}
+	return ""
 }
