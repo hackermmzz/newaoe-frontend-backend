@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math/big"
 	"math/rand"
+	"net/http"
 	"net/url"
 	"newaoe/Src/config"
 	"os"
@@ -284,9 +285,12 @@ func JsonString(data string, addr interface{}) bool {
 
 // 获取json格式的数据
 func JsonCtx(ctx *gin.Context, addr interface{}) bool {
+	const maxJSONBodySize int64 = 10 * 1024 * 1024
+	ctx.Request.Body = http.MaxBytesReader(ctx.Writer, ctx.Request.Body, maxJSONBodySize)
+
 	data_bytes, err := ctx.GetRawData()
 	if err != nil {
-		DebugError("JsonCtx", err)
+		DebugError("JsonCtx:读取请求体失败:", err)
 		return false
 	}
 	return JsonBytes(data_bytes, addr)

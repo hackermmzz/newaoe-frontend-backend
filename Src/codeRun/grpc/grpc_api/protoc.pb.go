@@ -7,11 +7,12 @@
 package grpc_api
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -21,7 +22,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-///////////////////////////////////////////////////////// 请求消息
+// /////////////////////////////////////////////////////// 请求消息
 type Empty struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -178,7 +179,7 @@ func (x *CodeStatusUpdateRequest) GetData() string {
 	return ""
 }
 
-////////////////////////////////////////////////////////// 响应消息
+// //////////////////////////////////////////////////////// 响应消息
 type StatusUpdateReply struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Data          string                 `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"` //多种用途，可能是上传链接
@@ -241,7 +242,7 @@ type CodeReply struct {
 	Msg           string                 `protobuf:"bytes,6,opt,name=msg,proto3" json:"msg,omitempty"`             //消息
 	Runtype       int64                  `protobuf:"varint,7,opt,name=runtype,proto3" json:"runtype,omitempty"`    //运行类型Debug/Release
 	Data          string                 `protobuf:"bytes,8,opt,name=data,proto3" json:"data,omitempty"`           //多种用途
-	Auth          string                 `protobuf:"bytes,9,opt,name=auth,proto3" json:"auth,omitempty"`           //鉴权token
+	Auth          string                 `protobuf:"bytes,9,opt,name=auth,proto3" json:"auth,omitempty"`           //鉴权token(证书)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

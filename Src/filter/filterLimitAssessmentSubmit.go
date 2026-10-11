@@ -2,7 +2,6 @@ package filter
 
 import (
 	"newaoe/Src/codeAssessmentSubmit/dao"
-	"newaoe/Src/config"
 	"newaoe/Src/util"
 
 	"github.com/gin-gonic/gin"
@@ -39,7 +38,7 @@ func FilterLimitAssessmentSubmission() gin.HandlerFunc {
 			ctx.Abort()
 			return
 		}
-		if len(records) >= config.Conf.Code.CodeAssessmentTimes {
+		if len(records) >= 1 { //实际上id是unique key，所以最多只有一个记录
 			util.ResponseNAK_MSG(ctx, "你已经提交过评测了哦!", "")
 			ctx.Abort()
 			return

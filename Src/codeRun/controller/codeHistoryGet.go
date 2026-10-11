@@ -3,6 +3,7 @@ package controller
 import (
 	"newaoe/Src/codeRun/model"
 	"newaoe/Src/codeRun/service"
+	userModel "newaoe/Src/user/model"
 	"newaoe/Src/util"
 	"strconv"
 	"strings"
@@ -12,8 +13,8 @@ import (
 
 func StudentHistoryGet(ctx *gin.Context) {
 	//获取用户数据
-	data := util.GetCtxTookenInfo(ctx)
-	if data == nil {
+	userInfo := util.GetCtxTookenInfo(ctx)
+	if userInfo == nil {
 		util.ResponseNAK_MSG(ctx, "cookie过期或者错误!", "")
 		return
 	}
@@ -30,11 +31,13 @@ func StudentHistoryGet(ctx *gin.Context) {
 		util.ResponseNAK_MSG(ctx, "参数传递错误!", "")
 		return
 	}
-	//获取查寻的id
-	student_id := ctx.Query("student_id")
-	id := data["id"].(string)
-	if student_id != "" {
-		id = student_id
+	//获取查寻的id(只有vip用户才会看其他学生的的历史记录)
+	id := userInfo["id"].(string)
+	if int(userInfo["vip"].(float64)) == userModel.VIP_SUPER {
+		student_id := ctx.Query("student_id")
+		if student_id != "" {
+			id = student_id
+		}
 	}
 	//获取历史记录
 	submitRecords, err := service.GetHistoryRangeById(id, beg, end, model.Code_CommonSubmit, model.Code_ReRunSubmit)

@@ -126,7 +126,7 @@ func AssessmentRankBatchUpdateOrInsertIfBetter(session *database.Session, ranks 
 	// 2. 一次性查询数据库中已有的数据
 	var existRanks []model.AssessmentRankInfo
 
-	err = session.In("id", ids).Find(&existRanks)
+	err = session.In("id", ids).ForUpdate().Find(&existRanks)
 	if err != nil {
 		return err
 	}

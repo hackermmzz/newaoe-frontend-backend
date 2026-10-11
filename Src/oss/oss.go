@@ -299,6 +299,11 @@ func OssGetDownloadFileUrls(filePaths []string, expireDuration time.Duration, at
 		}(index, filePath)
 	}
 	wg.Wait()
+	for _, v := range urls {
+		if len(v) == 0 {
+			return nil
+		}
+	}
 	return urls
 }
 

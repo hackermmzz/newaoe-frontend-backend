@@ -4,9 +4,7 @@ import (
 	"context"
 	"newaoe/Src/codeRun/grpc/grpc_api"
 	"newaoe/Src/codeRun/service"
-	"newaoe/Src/oss"
 	"newaoe/Src/util"
-	"time"
 )
 
 type GrpcCodeServer struct {
@@ -15,48 +13,36 @@ type GrpcCodeServer struct {
 
 func (server *GrpcCodeServer) GetCode(ctx context.Context, req *grpc_api.CodeRequest) (*grpc_api.CodeReply, error) {
 	//鉴权
-	var ok bool
-	var auth string
-	if ok, auth = service.CodeGrpcServerAuthConfirm(req.Auth); !ok {
-		util.DebugError("疑似Auth泄露!")
-		return nil, nil
+	var err error
+	var certificate string
+	if certificate, err = service.CodeGrpcServerAuthConfirm(req.Auth); err != nil {
+		util.DebugError("GetCode:", err)
+		return nil, err
 	}
 	//获取一份代码
-	codeinfo, err := service.GetOneCodeTask()
+	codeinfo, urls, err := service.GetOneCodeTask()
 	if err != nil {
 		util.DebugError(err)
 	}
-	if codeinfo == nil {
+	if codeinfo == nil || urls == nil {
 		return &grpc_api.CodeReply{
 			Ok:  false,
 			Msg: "代码队列为空!",
 		}, nil
 	}
-	id := codeinfo.ID
-	indices := codeinfo.Indices
-	source_dir := codeinfo.Source
-	header_dir := codeinfo.Header
-	//获取链接（这里不走路由了，直接后端获取链接）
-	duration := time.Duration(60*30) * time.Second
-	urlGet := oss.OssGetDownloadFileUrls([]string{header_dir, source_dir}, duration, false)
-	headerUrl := urlGet[0]
-	sourceUrl := urlGet[1]
-	if headerUrl == "" || sourceUrl == "" {
-		return &grpc_api.CodeReply{
-			Ok:  false,
-			Msg: "服务器异常!",
-		}, nil
-	}
+	//
+	headerUrl := urls[0]
+	sourceUrl := urls[1]
 	//返回数据
 	data := &grpc_api.CodeReply{
-		Id:        id,
-		Indices:   int64(indices),
+		Id:        codeinfo.ID,
+		Indices:   int64(codeinfo.Indices),
 		SourceUrl: sourceUrl,
 		HeaderUrl: headerUrl,
 		Ok:        true,
 		Msg:       "获取成功!",
 		Runtype:   int64(codeinfo.RunType),
-		Auth:      auth,
+		Auth:      certificate,
 	}
 	return data, nil
 }

@@ -1,16 +1,11 @@
 package service
 
 import (
-	"context"
-	"encoding/json"
 	"errors"
-	"fmt"
 	"newaoe/Src/codeRun/dao"
 	"newaoe/Src/codeRun/model"
 	database "newaoe/Src/databse"
-	"newaoe/Src/redis"
 	"newaoe/Src/util"
-	"time"
 )
 
 func UpdateRank(dt []model.CodeRunInfo) error {
@@ -76,7 +71,6 @@ func updateCommonSubmitRank(session *database.Session, dt []model.CodeRunInfo) e
 	for i := range dt {
 		ind := dt[i].Indices
 		status := dt[i].Status //这个就是CodeRunStatusInfo
-		key := fmt.Sprintf("CodeRunInfoForRank:%v", ind)
 		//反序列化数据
 		var codeRunStatusInfo model.CodeRunStatusInfo
 		err = codeRunStatusInfo.Unmarshal([]byte(status)) //redis的数据肯定对
@@ -88,30 +82,15 @@ func updateCommonSubmitRank(session *database.Session, dt []model.CodeRunInfo) e
 			continue
 		}
 		//获取当前状态
-		data, exist, err := redis.RedisGet(context.Background(), key)
+		//从数据库读取
+		infoPtr, err := dao.CodeRunGetByIndices(nil, ind)
 		if err != nil {
-			return err
+			continue //读取失败，跳过
 		}
-		if !exist {
-			//从数据库读取
-			infoPtr, err := dao.CodeRunGetByIndices(nil, ind)
-			if err != nil {
-				continue //读取失败，跳过
-			}
-			if infoPtr == nil {
-				return errors.New("为什么这里是空指针!")
-			}
-			info = *infoPtr
-			//写入redis
-			data, err = json.Marshal(info)
-			if _, err := redis.RedisSet(context.Background(), key, string(data), time.Duration(30)*time.Minute); err != nil {
-				return err
-			}
+		if infoPtr == nil {
+			return errors.New("为什么这里是空指针!")
 		}
-		err = json.Unmarshal(data, &info)
-		if err != nil {
-			return errors.New("updateRank: json.Unmarshal failed:" + err.Error())
-		}
+		info = *infoPtr
 		//最终数据
 		rankinfo.ID = info.ID
 		rankinfo.SubmitTime = info.SubmitTime
@@ -171,7 +150,6 @@ func updateAssessmentSubmitRank(session *database.Session, dt []model.CodeRunInf
 	for i := range dt {
 		ind := dt[i].Indices
 		status := dt[i].Status //这个就是CodeRunStatusInfo
-		key := fmt.Sprintf("CodeRunInfoForRank:%v", ind)
 		//反序列化数据
 		var codeRunStatusInfo model.CodeRunStatusInfo
 		err = codeRunStatusInfo.Unmarshal([]byte(status)) //redis的数据肯定对
@@ -179,30 +157,15 @@ func updateAssessmentSubmitRank(session *database.Session, dt []model.CodeRunInf
 			return errors.New("Why codeRunStatusInfo.Unmarshal([]byte(status)) fail?")
 		}
 		//获取当前状态
-		data, exist, err := redis.RedisGet(context.Background(), key)
+		//从数据库读取
+		infoPtr, err := dao.CodeRunGetByIndices(nil, ind)
 		if err != nil {
-			return err
+			continue //读取失败，跳过
 		}
-		if !exist {
-			//从数据库读取
-			infoPtr, err := dao.CodeRunGetByIndices(nil, ind)
-			if err != nil {
-				continue //读取失败，跳过
-			}
-			if infoPtr == nil {
-				return errors.New("为什么这里是空指针!")
-			}
-			info = *infoPtr
-			//写入redis
-			data, err = json.Marshal(info)
-			if _, err := redis.RedisSet(context.Background(), key, string(data), time.Duration(30)*time.Minute); err != nil {
-				return err
-			}
+		if infoPtr == nil {
+			return errors.New("为什么这里是空指针!")
 		}
-		err = json.Unmarshal(data, &info)
-		if err != nil {
-			return errors.New("updateAssessmentSubmitRank: json.Unmarshal failed:" + err.Error())
-		}
+		info = *infoPtr
 		//最终数据
 		rankinfo.ID = info.ID
 		rankinfo.SubmitTime = info.SubmitTime

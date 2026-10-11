@@ -355,7 +355,7 @@ func UserGetByIdOrEmail(session *database.Session, id_or_email string) (ret *mod
 }
 
 // 根据注册时间升序排序（不包括end)
-func UserGetByRangeOrderByRegistData(session *database.Session, beg int, end int) (ret []model.Student, err error) {
+func UserGetByRangeOrderByID(session *database.Session, beg int, end int) (ret []model.Student, err error) {
 	useCache := database.CacheAvailable(session)
 	key := ""
 	if useCache {
@@ -387,7 +387,7 @@ func UserGetByRangeOrderByRegistData(session *database.Session, beg int, end int
 	}
 	// 按regist_date升序
 	// LIMIT beg, end-beg  等价于 offset beg limit count
-	err = session.Asc("registDate").Limit(end-beg, beg).Find(&ret)
+	err = session.Asc("id").Limit(end-beg, beg).Find(&ret)
 	if err != nil {
 		return nil, err
 	}

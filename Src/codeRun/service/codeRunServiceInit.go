@@ -16,15 +16,13 @@ var (
 	CodeWaitForRunPullConsumer golang.SimpleConsumer
 	//状态更新
 	CodeRunStatusPushConsumer  golang.PushConsumer //代码运行状态消费者
-	CodeRunStatusUpdateQueue   []int               //代码运行状态更新队列
 	CodeRunStatusUpdateChannel chan int            //代码运行状态更新通道
 )
 
 // 初始化代码运行监控服务
 func CodeRunServiceInit() {
-	//初始化队列
-	CodeRunStatusUpdateQueue = make([]int, 0, config.Conf.Code.CodeRunStatusUpdateQueueMaxSize)   //代码运行状态更新队列
-	CodeRunStatusUpdateChannel = make(chan int, config.Conf.Code.CodeRunStatusUpdateQueueMaxSize) //代码运行状态更新通道
+	//初始化通道(队列大小为阈值的2倍)
+	CodeRunStatusUpdateChannel = make(chan int, config.Conf.Code.CodeRunStatusUpdateQueueSizeThreshold*2)
 	//初始化状态更新消费者
 	err := codeRunStatusConsumerInit()
 	if err != nil {
@@ -36,7 +34,9 @@ func CodeRunServiceInit() {
 		panic(err.Error())
 	}
 	//启动队列处理线程
-	go codeRunStatusUpdateQueueProcess()
+	for i := 0; i < config.Conf.Code.CodeRunStatusUpdateCoroutineCount; i += 1 {
+		go codeRunStatusUpdateQueueProcess()
+	}
 	//启动一个协程定期检查过期没运行的
 	go codeRunningLongTimeWaitRepush()
 }
@@ -97,6 +97,8 @@ func codeRunningLongTimeWaitRepush() {
 func codeRunStatusUpdateQueueProcess() {
 	duration := time.Duration(config.Conf.Code.CodeRunStatusUpdateInterval) * time.Second
 	timer := time.NewTicker(duration)
+	//初始化Queue
+	CodeRunStatusUpdateQueue := make([]int, 0, config.Conf.Code.CodeRunStatusUpdateQueueSizeThreshold)
 	// 批量更新函数
 	fn := func() error {
 		infos, err := BatchUpdateCodeRunStatus(CodeRunStatusUpdateQueue)

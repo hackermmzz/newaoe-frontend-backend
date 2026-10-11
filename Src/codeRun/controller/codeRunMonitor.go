@@ -10,11 +10,11 @@ import (
 
 func (server *GrpcCodeServer) CodeStatusUpdate(ctx context.Context, req *grpc_api.CodeStatusUpdateRequest) (*grpc_api.StatusUpdateReply, error) {
 	//鉴权
-	var ok bool
-	var auth string
-	if ok, auth = service.CodeGrpcServerAuthConfirm(req.Auth); !ok {
-		util.DebugError("疑似Auth泄露!")
-		return nil, nil
+	var err error
+	var certificate string
+	if certificate, err = service.CodeGrpcServerAuthConfirm(req.Auth); err != nil {
+		util.DebugError("CodeStatusUpdate:", err)
+		return nil, util.NewError("数据格式错误!请更新oj端!")
 	}
 	//获取数据
 	indices := req.Indices
@@ -34,6 +34,6 @@ func (server *GrpcCodeServer) CodeStatusUpdate(ctx context.Context, req *grpc_ap
 		ret = &grpc_api.StatusUpdateReply{}
 	}
 	//
-	ret.Auth = auth
+	ret.Auth = certificate
 	return ret, nil
 }

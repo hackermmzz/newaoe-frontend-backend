@@ -75,12 +75,11 @@ type CodeConfig struct {
 	CodeSubmitInterval                    int    `yaml:"codeSubmitInterval"`                    // 代码提交间隔时间，单位为秒
 	CodeRunQueueMaxSize                   int    `yaml:"codeRunQueueMaxSize"`                   // 代码待运行队列最大大小
 	CodeRunStatusTopic                    string `yaml:"codeRunStatusTopic"`                    // 代码运行状态topic
-	CodeRunStatusUpdateQueueMaxSize       int    `yaml:"codeRunStatusUpdateQueueMaxSize"`       // 代码运行状态更新队列最大大小
+	CodeRunStatusUpdateCoroutineCount     int    `yaml:"codeRunStatusUpdateCoroutineCount"`     // 代码运行状态更新协程数量
 	CodeRunStatusUpdateQueueSizeThreshold int    `yaml:"codeRunStatusUpdateQueueSizeThreshold"` // 队列触发更新大小阈值
 	CodeRunStatusUpdateInterval           int    `yaml:"codeRunStatusUpdateInterval"`           // 队列更新间隔 单位：秒
 	CodeWaitForRunQueueTopic              string `yaml:"codeWaitForRunQueueTopic"`              //代码待运行topic
 	CodeSubmitTimesPerDay                 int    `yaml:"codeSubmitTimesPerDay"`                 //一天可以提交的次数
-	CodeAssessmentTimes                   int    `yaml:"codeAssessmentTimes"`                   //考核提交可以提交的次数
 	CodeWaitTooLongTimeLimit              int    `yaml:"codeWaitTooLongTimeLimit"`              //代码等待结果超时时长
 	CodeAuthExpireTime                    int    `yaml:"codeAuthExpireTime"`                    //鉴权过期时间
 }

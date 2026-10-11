@@ -29,7 +29,7 @@ func AssessmentSubmissionSubmitACK(ctx *gin.Context) {
 		util.ResponseNAK_MSG(ctx, "请上传AI使用率!", nil)
 		return
 	}
-	//记录进数据库
+	//
 	indices, err := service.AssessmentSubmitACK(id, info.Key, info.Teacher, info.AIContentRatio)
 	if err != nil {
 		util.DebugError("AssessmentSubmissionSubmitACK", err)

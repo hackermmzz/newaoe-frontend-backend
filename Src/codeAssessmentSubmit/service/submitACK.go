@@ -1,17 +1,34 @@
 package service
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"newaoe/Src/codeAssessmentSubmit/dao"
 	"newaoe/Src/codeAssessmentSubmit/model"
 	"newaoe/Src/common/upload"
 	database "newaoe/Src/databse"
 	"newaoe/Src/oss"
+	"newaoe/Src/redis"
 	"newaoe/Src/util"
 )
 
 // 返回插入的数据库唯一键
 func AssessmentSubmitACK(id string, key string, teacherSelected string, aiContentRatio string) (int64, error) {
+	//判断pendingKey是否存在
+	pendingKey := fmt.Sprintf("AssessmentSubmissionPending_%s", id)
+	truePendingKeyBytes, ok, err := redis.RedisGet(context.Background(), pendingKey)
+	if !ok || err != nil {
+		if err == nil {
+			err = errors.New("pending key不存在!你小子是来干啥!")
+		}
+		return int64(0), err
+	}
+	if string(truePendingKeyBytes) != key {
+		return int64(0), errors.New("pendingKey不匹配!最好别给我搞什么幺蛾子!")
+	}
+	//删除pendingKey
+	defer redis.RedisDel(context.Background(), pendingKey)
 	//判断教师存在不存在
 	teacherExist, err := dao.TeacherExist(nil, teacherSelected)
 	if err != nil {

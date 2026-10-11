@@ -66,7 +66,7 @@ func FeedbackGetUploadUrls(id string, images []string, files []string, videos []
 	expire_time := time.Duration(60) * time.Minute
 	imagesurl := upload.UploadFiles(imagespath, util.NewArray(len(images), expire_time), 0, config.Conf.Server.MaxFilsSizeUserUpload)
 	filesurl := upload.UploadFiles(filespath, util.NewArray(len(files), expire_time), 0, config.Conf.Server.MaxFilsSizeUserUpload)
-	videosurl := upload.UploadFiles(videospath, util.NewArray(len(videos), expire_time), 0, 100) //视频大小限制100MB
+	videosurl := upload.UploadFiles(videospath, util.NewArray(len(videos), expire_time), 0, 100*1024*1024) //视频大小限制100MB
 	//生成下载链接
 	downloadExpireTime := time.Duration(7*24) * time.Hour
 	imagesDownloadurls := oss.OssGetDownloadFileUrls(imagespath, downloadExpireTime, false)
@@ -81,11 +81,14 @@ func FeedbackGetUploadUrls(id string, images []string, files []string, videos []
 	//插入记录到数据库
 	session := database.NewSession()
 	defer session.Close()
+	if err := session.Begin(); err != nil {
+		return nil, err
+	}
+	defer session.Rollback()
 	info := model.FeedbackInfo{
 		SubmitTime: util.UTC_Time(),
 		BaseFolder: dir,
 	}
-	defer session.Rollback()
 	indices, err := dao.FeedbackInsert(session, info)
 	if err != nil {
 		return nil, err
