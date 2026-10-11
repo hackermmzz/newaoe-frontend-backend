@@ -9,71 +9,48 @@ import (
 	"newaoe/Src/redis"
 	"newaoe/Src/util"
 	"time"
-
-	"xorm.io/xorm"
 )
 
-var AssessmentRankVersionLua = `
-local version = redis.call("GET", "AssessmentRankVersion")
-if version then
-    return tonumber(version)
-end
-redis.call("SET", "AssessmentRankVersion", 0)
-
-return 0`
-
-var AssessmentRankVersionIncrLua = `
-return redis.call("INCR", "AssessmentRankVersion")
-`
-
-func getVersion() (int, error) {
-	resCMD := redis.RedisLua(context.Background(), AssessmentRankVersionLua, []string{})
-	err := resCMD.Err()
-	if err != nil {
-		return -1, err
-	}
-	result, err := resCMD.Int()
-	if err != nil {
-		return -1, err
-	}
-	return result, nil
-}
-
-func incrVersion() error {
-	resCMD := redis.RedisLua(context.Background(), AssessmentRankVersionLua, []string{})
-	if err := resCMD.Err(); err != nil {
-		return err
-	}
-	return nil
-}
-
 // end不包括
-func AssessmentRankGetByRange(session *xorm.Session, beg int, end int) (ret []model.AssessmentRankInfo, err error) {
+func AssessmentRankGetByRange(session *database.Session, beg int, end int) (ret []model.AssessmentRankInfo, err error) {
 	//
 	//先查询缓存
-	version, err := getVersion()
-	if err != nil {
-		return nil, err
-	}
-	key := fmt.Sprintf("AssessmentRankGetByRange_%d/%d/%d", version, beg, end)
-	dataBytes, exist, err := redis.RedisGet(context.Background(), key)
-	if err != nil {
-		return nil, err
-	}
-	if exist {
-		var ranks []model.AssessmentRankInfo
-		err := json.Unmarshal(dataBytes, &ranks)
-		if err == nil {
-			return ranks, nil
+	useCache := database.CacheAvailable(session)
+	key := ""
+	if useCache {
+		version, cacheErr := redis.RedisGetVersion(context.Background(), "AssessmentRankVersion")
+		if cacheErr != nil {
+			return nil, cacheErr
 		}
-		return nil, err
+		key = fmt.Sprintf("AssessmentRankGetByRange_%d/%d/%d", version, beg, end)
+		dataBytes, exist, cacheErr := redis.RedisGet(context.Background(), key)
+		if cacheErr != nil {
+			return nil, cacheErr
+		}
+		if exist {
+			var ranks []model.AssessmentRankInfo
+			if err := json.Unmarshal(dataBytes, &ranks); err == nil {
+				return ranks, nil
+			} else {
+				return nil, err
+			}
+		}
 	}
 	//写入缓存
 	defer func() {
-		data, _ := json.Marshal(ret)
-		if _, err := redis.RedisSet(context.Background(), key, data, time.Duration(5)*time.Minute); err != nil {
-			util.DebugError("AssessmentRank cache set:", err)
+		if err != nil || !useCache {
+			return
 		}
+		session.PostTransactionAdd(func() {
+			data, marshalErr := json.Marshal(ret)
+			if marshalErr != nil {
+				util.DebugError("AssessmentRank cache marshal:", marshalErr)
+				return
+			}
+			if _, err := redis.RedisSet(context.Background(), key, data, time.Duration(5)*time.Minute); err != nil {
+				util.DebugError("AssessmentRank cache set:", err)
+			}
+		})
 	}()
 	//
 	if session == nil {
@@ -119,13 +96,15 @@ func AssessmentRankGetByRange(session *xorm.Session, beg int, end int) (ret []mo
 	return ranks, nil
 }
 
-func AssessmentRankBatchUpdateOrInsertIfBetter(session *xorm.Session, ranks []model.AssessmentRankInfo) (err error) {
+func AssessmentRankBatchUpdateOrInsertIfBetter(session *database.Session, ranks []model.AssessmentRankInfo) (err error) {
 	defer func() {
 		//提高版本
 		if err == nil {
-			if err := incrVersion(); err != nil {
-				util.DebugError("AssessmentRank incrVersion:", err)
-			}
+			session.PostTransactionAdd(func() {
+				if _, increrr := redis.RedisIncrVersion(context.Background(), "AssessmentRankVersion"); increrr != nil {
+					util.DebugError("AssessmentRank incrVersion:", increrr)
+				}
+			})
 		}
 	}()
 	//

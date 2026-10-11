@@ -45,7 +45,6 @@ code:
   codeSubmitInterval: 180           # 代码提交间隔时间 单位：秒
   codeRunQueueMaxSize: 800         #代码待运行队列最大大小
   codeRunStatusTopic: "CodeRun"    #代码运行状态topic
-  codeRunStatusGroupCount: 3      #消费者组数量
   codeRunStatusUpdateQueueMaxSize: 800    #代码运行状态更新队列最大大小
   codeRunStatusUpdateQueueSizeThreshold: 500    #队列触发更新大小阈值
   codeRunStatusUpdateInterval: 1    #队列更新间隔 单位：秒
@@ -108,10 +107,6 @@ other:
   assessmentCodeSubmitUrlExpireTime:  180   #考核代码文件上传链接过期时间
   privateFileDownloadUrlExpireTime: 3   #私有文件下载链接过期时间(分钟)
   publicFileDownloadUrlExpireTime: 30  #公有文件下载链接过期时间(分钟)
-  superUser: ["923106840429","BJS9006210"]  #超级用户，通常为管理员（wlh和娄震）
-  unlimitUser: ["925106840129"]     #不限制提交用户(这类用户通常给予了判题机资源)
-  superUserPassword: "newaoe"  #超级用户密码
-  superUserEmail: "2049983474@qq.com"  #超级用户邮箱
   verifyCodeRetryCount: 5 #验证码最大可尝试次数
   resetCommonSubmitBatch: 10000   #一批次最多重置Batch个人的提交次数
   publicOtherFolder: "other" #存储公开杂项数据

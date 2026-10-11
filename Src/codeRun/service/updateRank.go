@@ -7,14 +7,26 @@ import (
 	"fmt"
 	"newaoe/Src/codeRun/dao"
 	"newaoe/Src/codeRun/model"
+	database "newaoe/Src/databse"
 	"newaoe/Src/redis"
 	"newaoe/Src/util"
 	"time"
-
-	"xorm.io/xorm"
 )
 
-func UpdateRank(session *xorm.Session, dt []model.CodeRunInfo) {
+func UpdateRank(dt []model.CodeRunInfo) error {
+	//
+	if len(dt) == 0 {
+		return nil
+	}
+	session := database.NewSession()
+	defer session.Close()
+	//开启事务
+	err := session.Begin()
+	if err != nil {
+		return util.NewError("UpdateRank: begin transaction failed:", err)
+	}
+	defer session.Rollback()
+	//
 	assessmentRank := make([]model.CodeRunInfo, 0)
 	commonRank := make([]model.CodeRunInfo, 0)
 	//分类
@@ -25,27 +37,33 @@ func UpdateRank(session *xorm.Session, dt []model.CodeRunInfo) {
 		case model.Code_CommonSubmit, model.Code_ReRunSubmit:
 			commonRank = append(commonRank, v)
 		default:
-			util.DebugError("UpdateRank未知类型", v)
+			return util.NewError("UpdateRank未知类型", v)
 		}
 	}
 	//更新普通提交排行榜
 	if len(commonRank) > 0 {
 		err := updateCommonSubmitRank(session, commonRank)
 		if err != nil {
-			util.DebugError("updateCommonSubmitRank", err)
+			return util.NewError("updateCommonSubmitRank", err)
 		}
 	}
 	//更新考核提交排行榜
 	if len(assessmentRank) > 0 {
 		err := updateAssessmentSubmitRank(session, assessmentRank)
 		if err != nil {
-			util.DebugError("updateAssessmentSubmitRank", err)
+			return util.NewError("updateAssessmentSubmitRank", err)
 		}
 	}
+	//提交事务
+	err = session.Commit()
+	if err != nil {
+		return util.NewError("UpdateRank: commit transaction failed:", err)
+	}
+	return nil
 }
 
 // 更新普通提交的排行榜
-func updateCommonSubmitRank(session *xorm.Session, dt []model.CodeRunInfo) error {
+func updateCommonSubmitRank(session *database.Session, dt []model.CodeRunInfo) error {
 	//
 	if len(dt) == 0 {
 		return nil
@@ -140,7 +158,7 @@ func updateCommonSubmitRank(session *xorm.Session, dt []model.CodeRunInfo) error
 }
 
 // 更新考核提交排行榜
-func updateAssessmentSubmitRank(session *xorm.Session, dt []model.CodeRunInfo) error {
+func updateAssessmentSubmitRank(session *database.Session, dt []model.CodeRunInfo) error {
 	//
 	if len(dt) == 0 {
 		return nil

@@ -75,7 +75,6 @@ type CodeConfig struct {
 	CodeSubmitInterval                    int    `yaml:"codeSubmitInterval"`                    // 代码提交间隔时间，单位为秒
 	CodeRunQueueMaxSize                   int    `yaml:"codeRunQueueMaxSize"`                   // 代码待运行队列最大大小
 	CodeRunStatusTopic                    string `yaml:"codeRunStatusTopic"`                    // 代码运行状态topic
-	CodeRunStatusGroupCount               int    `yaml:"codeRunStatusGroupCount"`               // 消费者组数量
 	CodeRunStatusUpdateQueueMaxSize       int    `yaml:"codeRunStatusUpdateQueueMaxSize"`       // 代码运行状态更新队列最大大小
 	CodeRunStatusUpdateQueueSizeThreshold int    `yaml:"codeRunStatusUpdateQueueSizeThreshold"` // 队列触发更新大小阈值
 	CodeRunStatusUpdateInterval           int    `yaml:"codeRunStatusUpdateInterval"`           // 队列更新间隔 单位：秒
@@ -129,26 +128,20 @@ type FeedbackConfig struct {
 }
 
 type OtherConfig struct {
-	AssessmentCodeUploadCategory      string   `yaml:"assessmentCodeUploadCategory"`      //考核代码上传的分类名称
-	AssessmentCodeFileNameMask        string   `yaml:"assessmentCodeFileNameMask"`        //用于区分普通代码文件和考核代码文件的mask
-	AvatarUploadUrlExpireTime         int      `yaml:"avatarUploadUrlExpireTime"`         //头像上传链接过期时间
-	CodeCommonSubmitUrlExpireTime     int      `yaml:"codeCommonSubmitUrlExpireTime"`     //普通代码文件上传链接过期时间
-	AssessmentCodeSubmitUrlExpireTime int      `yaml:"assessmentCodeSubmitUrlExpireTime"` //考核代码文件上传链接过期时间
-	PrivateFileDownloadUrlExpireTime  int      `yaml:"privateFileDownloadUrlExpireTime"`  //私有文件下载链接过期时间
-	PublicFileDownloadUrlExpireTime   int      `yaml:"publicFileDownloadUrlExpireTime"`   //公有文件下载链接过期时间
-	SuperUser                         []string `yaml:"superUser"`                         //超级用户
-	SuperUserPassword                 string   `yaml:"superUserPassword"`                 //超级用户密码
-	SuperUserEmail                    string   `yaml:"superUserEmail"`                    //超级用户邮箱
-	UnlimitUser                       []string `yaml:"unlimitUser"`                       //不限制提交用户(这类用户通常给予了判题机资源)
-	VerifyCodeRetryCount              int      `yaml:"verifyCodeRetryCount"`              //验证码最大可重试次数
-	ResetCommonSubmitBatch            int      `yaml:"resetCommonSubmitBatch"`            //单批次最多重置的学生普通提交次数的个数
-	PublicOtherFolder                 string   `yaml:"publicOtherFolder"`                 //存储一些公开文件，任何权限的人都可以访问
+	AssessmentCodeUploadCategory      string `yaml:"assessmentCodeUploadCategory"`      //考核代码上传的分类名称
+	AssessmentCodeFileNameMask        string `yaml:"assessmentCodeFileNameMask"`        //用于区分普通代码文件和考核代码文件的mask
+	AvatarUploadUrlExpireTime         int    `yaml:"avatarUploadUrlExpireTime"`         //头像上传链接过期时间
+	CodeCommonSubmitUrlExpireTime     int    `yaml:"codeCommonSubmitUrlExpireTime"`     //普通代码文件上传链接过期时间
+	AssessmentCodeSubmitUrlExpireTime int    `yaml:"assessmentCodeSubmitUrlExpireTime"` //考核代码文件上传链接过期时间
+	PrivateFileDownloadUrlExpireTime  int    `yaml:"privateFileDownloadUrlExpireTime"`  //私有文件下载链接过期时间
+	PublicFileDownloadUrlExpireTime   int    `yaml:"publicFileDownloadUrlExpireTime"`   //公有文件下载链接过期时间
+	VerifyCodeRetryCount              int    `yaml:"verifyCodeRetryCount"`              //验证码最大可重试次数
+	ResetCommonSubmitBatch            int    `yaml:"resetCommonSubmitBatch"`            //单批次最多重置的学生普通提交次数的个数
+	PublicOtherFolder                 string `yaml:"publicOtherFolder"`                 //存储一些公开文件，任何权限的人都可以访问
 }
 
 var (
-	Conf           Config
-	SuperUserMap   = make(map[string]struct{})
-	UnlimitUserMap = make(map[string]struct{})
+	Conf Config
 )
 
 // 初始化一些配置
@@ -172,12 +165,4 @@ func ConfigInit() {
 	}
 	//设置基础时区为UTC
 	time.LoadLocation(time.UTC.String())
-	//初始化SuperUserMap
-	for _, d := range Conf.Other.SuperUser {
-		SuperUserMap[d] = struct{}{}
-	}
-	//初始化UnlimitUserMap
-	for _, d := range Conf.Other.UnlimitUser {
-		UnlimitUserMap[d] = struct{}{}
-	}
 }

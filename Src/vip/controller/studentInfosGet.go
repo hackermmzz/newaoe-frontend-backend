@@ -30,6 +30,10 @@ func StudentInfosGet(ctx *gin.Context) {
 		util.ResponseNAK_MSG(ctx, err.Error(), nil)
 		return
 	}
+	//隐藏密码
+	for i := range dt {
+		dt[i].Password = "empty"
+	}
 	//
 	util.ResponseACK_MSG(ctx, "获取成功!", dt)
 }

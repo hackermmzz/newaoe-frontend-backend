@@ -20,6 +20,7 @@ func UserGenCookie(id string, ip string) (string, error) {
 		return "", errors.New("数据库异常!")
 	}
 	//
+	user.Password = "你小子想看到密码吗？"
 	data, err := json.Marshal(*user)
 	if err != nil {
 		return "", errors.New("UserSetCookie marshal err" + err.Error())

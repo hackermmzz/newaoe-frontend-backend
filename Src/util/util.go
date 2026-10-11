@@ -1,11 +1,13 @@
 package util
 
 import (
+	cryptorand "crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"math/rand"
 	"net/url"
 	"newaoe/Src/config"
@@ -73,13 +75,17 @@ func CheckPasswordSame(encode_password string, orogin_password string) bool {
 }
 
 // 产生验证码
-func GenerateVerifyCode(maxLen int) string {
+func GenerateVerifyCode(maxLen int) (string, error) {
 	ret := ""
 	for i := 0; i < maxLen; i += 1 {
-		s := strconv.Itoa(rand.Intn(10))
+		n, err := cryptorand.Int(cryptorand.Reader, big.NewInt(10))
+		if err != nil {
+			return "", err
+		}
+		s := strconv.FormatInt(n.Int64(), 10)
 		ret = ret + s
 	}
-	return ret
+	return ret, nil
 }
 
 // 获取UTC时间

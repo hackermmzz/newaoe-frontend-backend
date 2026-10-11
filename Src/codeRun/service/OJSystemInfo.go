@@ -22,7 +22,9 @@ func GetOJSystemInfo() (*grpc_api.OJSystemInfoReply, error) {
 	if err != nil {
 		return nil, err
 	} else {
-		json.Unmarshal([]byte(value), &msg)
+		if err := json.Unmarshal([]byte(value), &msg); err != nil {
+			return nil, err
+		}
 	}
 	//
 	finalMsg, _ := json.Marshal(msg)

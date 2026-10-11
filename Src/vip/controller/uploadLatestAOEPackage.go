@@ -17,8 +17,8 @@ func UploadLatestAOEPackage(ctx *gin.Context) {
 	detail := ctx.Query("detail")
 	//直接操作oss
 	filepath := filepath.Join(config.Conf.OSS.PublicBaseFolder, config.Conf.Other.PublicOtherFolder, fmt.Sprintf("newaoe-lhw-%v.zip", util.UUID()))
-	url := upload.UploadFile(filepath, time.Duration(1)*time.Hour)
-	if url == "" {
+	url := upload.UploadPostPolicyFile(filepath, time.Duration(1)*time.Hour, 0, 1024*1024*1024) //1GB
+	if url == nil {
 		util.ResponseNAK_MSG(ctx, "生成上传链接失败!", nil)
 		return
 	}

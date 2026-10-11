@@ -12,7 +12,10 @@ import (
 
 func CodeCommonSubmitACK(id string, key string) (int64, error) {
 	//获取文件存储路径
-	filePath := upload.UploadParseAndDelKey(key)
+	filePath, err := upload.UploadParseAndDelKey(key)
+	if err != nil {
+		return int64(0), err
+	}
 	if len(filePath) != 3 {
 		return int64(0), errors.New("这可能是个Bug")
 	}
@@ -42,7 +45,7 @@ func CodeCommonSubmitACK(id string, key string) (int64, error) {
 	//
 	session := database.NewSession()
 	defer session.Close()
-	err := session.Begin()
+	err = session.Begin()
 	if err != nil {
 		return int64(0), errors.New("开启事务失败")
 	}

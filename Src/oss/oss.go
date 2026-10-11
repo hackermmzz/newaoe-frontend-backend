@@ -18,6 +18,11 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
+type UploadPolicyResult struct {
+	UploadURL string            `json:"url"`      // 上传地址
+	FormData  map[string]string `json:"formdata"` // 前端提交需要带上的表单key-value
+}
+
 var OssClient *minio.Client
 
 func OssInit() {
@@ -377,6 +382,142 @@ func GetUploadFileUrl(filePath string, expireDuration time.Duration) string {
 		backoff(j)
 	}
 	return ""
+}
+
+// GetUploadFileUrls 批量并发获取带文件大小限制的PostPolicy上传凭证
+// filePath: 对象key数组，可以使用 ${filename} 占位
+// expireDuration: 每个凭证过期时间数组，长度必须和filePath一致
+// minSize, maxSize: 文件大小限制(字节)，minSize可以为0允许空文件
+func GetUploadPostPolicyUrls(filePath []string, expireDuration []time.Duration, minSize, maxSize int64) []*UploadPolicyResult {
+	if len(filePath) != len(expireDuration) {
+		return nil
+	}
+	if minSize < 0 || maxSize <= 0 || minSize > maxSize {
+		return nil
+	}
+
+	result := make([]*UploadPolicyResult, len(filePath))
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	// 并发控制，最多20个并发
+	sem := make(chan struct{}, 20)
+	allSuccess := true
+
+	for i, path := range filePath {
+		wg.Add(1)
+		go func(index int, objectPath string, expire time.Duration) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() {
+				<-sem
+			}()
+
+			var lastErr error
+			// 内部重试逻辑，复用原有MaxRetry
+			for j := 0; j < config.Conf.OSS.MaxRetry; j++ {
+				ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+
+				policy := minio.NewPostPolicy()
+				if err := policy.SetBucket(config.Conf.OSS.BucketName); err != nil {
+					lastErr = err
+					cancel()
+					break
+				}
+				if err := policy.SetKey(objectPath); err != nil {
+					lastErr = err
+					cancel()
+					break
+				}
+				if err := policy.SetExpires(time.Now().Add(expire)); err != nil {
+					lastErr = err
+					cancel()
+					break
+				}
+				if err := policy.SetContentLengthRange(minSize, maxSize); err != nil {
+					lastErr = err
+					cancel()
+					break
+				}
+
+				u, formData, err := OssClient.PresignedPostPolicy(ctx, policy)
+				cancel()
+
+				if err == nil {
+					mu.Lock()
+					result[index] = &UploadPolicyResult{
+						UploadURL: u.String(),
+						FormData:  formData,
+					}
+					mu.Unlock()
+					return
+				}
+				lastErr = err
+				if !isRetryable(err) {
+					break
+				}
+				backoff(j)
+			}
+
+			// 重试耗尽，标记失败
+			util.DebugError("GetUploadPostPolicyUrls failed, lastErr:", lastErr)
+			mu.Lock()
+			allSuccess = false
+			mu.Unlock()
+		}(i, path, expireDuration[i])
+	}
+	wg.Wait()
+
+	if !allSuccess {
+		return nil
+	}
+	return result
+}
+
+// 带文件大小的上传文件链接
+// GetUploadPostPolicyUrl 生成带文件大小限制的上传凭证（PostPolicy）
+// filePath: minio里的object key，支持 ${filename} 让前端填充文件名
+// expireDuration: 链接过期时间
+// minSize, maxSize: 文件字节范围限制
+func GetUploadPostPolicyUrl(filePath string, expireDuration time.Duration, minSize, maxSize int64) *UploadPolicyResult {
+	if minSize < 0 || maxSize <= 0 || minSize > maxSize {
+		return nil
+	}
+	for j := 0; j < config.Conf.OSS.MaxRetry; j++ {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+
+		policy := minio.NewPostPolicy()
+		if err := policy.SetBucket(config.Conf.OSS.BucketName); err != nil {
+			cancel()
+			return nil
+		}
+		if err := policy.SetKey(filePath); err != nil {
+			cancel()
+			return nil
+		}
+		if err := policy.SetExpires(time.Now().Add(expireDuration)); err != nil {
+			cancel()
+			return nil
+		}
+		// 核心：限制文件大小
+		if err := policy.SetContentLengthRange(minSize, maxSize); err != nil {
+			cancel()
+			return nil
+		}
+		u, formData, err := OssClient.PresignedPostPolicy(ctx, policy)
+		cancel()
+
+		if err == nil {
+			return &UploadPolicyResult{
+				UploadURL: u.String(),
+				FormData:  formData,
+			}
+		}
+		if !isRetryable(err) {
+			break
+		}
+		backoff(j)
+	}
+	return nil
 }
 
 // OssUploadFileData 上传文件数据到OSS

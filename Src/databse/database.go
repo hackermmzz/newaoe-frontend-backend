@@ -48,6 +48,58 @@ func ConnectDatabase() {
 
 }
 
-func NewSession() *xorm.Session {
-	return DB.NewSession()
+// 封装一下seesion
+type Session struct {
+	*xorm.Session
+	taskQueue []func()
+}
+
+// PostTransactionAdd registers a task that is allowed to run only after the
+// database operation is durable. Autocommit operations are already durable
+// when this method is called, so their task can run immediately.
+func (p *Session) PostTransactionAdd(task func()) {
+	if task == nil {
+		return
+	}
+	if !p.IsInTx() {
+		task()
+		return
+	}
+	p.taskQueue = append(p.taskQueue, task)
+}
+
+// PostTransaction executes and clears all registered tasks exactly once.
+func (p *Session) PostTransaction() {
+	tasks := p.taskQueue
+	p.taskQueue = nil
+	for _, task := range tasks {
+		task()
+	}
+}
+
+func (p *Session) Commit() error {
+	if err := p.Session.Commit(); err != nil {
+		p.taskQueue = nil
+		return err
+	}
+	p.PostTransaction()
+	return nil
+}
+
+// Rollback discards tasks whose corresponding database changes were not
+// committed.
+func (p *Session) Rollback() error {
+	p.taskQueue = nil
+	return p.Session.Rollback()
+}
+
+// CacheAvailable is false inside a transaction. Reading from Redis there can
+// violate transaction isolation, and writing a transaction snapshot back to
+// Redis after commit can overwrite newer cached data.
+func CacheAvailable(session *Session) bool {
+	return session == nil || !session.IsInTx()
+}
+
+func NewSession() *Session {
+	return &Session{Session: DB.NewSession()}
 }

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"newaoe/Src/codeRun/dao"
 	"newaoe/Src/codeRun/model"
-	database "newaoe/Src/databse"
 	UserDao "newaoe/Src/user/dao"
 	"newaoe/Src/util"
 )
@@ -17,15 +16,8 @@ type AssessmentRankFetchInfo struct {
 }
 
 func AssessmentRankFetch(beg int, end int) ([]AssessmentRankFetchInfo, error) {
-	session := database.NewSession()
-	defer session.Close()
-	err := session.Begin()
-	if err != nil {
-		return nil, util.NewError("服务器异常")
-	}
-	defer session.Rollback()
 	//获取RankInfo
-	info, err := dao.AssessmentRankGetByRange(session, beg, end)
+	info, err := dao.AssessmentRankGetByRange(nil, beg, end)
 	if err != nil {
 		return nil, err
 	}
@@ -50,14 +42,19 @@ func AssessmentRankFetch(beg int, end int) ([]AssessmentRankFetchInfo, error) {
 		idToAvatar[d.Id] = d.Avatar
 	}
 
-	finaldata := make([]AssessmentRankFetchInfo, len(info))
+	finaldata := make([]AssessmentRankFetchInfo, 0, len(info))
 
-	for i, d := range info {
+	for _, d := range info {
 		var msgInfo model.AssessmentRankMsgInfo
-		msgInfo.Unmarshal([]byte(d.Msg))
-		finaldata[i].Avatar = idToAvatar[d.ID]
-		finaldata[i].RankInfo = d
-		finaldata[i].Msg = msgInfo
+		if err := msgInfo.Unmarshal([]byte(d.Msg)); err != nil {
+			util.DebugError("AssessmentRankFetch: rank msg unmarshal failed:", d.ID, err)
+			continue
+		}
+		finaldata = append(finaldata, AssessmentRankFetchInfo{
+			Avatar:   idToAvatar[d.ID],
+			RankInfo: d,
+			Msg:      msgInfo,
+		})
 	}
 
 	return finaldata, nil

@@ -1,7 +1,6 @@
 package service
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	codeAssessmentDao "newaoe/Src/codeAssessmentSubmit/dao"
@@ -12,6 +11,7 @@ import (
 	database "newaoe/Src/databse"
 	"newaoe/Src/mq"
 	"newaoe/Src/util"
+	"time"
 
 	rocketmq "github.com/apache/rocketmq-clients/golang/v5"
 )
@@ -135,26 +135,14 @@ func addCodeFile(task CodeRunTaskInfo, retryCount int) error {
 		Topic: config.Conf.Code.CodeWaitForRunQueueTopic,
 		Body:  data_byte,
 	}
-	errs := make([]error, 0)
-	fn := func() {
-		mq.RocketMQProducer.SendAsync(
-			context.Background(),
-			msg,
-			func(ctx context.Context, result []*rocketmq.SendReceipt, err error) {
-				// 回调：发送完成后进入
-				if err != nil {
-					errs = append(errs, err)
-					return
-				}
-			},
-		)
-	}
+	errs := make([]error, 0, retryCount)
 	//尝试N次
-	for i := 0; i < retryCount; i += 1 {
-		fn()
-		if len(errs) < i+1 {
+	for i := 0; i < retryCount; i++ {
+		err := mq.SendAsyncWithTimeout(msg, 10*time.Second)
+		if err == nil {
 			return nil
 		}
+		errs = append(errs, err)
 	}
 	return errors.Join(errs...)
 }

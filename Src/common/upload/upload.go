@@ -25,19 +25,33 @@ func UploadFile(filePath string, expireDuration time.Duration) string {
 	return url
 }
 
+// UploadPostPolicyFile 生成带服务端文件大小校验的 POST Policy 上传凭证。
+func UploadPostPolicyFile(filePath string, expireDuration time.Duration, minSize int64, maxSize int64) *oss.UploadPolicyResult {
+	result := oss.GetUploadPostPolicyUrl(filePath, expireDuration, minSize, maxSize)
+	if result == nil {
+		util.DebugError("UploadPostPolicyFile:生成上传凭证失败")
+	}
+	return result
+}
+
 // 文件上传接口(返回上传链接)
-func UploadFiles(filePath []string, expireDuration []time.Duration) []string {
-	urls := oss.GetUploadFileUrls(filePath, expireDuration)
+func UploadFiles(filePath []string, expireDuration []time.Duration, minSize int64, maxSize int64) []*oss.UploadPolicyResult {
+	urls := oss.GetUploadPostPolicyUrls(filePath, expireDuration, minSize, maxSize)
 	if urls == nil {
-		util.DebugError("UploadFile:生成上传链接失败")
+		util.DebugError("UploadFiles:生成上传链接失败")
 		return nil
 	}
 	return urls
 }
 
 // 文件上传接口(带Redis缓存文件路径)
-func UploadFileWithCachePath(id string, filePath []string, expireDuration time.Duration) ([]string, string) {
-	urls := oss.GetUploadFileUrls(filePath, util.NewArray(len(filePath), expireDuration))
+func UploadFileWithCachePath(id string, filePath []string, expireDuration time.Duration, minSize int64, maxSize int64) ([]*oss.UploadPolicyResult, string) {
+	urls := oss.GetUploadPostPolicyUrls(
+		filePath,
+		util.NewArray(len(filePath), expireDuration),
+		minSize,
+		maxSize,
+	)
 	if urls == nil {
 		util.DebugError("UploadFile:生成上传链接失败")
 		return nil, ""
@@ -62,29 +76,18 @@ func UploadFileWithCachePath(id string, filePath []string, expireDuration time.D
 	return urls, key
 }
 
-// 根据ctx字段里面的key解析获取得到文件的数组(不会发送消息)
-func UploadParseAndDelKey(key string) []string {
-	byte_data, exist, err := redis.RedisGet(context.Background(), key)
+// 根据 key 原子获取并删除对应的文件路径。
+func UploadParseAndDelKey(key string) ([]string, error) {
+	byte_data, exist, err := redis.RedisGetDel(context.Background(), key)
 	if err != nil {
-		util.DebugError("UploadParseKey:读取Redis key失败:", err)
-		return nil
+		return nil, err
 	}
 	if !exist {
-		util.DebugError("UploadParseKey:redis key不存在!")
-		return nil
+		return nil, util.NewError("UploadParseKey: redis key不存在")
 	}
 	fileNameArr := make([]string, 0)
-	err = json.Unmarshal(byte_data, &fileNameArr)
-	if err != nil {
-		util.DebugError("UploadParseKey:", err)
+	if err := json.Unmarshal(byte_data, &fileNameArr); err != nil {
+		return nil, err
 	}
-	ok, err := redis.RedisDel(context.Background(), key)
-	if err != nil {
-		util.DebugError("UploadParseKey:Redis key 删除出问题:", err)
-		return fileNameArr
-	}
-	if !ok {
-		util.DebugError("UploadParseKey:Redis key 删除出问题!")
-	}
-	return fileNameArr
+	return fileNameArr, nil
 }

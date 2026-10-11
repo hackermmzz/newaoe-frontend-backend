@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"newaoe/Src/config"
 	"newaoe/Src/redis"
+	"newaoe/Src/user/dao"
 	"newaoe/Src/util"
 
 	"github.com/gin-gonic/gin"
@@ -49,9 +50,11 @@ func FilterLimitCodeSubmit() gin.HandlerFunc {
 		}
 		id := userInfo["id"].(string)
 		//超级用户不管
-		_, ok1 := config.SuperUserMap[id]
-		_, ok2 := config.UnlimitUserMap[id]
-		if ok1 || ok2 {
+		super, err := dao.UserIsSuperUser(nil, id)
+		if err != nil {
+			// 查询失败时按普通用户处理，继续执行冷却和次数限制。
+			util.DebugError("UserIsSuperUser:", err)
+		} else if super {
 			ctx.Next()
 			return
 		}

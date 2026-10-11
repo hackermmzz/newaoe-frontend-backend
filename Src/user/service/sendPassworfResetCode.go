@@ -18,7 +18,10 @@ func PasswordResetCodeSend(id string, email string) error {
 		return util.NewError(fmt.Sprintf("请等待%v秒后重试!", ttl))
 	}
 	//发送验证码
-	code := util.GenerateVerifyCode(config.Conf.PasswordForgetVerifyCode.Length)
+	code, err := util.GenerateVerifyCode(config.Conf.PasswordForgetVerifyCode.Length)
+	if err != nil {
+		return err
+	}
 	emailmsg := service.EmailMsg{
 		Email:   email,
 		Subject: "重置密码验证码",

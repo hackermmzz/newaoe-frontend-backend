@@ -32,5 +32,5 @@ func privateDownloadCheck(userInfo map[string]interface{}, filePath string) bool
 	}
 	//否则判断是否是代码
 	codePath := path.Join(config.Conf.OSS.PrivateBaseFolder, id, config.Conf.User.UserCodeFolder)
-	return !util.IsPrefix(filePath, codePath)
+	return util.IsPrefix(filePath, codePath)
 }

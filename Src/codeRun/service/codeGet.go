@@ -18,9 +18,6 @@ func GetOneCodeTask() (*CodeRunTaskInfo, error) {
 		if err == nil {
 			return ret, nil
 		}
-		if ret == nil {
-			continue
-		}
 		errs = append(errs, err)
 	}
 	//
@@ -38,12 +35,18 @@ func pullOneCodefunc() (*CodeRunTaskInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(msgs) == 0 {
+		return nil, nil
+	}
 	//ACK
 	msg := msgs[0]
-	err = CodeWaitForRunPullConsumer.Ack(context.Background(), msg)
-	if err != nil {
-		return nil, err
-	}
+	defer func() {
+		if err == nil {
+			if err := CodeWaitForRunPullConsumer.Ack(context.Background(), msg); err != nil {
+				util.DebugError("pullOneCodefunc:ACK失败!", err)
+			}
+		}
+	}()
 	//发序列化数据
 	err = json.Unmarshal(msg.GetBody(), &codeinfo)
 	if err != nil {

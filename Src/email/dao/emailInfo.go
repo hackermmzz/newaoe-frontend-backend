@@ -3,12 +3,9 @@ package dao
 import (
 	database "newaoe/Src/databse"
 	"newaoe/Src/email/model"
-	"newaoe/Src/util"
-
-	"xorm.io/xorm"
 )
 
-func EmailInfoInsert(session *xorm.Session, info model.EmailInfo) (int, error) {
+func EmailInfoInsert(session *database.Session, info model.EmailInfo) (int, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -24,7 +21,7 @@ func EmailInfoInsert(session *xorm.Session, info model.EmailInfo) (int, error) {
 }
 
 // 前一个为是否成功，后一个为是否有改变
-func EmailInfoUpdateSendStatus(session *xorm.Session, indices int, send bool) (bool, int64, error) {
+func EmailInfoUpdateSendStatus(session *database.Session, indices int, send bool) (bool, int64, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -42,7 +39,7 @@ func EmailInfoUpdateSendStatus(session *xorm.Session, indices int, send bool) (b
 	return true, affected, nil
 }
 
-func EmailInfoGetForUpdate(session *xorm.Session, indices int) (*model.EmailInfo, error) {
+func EmailInfoGetForUpdate(session *database.Session, indices int) (*model.EmailInfo, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -52,7 +49,6 @@ func EmailInfoGetForUpdate(session *xorm.Session, indices int) (*model.EmailInfo
 	var ret model.EmailInfo
 	has, err := session.ForUpdate().Where("indices = ?", indices).Get(&ret)
 	if err != nil {
-		util.DebugError("EmailInfoGet:", err)
 		return nil, err
 	}
 	if !has {

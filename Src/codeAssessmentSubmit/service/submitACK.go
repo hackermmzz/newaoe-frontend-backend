@@ -21,7 +21,10 @@ func AssessmentSubmitACK(id string, key string, teacherSelected string, aiConten
 		return int64(0), errors.New("教师" + teacherSelected + "不存在!")
 	}
 	//获取对应的文件路径
-	filePath := upload.UploadParseAndDelKey(key)
+	filePath, err := upload.UploadParseAndDelKey(key)
+	if err != nil {
+		return int64(0), err
+	}
 	if len(filePath) != 2 {
 		return int64(0), errors.New("这可能是个Bug!")
 	}

@@ -1,14 +1,73 @@
 package dao
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	database "newaoe/Src/databse"
+	"newaoe/Src/redis"
 	"newaoe/Src/user/model"
 	"newaoe/Src/util"
-
-	"xorm.io/xorm"
+	"time"
 )
 
-func UserResetAvatar(session *xorm.Session, id string, avatarFile string) (bool, error) {
+const userCacheVersionKey = "UserCacheVersion"
+
+func userCacheKey(id string) string {
+	return fmt.Sprintf("UserGet:%s", id)
+}
+
+func deleteUserCache(id string) {
+	if _, err := redis.RedisDel(context.Background(), userCacheKey(id)); err != nil {
+		util.DebugError("User cache del:", err)
+	}
+}
+
+func getUserCacheVersion() (int, error) {
+	return redis.RedisGetVersion(context.Background(), userCacheVersionKey)
+}
+
+func incrUserCacheVersion() {
+	if _, err := redis.RedisIncrVersion(context.Background(), userCacheVersionKey); err != nil {
+		util.DebugError("User cache incrVersion:", err)
+	}
+}
+
+func userVersionedCacheKey(name string, args ...any) (string, error) {
+	version, err := getUserCacheVersion()
+	if err != nil {
+		return "", err
+	}
+	data, err := json.Marshal(args)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s:%d:%s", name, version, util.SHA256(string(data))), nil
+}
+
+func getUserVersionedCache(key string, ret any) (bool, error) {
+	data, exist, err := redis.RedisGet(context.Background(), key)
+	if err != nil || !exist {
+		return exist, err
+	}
+	if err := json.Unmarshal(data, ret); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func setUserVersionedCache(key string, value any, name string) {
+	data, err := json.Marshal(value)
+	if err != nil {
+		util.DebugError(name+" cache marshal:", err)
+		return
+	}
+	if _, err := redis.RedisSet(context.Background(), key, data, 5*time.Minute); err != nil {
+		util.DebugError(name+" cache set:", err)
+	}
+}
+
+func UserResetAvatar(session *database.Session, id string, avatarFile string) (bool, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -21,37 +80,59 @@ func UserResetAvatar(session *xorm.Session, id string, avatarFile string) (bool,
 }
 
 // 判断用户是否已经注册
-func UserExist(session *xorm.Session, id string) (bool, error) {
-	//
-	if session == nil {
-		session = database.NewSession()
-		defer session.Close()
-	}
-	//
-	has, err := session.Where("id = ?", id).Exist(&model.Student{})
-	if (!has) || (err != nil) {
+func UserExist(session *database.Session, id string) (bool, error) {
+	user, err := UserGet(session, id)
+	if err != nil {
 		return false, err
 	}
-	return true, nil
+	return user != nil, nil
 }
 
 // 判断邮箱是否已经使用
-func EmailExist(session *xorm.Session, email string) (bool, error) {
+func EmailExist(session *database.Session, email string) (ret bool, err error) {
+	useCache := database.CacheAvailable(session)
+	key := ""
+	if useCache {
+		key, err = userVersionedCacheKey("EmailExist", email)
+		if err != nil {
+			return false, err
+		}
+		if exist, cacheErr := getUserVersionedCache(key, &ret); cacheErr != nil {
+			return false, cacheErr
+		} else if exist {
+			return ret, nil
+		}
+	}
+	defer func() {
+		if err == nil && useCache {
+			session.PostTransactionAdd(func() {
+				setUserVersionedCache(key, ret, "EmailExist")
+			})
+		}
+	}()
 	//
 	if session == nil {
 		session = database.NewSession()
 		defer session.Close()
 	}
 	//
-	has, err := session.Where("email = ?", email).Exist(&model.Student{})
-	if (!has) || (err != nil) {
+	ret, err = session.Where("email = ?", email).Exist(&model.Student{})
+	if (!ret) || (err != nil) {
 		return false, err
 	}
 	return true, nil
 }
 
 // 添加用户
-func UserAdd(session *xorm.Session, userInfo model.Student) (bool, error) {
+func UserAdd(session *database.Session, userInfo model.Student) (ok bool, err error) {
+	defer func() {
+		if err == nil {
+			session.PostTransactionAdd(func() {
+				deleteUserCache(userInfo.Id)
+				incrUserCacheVersion()
+			})
+		}
+	}()
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -66,7 +147,7 @@ func UserAdd(session *xorm.Session, userInfo model.Student) (bool, error) {
 		RegistDate: util.UTC_Time(),
 		Avatar:     util.GetRandomAvatar(),
 	}
-	_, err := session.Insert(data)
+	_, err = session.Insert(data)
 	if err != nil {
 		return false, err
 	}
@@ -74,14 +155,22 @@ func UserAdd(session *xorm.Session, userInfo model.Student) (bool, error) {
 }
 
 // 添加用户
-func UserAddByStudentInfo(session *xorm.Session, info model.Student) (bool, error) {
+func UserAddByStudentInfo(session *database.Session, info model.Student) (ok bool, err error) {
+	defer func() {
+		if err == nil {
+			session.PostTransactionAdd(func() {
+				deleteUserCache(info.Id)
+				incrUserCacheVersion()
+			})
+		}
+	}()
 	//
 	if session == nil {
 		session = database.NewSession()
 		defer session.Close()
 	}
 	//
-	_, err := session.Insert(info)
+	_, err = session.Insert(info)
 	if err != nil {
 		return false, err
 	}
@@ -89,14 +178,22 @@ func UserAddByStudentInfo(session *xorm.Session, info model.Student) (bool, erro
 }
 
 // 更新用户数据
-func UserUpdate(session *xorm.Session, id string, user model.Student) (bool, error) {
+func UserUpdate(session *database.Session, id string, user model.Student) (ok bool, err error) {
+	defer func() {
+		if err == nil {
+			session.PostTransactionAdd(func() {
+				deleteUserCache(id)
+				incrUserCacheVersion()
+			})
+		}
+	}()
 	//
 	if session == nil {
 		session = database.NewSession()
 		defer session.Close()
 	}
 	//
-	_, err := session.Where("id = ?", id).Update(&user)
+	_, err = session.Where("id = ?", id).Update(&user)
 	if err != nil {
 		return false, err
 	}
@@ -104,25 +201,73 @@ func UserUpdate(session *xorm.Session, id string, user model.Student) (bool, err
 }
 
 // 获取 id like 的所有用户(不包含end)
-func UserGetLikeId(session *xorm.Session, id_like string, beg int, end int) ([]model.Student, error) {
+func UserGetLikeId(session *database.Session, id_like string, beg int, end int) (ret []model.Student, err error) {
+	useCache := database.CacheAvailable(session)
+	key := ""
+	if useCache {
+		key, err = userVersionedCacheKey("UserGetLikeId", id_like, beg, end)
+		if err != nil {
+			return nil, err
+		}
+		if exist, cacheErr := getUserVersionedCache(key, &ret); cacheErr != nil {
+			return nil, cacheErr
+		} else if exist {
+			return ret, nil
+		}
+	}
+	defer func() {
+		if err == nil && useCache {
+			session.PostTransactionAdd(func() {
+				setUserVersionedCache(key, ret, "UserGetLikeId")
+			})
+		}
+	}()
 	if session == nil {
 		session = database.NewSession()
 		defer session.Close()
 	}
 
-	var users []model.Student
-
-	err := session.Where("id LIKE ?", "%"+id_like+"%").Limit(end-beg, beg).Find(&users)
+	err = session.Where("id LIKE ?", "%"+id_like+"%").Limit(end-beg, beg).Find(&ret)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return users, nil
+	return ret, nil
 }
 
 // 获取指定用户的数据
-func UserGet(session *xorm.Session, id string) (*model.Student, error) {
+func UserGet(session *database.Session, id string) (ret *model.Student, err error) {
+	key := userCacheKey(id)
+	useCache := database.CacheAvailable(session)
+	if useCache {
+		data, exist, cacheErr := redis.RedisGet(context.Background(), key)
+		if cacheErr != nil {
+			return nil, cacheErr
+		}
+		if exist {
+			var user model.Student
+			if err := json.Unmarshal(data, &user); err != nil {
+				return nil, err
+			}
+			return &user, nil
+		}
+	}
+	defer func() {
+		if err != nil || ret == nil || !useCache {
+			return
+		}
+		session.PostTransactionAdd(func() {
+			data, marshalErr := json.Marshal(ret)
+			if marshalErr != nil {
+				util.DebugError("UserGet cache marshal:", marshalErr)
+				return
+			}
+			if _, cacheErr := redis.RedisSet(context.Background(), key, data, 5*time.Minute); cacheErr != nil {
+				util.DebugError("UserGet cache set:", cacheErr)
+			}
+		})
+	}()
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -138,7 +283,27 @@ func UserGet(session *xorm.Session, id string) (*model.Student, error) {
 }
 
 // 获取指定用户的数据
-func UserGetByEmail(session *xorm.Session, email string) (*model.Student, error) {
+func UserGetByEmail(session *database.Session, email string) (ret *model.Student, err error) {
+	useCache := database.CacheAvailable(session)
+	key := ""
+	if useCache {
+		key, err = userVersionedCacheKey("UserGetByEmail", email)
+		if err != nil {
+			return nil, err
+		}
+		if exist, cacheErr := getUserVersionedCache(key, &ret); cacheErr != nil {
+			return nil, cacheErr
+		} else if exist {
+			return ret, nil
+		}
+	}
+	defer func() {
+		if err == nil && useCache {
+			session.PostTransactionAdd(func() {
+				setUserVersionedCache(key, ret, "UserGetByEmail")
+			})
+		}
+	}()
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -154,7 +319,27 @@ func UserGetByEmail(session *xorm.Session, email string) (*model.Student, error)
 }
 
 // 获取指定用户的数据
-func UserGetByIdOrEmail(session *xorm.Session, id_or_email string) (*model.Student, error) {
+func UserGetByIdOrEmail(session *database.Session, id_or_email string) (ret *model.Student, err error) {
+	useCache := database.CacheAvailable(session)
+	key := ""
+	if useCache {
+		key, err = userVersionedCacheKey("UserGetByIdOrEmail", id_or_email)
+		if err != nil {
+			return nil, err
+		}
+		if exist, cacheErr := getUserVersionedCache(key, &ret); cacheErr != nil {
+			return nil, cacheErr
+		} else if exist {
+			return ret, nil
+		}
+	}
+	defer func() {
+		if err == nil && useCache {
+			session.PostTransactionAdd(func() {
+				setUserVersionedCache(key, ret, "UserGetByIdOrEmail")
+			})
+		}
+	}()
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -170,7 +355,27 @@ func UserGetByIdOrEmail(session *xorm.Session, id_or_email string) (*model.Stude
 }
 
 // 根据注册时间升序排序（不包括end)
-func UserGetByRangeOrderByRegistData(session *xorm.Session, beg int, end int) ([]model.Student, error) {
+func UserGetByRangeOrderByRegistData(session *database.Session, beg int, end int) (ret []model.Student, err error) {
+	useCache := database.CacheAvailable(session)
+	key := ""
+	if useCache {
+		key, err = userVersionedCacheKey("UserGetByRangeOrderByRegistData", beg, end)
+		if err != nil {
+			return nil, err
+		}
+		if exist, cacheErr := getUserVersionedCache(key, &ret); cacheErr != nil {
+			return nil, cacheErr
+		} else if exist {
+			return ret, nil
+		}
+	}
+	defer func() {
+		if err == nil && useCache {
+			session.PostTransactionAdd(func() {
+				setUserVersionedCache(key, ret, "UserGetByRangeOrderByRegistData")
+			})
+		}
+	}()
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -180,18 +385,37 @@ func UserGetByRangeOrderByRegistData(session *xorm.Session, beg int, end int) ([
 	if beg < 0 || beg >= end {
 		return nil, util.NewError("beg<0 or beg>=end!")
 	}
-	var list []model.Student
 	// 按regist_date升序
 	// LIMIT beg, end-beg  等价于 offset beg limit count
-	err := session.Asc("registDate").Limit(end-beg, beg).Find(&list)
+	err = session.Asc("registDate").Limit(end-beg, beg).Find(&ret)
 	if err != nil {
 		return nil, err
 	}
-	return list, nil
+	return ret, nil
 }
 
 // 获取指定多个用户的数据
-func UserGetByIDs(session *xorm.Session, ids []string) ([]model.Student, error) {
+func UserGetByIDs(session *database.Session, ids []string) (ret []model.Student, err error) {
+	useCache := database.CacheAvailable(session)
+	key := ""
+	if useCache {
+		key, err = userVersionedCacheKey("UserGetByIDs", ids)
+		if err != nil {
+			return nil, err
+		}
+		if exist, cacheErr := getUserVersionedCache(key, &ret); cacheErr != nil {
+			return nil, cacheErr
+		} else if exist {
+			return ret, nil
+		}
+	}
+	defer func() {
+		if err == nil && useCache {
+			session.PostTransactionAdd(func() {
+				setUserVersionedCache(key, ret, "UserGetByIDs")
+			})
+		}
+	}()
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -199,40 +423,57 @@ func UserGetByIDs(session *xorm.Session, ids []string) ([]model.Student, error) 
 	}
 	//
 
-	var users []model.Student
-
 	if len(ids) == 0 {
-		return users, nil
+		return ret, nil
 	}
 
-	err := session.In("id", ids).Find(&users)
+	err = session.In("id", ids).Find(&ret)
 	if err != nil {
 		return nil, err
 	}
 
-	return users, nil
+	return ret, nil
 }
 
 // 获取所有学生数据(谨慎使用)
-func UserGetAll(session *xorm.Session) ([]model.Student, error) {
+func UserGetAll(session *database.Session) (ret []model.Student, err error) {
+	useCache := database.CacheAvailable(session)
+	key := ""
+	if useCache {
+		key, err = userVersionedCacheKey("UserGetAll")
+		if err != nil {
+			return nil, err
+		}
+		if exist, cacheErr := getUserVersionedCache(key, &ret); cacheErr != nil {
+			return nil, cacheErr
+		} else if exist {
+			return ret, nil
+		}
+	}
+	defer func() {
+		if err == nil && useCache {
+			session.PostTransactionAdd(func() {
+				setUserVersionedCache(key, ret, "UserGetAll")
+			})
+		}
+	}()
 	//
 	if session == nil {
 		session = database.NewSession()
 		defer session.Close()
 	}
 	//
-	var list []model.Student
 	// Find 直接把查询结果填充到切片
-	err := session.Find(&list)
+	err = session.Find(&ret)
 	if err != nil {
 		// 出错返回空
 		return nil, err
 	}
-	return list, nil
+	return ret, nil
 }
 
 // 获取用户密码(编码后的密码)
-func UserGetPassword(session *xorm.Session, id string) (string, error) {
+func UserGetPassword(session *database.Session, id string) (string, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -249,7 +490,7 @@ func UserGetPassword(session *xorm.Session, id string) (string, error) {
 	return data.Password, nil
 }
 
-func UserGetEmail(session *xorm.Session, id string) (string, error) {
+func UserGetEmail(session *database.Session, id string) (string, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -266,7 +507,7 @@ func UserGetEmail(session *xorm.Session, id string) (string, error) {
 	return data.Email, nil
 }
 
-func UserGetAvatar(session *xorm.Session, id string) (string, error) {
+func UserGetAvatar(session *database.Session, id string) (string, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -283,7 +524,7 @@ func UserGetAvatar(session *xorm.Session, id string) (string, error) {
 	return data.Avatar, nil
 }
 
-func UserResetPassword(session *xorm.Session, id string, new_password string) (bool, error) {
+func UserResetPassword(session *database.Session, id string, new_password string) (bool, error) {
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -296,7 +537,27 @@ func UserResetPassword(session *xorm.Session, id string, new_password string) (b
 }
 
 // 获取 [beg, end)，不包含 end
-func UserGetRangeIDs(session *xorm.Session, beg int, end int) ([]string, error) {
+func UserGetRangeIDs(session *database.Session, beg int, end int) (ret []string, err error) {
+	useCache := database.CacheAvailable(session)
+	key := ""
+	if useCache {
+		key, err = userVersionedCacheKey("UserGetRangeIDs", beg, end)
+		if err != nil {
+			return nil, err
+		}
+		if exist, cacheErr := getUserVersionedCache(key, &ret); cacheErr != nil {
+			return nil, cacheErr
+		} else if exist {
+			return ret, nil
+		}
+	}
+	defer func() {
+		if err == nil && useCache {
+			session.PostTransactionAdd(func() {
+				setUserVersionedCache(key, ret, "UserGetRangeIDs")
+			})
+		}
+	}()
 	if beg < 0 || end <= beg {
 		return nil, util.NewError("beg<0 or beg>=end!")
 	}
@@ -306,17 +567,28 @@ func UserGetRangeIDs(session *xorm.Session, beg int, end int) ([]string, error) 
 		defer session.Close()
 	}
 
-	var ids []string
-	err := session.
+	err = session.
 		Table(model.Student{}.TableName()).
 		Cols("id").
 		OrderBy("id ASC").
 		Limit(end-beg, beg).
-		Find(&ids)
+		Find(&ret)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return ids, nil
+	return ret, nil
+}
+
+func UserIsSuperUser(session *database.Session, id string) (bool, error) {
+	//获取用户
+	user, err := UserGet(session, id)
+	if err != nil {
+		return false, err
+	}
+	if user == nil {
+		return false, nil
+	}
+	return user.Vip == model.VIP_SUPER, nil
 }

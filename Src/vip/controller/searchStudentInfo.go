@@ -36,5 +36,10 @@ func SearchStudentInfo(ctx *gin.Context) {
 		util.ResponseNAK_MSG(ctx, err.Error(), nil)
 		return
 	}
+	//隐藏密码
+	for i := range data {
+		data[i].Password = "empty"
+	}
+	//
 	util.ResponseACK_MSG(ctx, "搜索成功!", data)
 }

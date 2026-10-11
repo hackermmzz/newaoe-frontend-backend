@@ -18,7 +18,10 @@ func SendRegistCode(keyID string, email string) error {
 		return util.NewError(fmt.Sprintf("请等待%v秒后重试!", ttl))
 	}
 	//发送验证码
-	code := util.GenerateVerifyCode(config.Conf.RegistVerifyCode.Length)
+	code, err := util.GenerateVerifyCode(config.Conf.RegistVerifyCode.Length)
+	if err != nil {
+		return err
+	}
 	emailMsg := service.EmailMsg{
 		Email:   email,
 		Subject: "注册验证码",

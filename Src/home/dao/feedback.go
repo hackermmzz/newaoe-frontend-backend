@@ -1,32 +1,76 @@
 package dao
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	database "newaoe/Src/databse"
 	"newaoe/Src/home/model"
+	"newaoe/Src/redis"
 	"newaoe/Src/util"
-
-	"xorm.io/xorm"
+	"time"
 )
 
-func FeedbackGetByIndices(session *xorm.Session, indices int) (*model.FeedbackInfo, error) {
+func FeedbackGetByIndices(session *database.Session, indices int) (ret *model.FeedbackInfo, err error) {
+	key := fmt.Sprintf("FeedbackGetByIndices:%d", indices)
+	useCache := database.CacheAvailable(session)
+	if useCache {
+		data, exist, cacheErr := redis.RedisGet(context.Background(), key)
+		if cacheErr != nil {
+			return nil, cacheErr
+		}
+		if exist {
+			var info model.FeedbackInfo
+			if err := json.Unmarshal(data, &info); err != nil {
+				return nil, err
+			}
+			return &info, nil
+		}
+	}
+	defer func() {
+		if err != nil || ret == nil || !useCache {
+			return
+		}
+		session.PostTransactionAdd(func() {
+			data, marshalErr := json.Marshal(ret)
+			if marshalErr != nil {
+				util.DebugError("FeedbackGetByIndices cache marshal:", marshalErr)
+				return
+			}
+			if _, cacheErr := redis.RedisSet(context.Background(), key, data, 5*time.Minute); cacheErr != nil {
+				util.DebugError("FeedbackGetByIndices cache set:", cacheErr)
+			}
+		})
+	}()
 	//
 	if session == nil {
 		session = database.NewSession()
 		defer session.Close()
 	}
 	//
-	var ret model.FeedbackInfo
-	has, err := session.Where("indices=?", indices).Get(&ret)
+	var info model.FeedbackInfo
+	has, err := session.Where("indices=?", indices).Get(&info)
 	if err != nil || !has {
 		if err != nil {
 			return nil, err
 		}
 		return nil, nil
 	}
-	return &ret, nil
+	return &info, nil
 }
 
-func FeedbackInsert(session *xorm.Session, info model.FeedbackInfo) (int, error) {
+func FeedbackInsert(session *database.Session, info model.FeedbackInfo) (indices int, err error) {
+	defer func() {
+		if err != nil {
+			return
+		}
+		session.PostTransactionAdd(func() {
+			key := fmt.Sprintf("FeedbackGetByIndices:%d", info.Indices)
+			if _, cacheErr := redis.RedisDel(context.Background(), key); cacheErr != nil {
+				util.DebugError("FeedbackInsert cache del:", cacheErr)
+			}
+		})
+	}()
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -34,7 +78,7 @@ func FeedbackInsert(session *xorm.Session, info model.FeedbackInfo) (int, error)
 	}
 	//
 	// Insert 返回影响行数 + error
-	_, err := session.Insert(&info)
+	_, err = session.Insert(&info)
 	if err != nil {
 		return 0, err
 	}
@@ -42,7 +86,8 @@ func FeedbackInsert(session *xorm.Session, info model.FeedbackInfo) (int, error)
 }
 
 // 不包含end
-func FeedbackGetRange(session *xorm.Session, beg int, end int) ([]model.FeedbackInfo, error) {
+func FeedbackGetRange(session *database.Session, beg int, end int) ([]model.FeedbackInfo, error) {
+
 	//
 	if session == nil {
 		session = database.NewSession()

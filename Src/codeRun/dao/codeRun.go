@@ -1,44 +1,112 @@
 package dao
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"newaoe/Src/codeRun/model"
 	database "newaoe/Src/databse"
+	"newaoe/Src/redis"
 	"newaoe/Src/util"
 	"strings"
-
-	"xorm.io/xorm"
+	"time"
 )
 
-func CodeRunAdd(session *xorm.Session, c model.CodeRunInfo) (int, error) {
+const codeRunCacheVersionKey = "CodeRunCacheVersion"
+
+func codeRunCacheKey(indices int) string {
+	return fmt.Sprintf("CodeRunGetByIndices:%d", indices)
+}
+
+func CodeRunCacheDelete(indices int) {
+	if _, err := redis.RedisDel(context.Background(), codeRunCacheKey(indices)); err != nil {
+		util.DebugError("CodeRun cache del:", err)
+	}
+}
+
+func getCodeRunCacheVersion() (int, error) {
+	return redis.RedisGetVersion(context.Background(), codeRunCacheVersionKey)
+}
+
+func CodeRunCacheVersionIncrease() {
+	if _, err := redis.RedisIncrVersion(context.Background(), codeRunCacheVersionKey); err != nil {
+		util.DebugError("CodeRun cache incrVersion:", err)
+	}
+}
+
+func codeRunVersionedCacheKey(name string, args ...any) (string, error) {
+	version, err := getCodeRunCacheVersion()
+	if err != nil {
+		return "", err
+	}
+	data, err := json.Marshal(args)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s:%d:%s", name, version, util.SHA256(string(data))), nil
+}
+
+func getCodeRunVersionedCache(key string, ret any) (bool, error) {
+	data, exist, err := redis.RedisGet(context.Background(), key)
+	if err != nil || !exist {
+		return exist, err
+	}
+	if err := json.Unmarshal(data, ret); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func setCodeRunVersionedCache(key string, value any, name string) {
+	data, err := json.Marshal(value)
+	if err != nil {
+		util.DebugError(name+" cache marshal:", err)
+		return
+	}
+	if _, err := redis.RedisSet(context.Background(), key, data, 5*time.Minute); err != nil {
+		util.DebugError(name+" cache set:", err)
+	}
+}
+
+func CodeRunAdd(session *database.Session, c model.CodeRunInfo) (indices int, err error) {
+	defer func() {
+		if err == nil {
+			session.PostTransactionAdd(func() {
+				CodeRunCacheDelete(c.Indices)
+				CodeRunCacheVersionIncrease()
+			})
+		}
+	}()
 	//
 	if session == nil {
 		session = database.NewSession()
 		defer session.Close()
 	}
 	//
-	_, err := session.Insert(&c)
+	_, err = session.Insert(&c)
 	if err != nil {
 		return 0, err
 	}
 	return c.Indices, nil
 }
 
-func CodeRunExist(session *xorm.Session, indices int) (bool, error) {
-	//
-	if session == nil {
-		session = database.NewSession()
-		defer session.Close()
-	}
-	//
-	exist, err := session.Where("indices= ?", indices).Exist(&model.CodeRunInfo{})
+func CodeRunExist(session *database.Session, indices int) (bool, error) {
+	info, err := CodeRunGetByIndices(session, indices)
 	if err != nil {
-		util.Debug("CodeRunExist err:", err)
 		return false, err
 	}
-	return exist, nil
+	return info != nil, nil
 }
 
-func CodeRunUpdate(session *xorm.Session, newInfo model.CodeRunInfo) (bool, error) {
+func CodeRunUpdate(session *database.Session, newInfo model.CodeRunInfo) (ok bool, err error) {
+	defer func() {
+		if err == nil {
+			session.PostTransactionAdd(func() {
+				CodeRunCacheDelete(newInfo.Indices)
+				CodeRunCacheVersionIncrease()
+			})
+		}
+	}()
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -55,7 +123,15 @@ func CodeRunUpdate(session *xorm.Session, newInfo model.CodeRunInfo) (bool, erro
 	return affected > 0, nil
 }
 
-func CodeRunUpdateStatusAsync(session *xorm.Session, indices int, status string) (bool, error) {
+func CodeRunUpdateStatusAsync(session *database.Session, indices int, status string) (ok bool, err error) {
+	defer func() {
+		if err == nil {
+			session.PostTransactionAdd(func() {
+				CodeRunCacheDelete(indices)
+				CodeRunCacheVersionIncrease()
+			})
+		}
+	}()
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -64,7 +140,7 @@ func CodeRunUpdateStatusAsync(session *xorm.Session, indices int, status string)
 	//
 	var info model.CodeRunInfo
 	info.Status = status
-	_, err := session.Where("indices=?", indices).
+	_, err = session.Where("indices=?", indices).
 		Update(info)
 	if err != nil {
 		return false, err
@@ -72,7 +148,15 @@ func CodeRunUpdateStatusAsync(session *xorm.Session, indices int, status string)
 	return true, nil
 }
 
-func CodeRunUpdateStatusSync(session *xorm.Session, indices int, status string) (bool, error) {
+func CodeRunUpdateStatusSync(session *database.Session, indices int, status string) (ok bool, err error) {
+	defer func() {
+		if err == nil {
+			session.PostTransactionAdd(func() {
+				CodeRunCacheDelete(indices)
+				CodeRunCacheVersionIncrease()
+			})
+		}
+	}()
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -81,7 +165,7 @@ func CodeRunUpdateStatusSync(session *xorm.Session, indices int, status string) 
 	//
 	var info model.CodeRunInfo
 	info.Status = status
-	_, err := session.Where("indices=?", indices).
+	_, err = session.Where("indices=?", indices).
 		Update(info)
 	if err != nil {
 		return false, err
@@ -89,36 +173,147 @@ func CodeRunUpdateStatusSync(session *xorm.Session, indices int, status string) 
 	return true, nil
 }
 
-func CodeRunGetByIndices(session *xorm.Session, indices int) (*model.CodeRunInfo, error) {
+// CodeRunBatchUpdateStatus 使用临时表批量更新运行状态和版本。
+// 事务由调用方控制，缓存应在事务提交成功后失效。
+func CodeRunBatchUpdateStatus(session *database.Session, data []model.CodeRunInfo) (err error) {
+	if len(data) == 0 {
+		return nil
+	}
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
+
+	tempTable := fmt.Sprintf("tmp_code_run_%d", util.UTC_Time().UnixNano())
+	_, err = session.Exec(fmt.Sprintf("CREATE TEMPORARY TABLE %s (indices INT, status TEXT, new_version BIGINT)", tempTable))
+	if err != nil {
+		return fmt.Errorf("create code run temp table: %w", err)
+	}
+	defer func() {
+		_, dropErr := session.Exec(fmt.Sprintf("DROP TEMPORARY TABLE %s", tempTable))
+		if err == nil && dropErr != nil {
+			err = fmt.Errorf("drop code run temp table: %w", dropErr)
+		}
+	}()
+
+	type tempCodeRunInfo struct {
+		Indices    int    `xorm:"indices"`
+		Status     string `xorm:"text status"`
+		NewVersion int64  `xorm:"new_version"`
+	}
+	tempData := make([]tempCodeRunInfo, len(data))
+	for i := range data {
+		tempData[i] = tempCodeRunInfo{
+			Indices:    data[i].Indices,
+			Status:     data[i].Status,
+			NewVersion: data[i].Version,
+		}
+	}
+	if _, err = session.Table(tempTable).Insert(tempData); err != nil {
+		return fmt.Errorf("insert code run temp data: %w", err)
+	}
+
+	cmd := fmt.Sprintf(`
+UPDATE %s c
+JOIN %s t ON c.indices = t.indices
+SET c.status = t.status, c.version = t.new_version
+WHERE c.version < t.new_version
+`, model.CodeRunInfo{}.TableName(), tempTable)
+	if _, err = session.Exec(cmd); err != nil {
+		return fmt.Errorf("batch update code run status: %w", err)
+	}
+	cacheIndices := make([]int, len(data))
+	for i := range data {
+		cacheIndices[i] = data[i].Indices
+	}
+	session.PostTransactionAdd(func() {
+		for _, index := range cacheIndices {
+			CodeRunCacheDelete(index)
+		}
+		CodeRunCacheVersionIncrease()
+	})
+	return nil
+}
+
+func CodeRunGetByIndices(session *database.Session, indices int) (ret *model.CodeRunInfo, err error) {
+	key := codeRunCacheKey(indices)
+	useCache := database.CacheAvailable(session)
+	if useCache {
+		data, exist, cacheErr := redis.RedisGet(context.Background(), key)
+		if cacheErr != nil {
+			return nil, cacheErr
+		}
+		if exist {
+			var info model.CodeRunInfo
+			if err := json.Unmarshal(data, &info); err != nil {
+				return nil, err
+			}
+			return &info, nil
+		}
+	}
+	defer func() {
+		if err != nil || ret == nil || !useCache {
+			return
+		}
+		session.PostTransactionAdd(func() {
+			data, marshalErr := json.Marshal(ret)
+			if marshalErr != nil {
+				util.DebugError("CodeRunGetByIndices cache marshal:", marshalErr)
+				return
+			}
+			if _, cacheErr := redis.RedisSet(context.Background(), key, data, 5*time.Minute); cacheErr != nil {
+				util.DebugError("CodeRunGetByIndices cache set:", cacheErr)
+			}
+		})
+	}()
 	//
 	if session == nil {
 		session = database.NewSession()
 		defer session.Close()
 	}
 	//
-	var ret model.CodeRunInfo
-	has, err := session.Where("indices=?", indices).Get(&ret)
+	var info model.CodeRunInfo
+	has, err := session.Where("indices=?", indices).Get(&info)
 	if err != nil || !has {
 		if err != nil {
 			return nil, err
 		}
 		return nil, nil
 	}
-	return &ret, nil
+	return &info, nil
 }
 
-func CodeRunBatchGetByIndices(session *xorm.Session, indices []int) ([]model.CodeRunInfo, error) {
+func CodeRunBatchGetByIndices(session *database.Session, indices []int) (ret []model.CodeRunInfo, err error) {
+	useCache := database.CacheAvailable(session)
+	key := ""
+	if useCache {
+		key, err = codeRunVersionedCacheKey("CodeRunBatchGetByIndices", indices)
+		if err != nil {
+			return nil, err
+		}
+		if exist, cacheErr := getCodeRunVersionedCache(key, &ret); cacheErr != nil {
+			return nil, cacheErr
+		} else if exist {
+			return ret, nil
+		}
+	}
+	defer func() {
+		if err == nil && useCache {
+			session.PostTransactionAdd(func() {
+				setCodeRunVersionedCache(key, ret, "CodeRunBatchGetByIndices")
+			})
+		}
+	}()
 	//
 	if session == nil {
 		session = database.NewSession()
 		defer session.Close()
 	}
 	//
-	var ret []model.CodeRunInfo
 	if len(indices) == 0 {
 		return ret, nil
 	}
-	err := session.In("indices", indices).
+	err = session.In("indices", indices).
 		Find(&ret)
 	if err != nil {
 		return nil, err
@@ -126,37 +321,96 @@ func CodeRunBatchGetByIndices(session *xorm.Session, indices []int) ([]model.Cod
 	return ret, nil
 }
 
-func CodeRunGetById(session *xorm.Session, id string) ([]model.CodeRunInfo, error) {
+func CodeRunGetById(session *database.Session, id string) (ret []model.CodeRunInfo, err error) {
+	useCache := database.CacheAvailable(session)
+	key := ""
+	if useCache {
+		key, err = codeRunVersionedCacheKey("CodeRunGetById", id)
+		if err != nil {
+			return nil, err
+		}
+		if exist, cacheErr := getCodeRunVersionedCache(key, &ret); cacheErr != nil {
+			return nil, cacheErr
+		} else if exist {
+			return ret, nil
+		}
+	}
+	defer func() {
+		if err == nil && useCache {
+			session.PostTransactionAdd(func() {
+				setCodeRunVersionedCache(key, ret, "CodeRunGetById")
+			})
+		}
+	}()
 	//
 	if session == nil {
 		session = database.NewSession()
 		defer session.Close()
 	}
 	//
-	var ret []model.CodeRunInfo
-	err := session.Where("id = ?", id).Find(&ret)
+	err = session.Where("id = ?", id).Find(&ret)
 	if err != nil {
 		return nil, err
 	}
 	return ret, nil
 }
 
-func CodeRunCountById(session *xorm.Session, id string) (int64, error) {
+func CodeRunCountById(session *database.Session, id string) (ret int64, err error) {
+	useCache := database.CacheAvailable(session)
+	key := ""
+	if useCache {
+		key, err = codeRunVersionedCacheKey("CodeRunCountById", id)
+		if err != nil {
+			return 0, err
+		}
+		if exist, cacheErr := getCodeRunVersionedCache(key, &ret); cacheErr != nil {
+			return 0, cacheErr
+		} else if exist {
+			return ret, nil
+		}
+	}
+	defer func() {
+		if err == nil && useCache {
+			session.PostTransactionAdd(func() {
+				setCodeRunVersionedCache(key, ret, "CodeRunCountById")
+			})
+		}
+	}()
 	//
 	if session == nil {
 		session = database.NewSession()
 		defer session.Close()
 	}
 	//
-	cnt, err := session.Where("id = ?", id).Count(&model.CodeRunInfo{})
+	ret, err = session.Where("id = ?", id).Count(&model.CodeRunInfo{})
 	if err != nil {
 		return 0, err
 	}
-	return cnt, nil
+	return ret, nil
 }
 
 // 不包含end
-func CodeRunGetRangeById(session *xorm.Session, id string, beg int, end int, class ...int) ([]model.CodeRunInfo, error) {
+func CodeRunGetRangeById(session *database.Session, id string, beg int, end int, class ...int) (ret []model.CodeRunInfo, err error) {
+	useCache := database.CacheAvailable(session)
+	key := ""
+	if useCache {
+		key, err = codeRunVersionedCacheKey("CodeRunGetRangeById", id, beg, end, class)
+		if err != nil {
+			return nil, err
+		}
+		if exist, cacheErr := getCodeRunVersionedCache(key, &ret); cacheErr != nil {
+			return nil, cacheErr
+		} else if exist {
+			return ret, nil
+		}
+	}
+	defer func() {
+		if err == nil && useCache {
+			session.PostTransactionAdd(func() {
+				setCodeRunVersionedCache(key, ret, "CodeRunGetRangeById")
+			})
+		}
+	}()
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -166,10 +420,8 @@ func CodeRunGetRangeById(session *xorm.Session, id string, beg int, end int, cla
 	if beg < 0 || beg >= end {
 		return nil, util.NewError("beg<0 or beg>=end!")
 	}
-	var ret []model.CodeRunInfo
-	query := session.Where("id = ?", id)
-	query = getExtraClassInCondition(query, class...)
-	err := query.Desc("submittime").
+	session = getExtraClassInCondition(session, class...)
+	err = session.Where("id = ?", id).Desc("submittime").
 		Limit(end-beg, int(beg)).
 		Find(&ret)
 	if err != nil {
@@ -179,30 +431,50 @@ func CodeRunGetRangeById(session *xorm.Session, id string, beg int, end int, cla
 }
 
 // 获取指定范围的提交记录(不包含end)
-func CodeRunGetByRange(session *xorm.Session, beg int, end int, class ...int) ([]model.CodeRunInfo, error) {
+func CodeRunGetByRange(session *database.Session, beg int, end int, class ...int) (ret []model.CodeRunInfo, err error) {
+	useCache := database.CacheAvailable(session)
+	key := ""
+	if useCache {
+		key, err = codeRunVersionedCacheKey("CodeRunGetByRange", beg, end, class)
+		if err != nil {
+			return nil, err
+		}
+		if exist, cacheErr := getCodeRunVersionedCache(key, &ret); cacheErr != nil {
+			return nil, cacheErr
+		} else if exist {
+			return ret, nil
+		}
+	}
+	defer func() {
+		if err == nil && useCache {
+			session.PostTransactionAdd(func() {
+				setCodeRunVersionedCache(key, ret, "CodeRunGetByRange")
+			})
+		}
+	}()
 	if session == nil {
 		session = database.NewSession()
 		defer session.Close()
 	}
 
-	var data []model.CodeRunInfo
 	session = getExtraClassInCondition(session, class...)
-	err := session.Desc("indices").Limit(end-beg, beg).Find(&data)
+	err = session.Desc("indices").Limit(end-beg, beg).Find(&ret)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return data, nil
+	return ret, nil
 }
 
 // 生成IN class的额外条件
-func getExtraClassInCondition(session *xorm.Session, class ...int) *xorm.Session {
+func getExtraClassInCondition(session *database.Session, class ...int) *database.Session {
 	if len(class) == 0 {
 		return session
 	}
 	if len(class) == 1 {
-		return session.Where("class = ?", class[0])
+		session.Where("class = ?", class[0])
+		return session
 	}
 	placeholders := make([]string, len(class))
 	for i := range placeholders {
@@ -213,5 +485,6 @@ func getExtraClassInCondition(session *xorm.Session, class ...int) *xorm.Session
 	for i, v := range class {
 		args[i] = v
 	}
-	return session.And(cond, args...)
+	session.And(cond, args...)
+	return session
 }

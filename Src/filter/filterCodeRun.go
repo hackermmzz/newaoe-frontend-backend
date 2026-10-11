@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"newaoe/Src/config"
 	"newaoe/Src/redis"
+	"newaoe/Src/user/dao"
 	"newaoe/Src/util"
 	"time"
 
@@ -33,8 +34,11 @@ func FilterCodeRun() gin.HandlerFunc {
 		//
 		id := userInfo["id"].(string)
 		//如果是超级用户，不管
-		_, exist := config.SuperUserMap[id]
-		if exist {
+		super, err := dao.UserIsSuperUser(nil, id)
+		if err != nil {
+			// 查询失败时按普通用户处理，不能绕过后续限流。
+			util.DebugError("UserIsSuperUser:", err)
+		} else if super {
 			ctx.Next()
 			return
 		}

@@ -1,16 +1,17 @@
 package service
 
 import (
-	"context"
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"newaoe/Src/config"
 	database "newaoe/Src/databse"
 	"newaoe/Src/email/dao"
 	"newaoe/Src/email/model"
 	"newaoe/Src/mq"
 	"newaoe/Src/util"
+	"time"
 
 	"github.com/apache/rocketmq-clients/golang/v5"
 	rocketmq "github.com/apache/rocketmq-clients/golang/v5"
@@ -109,7 +110,11 @@ func SendEmail(email EmailMsg) {
 		Body:  data_byte,
 	}
 	//默认重试三次
-	go sendEmailWithRetry(msg, 3)
+	err = sendEmailWithRetry(msg, 3)
+	if err != nil {
+		util.DebugError("SendEmail:发送邮件到消息队列失败!", err)
+		return
+	}
 }
 
 // 编码为中文
@@ -120,21 +125,21 @@ func encodeChinese(name string) string {
 }
 
 // 重试发送
-func sendEmailWithRetry(msg *rocketmq.Message, limit int) {
+func sendEmailWithRetry(msg *rocketmq.Message, limit int) error {
 	if limit <= 0 {
-		util.DebugError("sendEmailWithRetry达到最大发送次数!", (string)(msg.Body))
-		return
+		return util.NewError("sendEmailWithRetry达到最大发送次数!", (string)(msg.Body))
 	}
 	//放入队列
-	mq.RocketMQProducer.SendAsync(
-		context.Background(),
-		msg,
-		func(ctx context.Context, _ []*rocketmq.SendReceipt, err error) {
-			if err != nil {
-				util.DebugError("sendEmailWithRetry:", err)
-			}
-		},
-	)
+	errs := make([]error, 0, limit)
+	//尝试N次
+	for i := 0; i < limit; i++ {
+		err := mq.SendAsyncWithTimeout(msg, 10*time.Second)
+		if err == nil {
+			return nil
+		}
+		errs = append(errs, err)
+	}
+	return errors.Join(errs...)
 }
 
 // 将邮件提交给 Postfix
@@ -146,6 +151,9 @@ func sendEmailMsgToServer(emailMsg EmailMsg) error {
 		msg = wrapForTextEmail(emailMsg)
 	case EmailMsgType_XML:
 		msg = wrapForHTMLEmail(emailMsg)
+	}
+	if msg == nil {
+		return errors.New("邮件类型错误!")
 	}
 	//
 	msg.SetHeader("From", config.Conf.Email.SenderEmail)
@@ -178,7 +186,6 @@ func wrapForHTMLEmail(email EmailMsg) *gomail.Message {
 
 	// multipart/alternative：纯文本降级 + HTML富文本
 	msg.SetBody("text/plain", email.Text)
-	msg.AddAlternative("text/html", email.Text)
 	msg.AddAlternative("text/html", email.Text, gomail.SetPartEncoding(gomail.Base64))
 	return msg
 }
@@ -206,6 +213,7 @@ func consumeEmailToEmailService(data []byte) rocketmq.ConsumerResult {
 	info, err := dao.EmailInfoGetForUpdate(session, emailMsg.Indices)
 	if err != nil {
 		util.DebugError("EmailInfoGetForUpdate:", err)
+		return rocketmq.FAILURE
 	}
 	if info == nil {
 		util.DebugError("这是一个bug!按道理不应该为nil")

@@ -6,7 +6,6 @@ import (
 	"newaoe/Src/config"
 	"newaoe/Src/mq"
 	"newaoe/Src/util"
-	"strconv"
 	"time"
 
 	"github.com/apache/rocketmq-clients/golang/v5"
@@ -16,18 +15,22 @@ var (
 	//等待运行
 	CodeWaitForRunPullConsumer golang.SimpleConsumer
 	//状态更新
-	CodeRunStatusPushConsumer  golang.PushConsumer                                                //代码运行状态消费者
-	CodeRunStatusUpdateQueue   = make([]int, 0, config.Conf.Code.CodeRunStatusUpdateQueueMaxSize) //代码运行状态更新队列
-	CodeRunStatusUpdateChannel = make(chan int, config.Conf.Code.CodeRunStatusUpdateQueueMaxSize) //代码运行状态更新通道
+	CodeRunStatusPushConsumer  golang.PushConsumer //代码运行状态消费者
+	CodeRunStatusUpdateQueue   []int               //代码运行状态更新队列
+	CodeRunStatusUpdateChannel chan int            //代码运行状态更新通道
 )
 
 // 初始化代码运行监控服务
 func CodeRunServiceInit() {
+	//初始化队列
+	CodeRunStatusUpdateQueue = make([]int, 0, config.Conf.Code.CodeRunStatusUpdateQueueMaxSize)   //代码运行状态更新队列
+	CodeRunStatusUpdateChannel = make(chan int, config.Conf.Code.CodeRunStatusUpdateQueueMaxSize) //代码运行状态更新通道
+	//初始化状态更新消费者
 	err := codeRunStatusConsumerInit()
 	if err != nil {
 		panic(err.Error())
 	}
-	//
+	//初始化等待运行消费者
 	err = codeWaitForRunConsumerInit()
 	if err != nil {
 		panic(err.Error())
@@ -39,10 +42,6 @@ func CodeRunServiceInit() {
 }
 
 func codeRunStatusConsumerInit() error {
-	var groups []string
-	for i := 0; i < config.Conf.Code.CodeRunStatusGroupCount; i++ {
-		groups = append(groups, "CodeRunStatusGroup"+strconv.Itoa(i))
-	}
 	//初始化消费者
 	CodeRunStatusPushConsumer = mq.NewMQPushConsumer(
 		config.Conf.Code.CodeRunStatusTopic,
@@ -98,21 +97,40 @@ func codeRunningLongTimeWaitRepush() {
 func codeRunStatusUpdateQueueProcess() {
 	duration := time.Duration(config.Conf.Code.CodeRunStatusUpdateInterval) * time.Second
 	timer := time.NewTicker(duration)
+	// 批量更新函数
+	fn := func() error {
+		infos, err := BatchUpdateCodeRunStatus(CodeRunStatusUpdateQueue)
+		if err != nil {
+			return util.NewError("BatchUpdateCodeRunStatus:", err)
+		}
+		err = UpdateRank(infos)
+		if err != nil {
+			return util.NewError("UpdateRank:", err)
+		}
+		return nil
+	}
+	// 处理队列
 	for {
+		var err error
 		select {
 		case d := <-CodeRunStatusUpdateChannel:
 			CodeRunStatusUpdateQueue = append(CodeRunStatusUpdateQueue, d)
 			if len(CodeRunStatusUpdateQueue) >= config.Conf.Code.CodeRunStatusUpdateQueueSizeThreshold {
-				BatchUpdateCodeRunStatus(CodeRunStatusUpdateQueue)
+				err = fn()
 				CodeRunStatusUpdateQueue = CodeRunStatusUpdateQueue[:0]
 				timer.Reset(duration)
 			}
 
 		case <-timer.C:
 			if len(CodeRunStatusUpdateQueue) > 0 {
-				BatchUpdateCodeRunStatus(CodeRunStatusUpdateQueue)
+				err = fn()
 				CodeRunStatusUpdateQueue = CodeRunStatusUpdateQueue[:0]
 			}
+		}
+		// 处理错误
+		if err != nil {
+			util.DebugError("codeRunStatusUpdateQueueProcess:", err)
+			continue
 		}
 	}
 }

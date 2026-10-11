@@ -1,33 +1,85 @@
 package dao
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"newaoe/Src/codeRun/model"
 	database "newaoe/Src/databse"
-
-	"xorm.io/xorm"
+	"newaoe/Src/redis"
+	"newaoe/Src/util"
+	"time"
 )
 
+func getRankVersion() (int, error) {
+	return redis.RedisGetVersion(context.Background(), "RankVersion")
+}
+
+func incrRankVersion() {
+	if _, err := redis.RedisIncrease(context.Background(), "RankVersion"); err != nil {
+		util.DebugError("Rank incrVersion:", err)
+	}
+}
+
 // end不包括
-func RankGetByRange(session *xorm.Session, beg int, end int) ([]model.RankInfo, error) {
+func RankGetByRange(session *database.Session, beg int, end int) (ret []model.RankInfo, err error) {
+	useCache := database.CacheAvailable(session)
+	key := ""
+	if useCache {
+		version, cacheErr := getRankVersion()
+		if cacheErr != nil {
+			return nil, cacheErr
+		}
+		key = fmt.Sprintf("RankGetByRange:%d:%d:%d", version, beg, end)
+		data, exist, cacheErr := redis.RedisGet(context.Background(), key)
+		if cacheErr != nil {
+			return nil, cacheErr
+		}
+		if exist {
+			if err := json.Unmarshal(data, &ret); err != nil {
+				return nil, err
+			}
+			return ret, nil
+		}
+	}
+	defer func() {
+		if err != nil || !useCache {
+			return
+		}
+		session.PostTransactionAdd(func() {
+			data, marshalErr := json.Marshal(ret)
+			if marshalErr != nil {
+				util.DebugError("RankGetByRange cache marshal:", marshalErr)
+				return
+			}
+			if _, cacheErr := redis.RedisSet(context.Background(), key, data, 5*time.Minute); cacheErr != nil {
+				util.DebugError("RankGetByRange cache set:", cacheErr)
+			}
+		})
+	}()
 	//
 	if session == nil {
 		session = database.NewSession()
 		defer session.Close()
 	}
 	//
-	var ranks []model.RankInfo
 	if beg < 0 || end <= beg {
-		return ranks, nil
+		return ret, nil
 	}
-	err := session.Desc("win").Asc("frame").Desc("score").Asc("id").Limit(end-beg, beg).Find(&ranks)
+	err = session.Desc("win").Asc("frame").Desc("score").Asc("id").Limit(end-beg, beg).Find(&ret)
 	if err != nil {
 		return nil, err
 	}
 	//
-	return ranks, nil
+	return ret, nil
 }
 
-func RankUpdateOrInsert(session *xorm.Session, rank *model.RankInfo) (bool, error) {
+func RankUpdateOrInsert(session *database.Session, rank *model.RankInfo) (ok bool, err error) {
+	defer func() {
+		if err == nil {
+			session.PostTransactionAdd(incrRankVersion)
+		}
+	}()
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -51,7 +103,12 @@ func RankUpdateOrInsert(session *xorm.Session, rank *model.RankInfo) (bool, erro
 	return true, nil
 }
 
-func RankBatchUpdateOrInsert(session *xorm.Session, ranks []model.RankInfo) (bool, error) {
+func RankBatchUpdateOrInsert(session *database.Session, ranks []model.RankInfo) (ok bool, err error) {
+	defer func() {
+		if err == nil && len(ranks) > 0 {
+			session.PostTransactionAdd(incrRankVersion)
+		}
+	}()
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -68,7 +125,7 @@ func RankBatchUpdateOrInsert(session *xorm.Session, ranks []model.RankInfo) (boo
 	}
 	// 2. 一次查询已经存在的 Rank
 	var existRanks []model.RankInfo
-	err := session.In("id", ids).Cols("id").Find(&existRanks)
+	err = session.In("id", ids).Cols("id").Find(&existRanks)
 	if err != nil {
 		return false, err
 	}
@@ -105,7 +162,12 @@ func RankBatchUpdateOrInsert(session *xorm.Session, ranks []model.RankInfo) (boo
 	return true, nil
 }
 
-func RankBatchUpdateOrInsertIfBetter(session *xorm.Session, ranks []model.RankInfo) (bool, error) {
+func RankBatchUpdateOrInsertIfBetter(session *database.Session, ranks []model.RankInfo) (ok bool, err error) {
+	defer func() {
+		if err == nil && len(ranks) > 0 {
+			session.PostTransactionAdd(incrRankVersion)
+		}
+	}()
 	//
 	if session == nil {
 		session = database.NewSession()
@@ -125,7 +187,7 @@ func RankBatchUpdateOrInsertIfBetter(session *xorm.Session, ranks []model.RankIn
 	// 2. 一次性查询数据库中已有的数据
 	var existRanks []model.RankInfo
 
-	err := session.In("id", ids).Find(&existRanks)
+	err = session.In("id", ids).Find(&existRanks)
 	if err != nil {
 		return false, err
 	}
@@ -176,20 +238,6 @@ func RankBatchUpdateOrInsertIfBetter(session *xorm.Session, ranks []model.RankIn
 		}
 	}
 	return true, nil
-}
-
-func RankGetCount(session *xorm.Session) (int, error) {
-	//
-	if session == nil {
-		session = database.NewSession()
-		defer session.Close()
-	}
-	//
-	count, err := session.Count(&model.RankInfo{})
-	if err != nil {
-		return 0, err
-	}
-	return int(count), nil
 }
 
 func RankIsBetter(newRank *model.RankInfo, oldRank *model.RankInfo) bool {

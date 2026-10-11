@@ -11,6 +11,32 @@ import (
 
 var RocketMQProducer rocketmq.Producer
 
+// SendAsyncWithTimeout 将异步发送包装成带超时的同步等待。
+// resultChannel 使用缓冲并在回调中非阻塞写入，避免调用方超时返回后回调协程被永久阻塞。
+func SendAsyncWithTimeout(msg *rocketmq.Message, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	resultChannel := make(chan error, 1)
+	RocketMQProducer.SendAsync(
+		ctx,
+		msg,
+		func(_ context.Context, _ []*rocketmq.SendReceipt, err error) {
+			select {
+			case resultChannel <- err:
+			default:
+			}
+		},
+	)
+
+	select {
+	case err := <-resultChannel:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
 func RocketMQInit() {
 	// 关闭控制台日志
 	_ = os.Setenv("mq.consoleAppender.enabled", "false")

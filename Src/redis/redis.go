@@ -107,6 +107,33 @@ func RedisGet(ctx context.Context, key string) ([]byte, bool, error) {
 	return val, true, nil
 }
 
+// RedisGetDel 原子获取并删除 key。
+func RedisGetDel(ctx context.Context, key string) ([]byte, bool, error) {
+	const script = `
+local value = redis.call("GET", KEYS[1])
+if not value then
+    return nil
+end
+redis.call("DEL", KEYS[1])
+return value`
+
+	result, err := RedisLua(ctx, script, []string{key}).Result()
+	if err == redis.Nil {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	switch val := result.(type) {
+	case string:
+		return []byte(val), true, nil
+	case []byte:
+		return val, true, nil
+	default:
+		return nil, false, fmt.Errorf("RedisGetDel: unexpected result type %T", result)
+	}
+}
+
 // RedisExist 判断key是否存在
 func RedisExist(ctx context.Context, key string) (bool, error) {
 	count, err := redisRDB.Exists(ctx, key).Result()
@@ -141,6 +168,23 @@ func RedisDecrease(ctx context.Context, key string) (int, error) {
 		return 0, err
 	}
 	return int(n), nil
+}
+
+// RedisGetVersion 获取缓存版本；版本不存在时原子初始化为0。
+func RedisGetVersion(ctx context.Context, key string) (int, error) {
+	const script = `
+local version = redis.call("GET", KEYS[1])
+if version then
+    return tonumber(version)
+end
+redis.call("SET", KEYS[1], 0)
+return 0`
+	return RedisLua(ctx, script, []string{key}).Int()
+}
+
+// RedisIncrVersion 原子提升缓存版本。
+func RedisIncrVersion(ctx context.Context, key string) (int, error) {
+	return RedisIncrease(ctx, key)
 }
 
 // RedisChange,只改value

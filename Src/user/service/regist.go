@@ -28,7 +28,7 @@ func UserRegist(id string, password string, email string, vip_class int, verifyC
 		return errors.New("验证码错误")
 	}
 	//移除验证码
-	if _, err := dao.RegistVerifyCodeRemove(id); err != nil {
+	if _, err := dao.RegistVerifyCodeRemove(keyID); err != nil {
 		return err
 	}
 	//查询用是否允许注册
