@@ -109,3 +109,4 @@ other:
   verifyCodeRetryCount: 5 #验证码最大可尝试次数
   resetCommonSubmitBatch: 10000   #一批次最多重置Batch个人的提交次数
   publicOtherFolder: "other" #存储公开杂项数据
+  defaultMaxQueryRangeRows: 1000  #默认最大查询范围行数

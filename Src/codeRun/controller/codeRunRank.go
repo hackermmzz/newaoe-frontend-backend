@@ -24,6 +24,10 @@ func FetchRank(ctx *gin.Context) {
 		util.ResponseNAK_MSG(ctx, "参数传递错误!", "")
 		return
 	}
+	if err := util.ValidateInclusiveRange(beg, end); err != nil {
+		util.ResponseNAK_MSG(ctx, err.Error(), nil)
+		return
+	}
 	//获取beg到end的排行数据
 	data, err := service.RankFetch(beg, end+1)
 	if err != nil {

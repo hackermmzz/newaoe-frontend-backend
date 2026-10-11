@@ -137,6 +137,7 @@ type OtherConfig struct {
 	VerifyCodeRetryCount              int    `yaml:"verifyCodeRetryCount"`              //验证码最大可重试次数
 	ResetCommonSubmitBatch            int    `yaml:"resetCommonSubmitBatch"`            //单批次最多重置的学生普通提交次数的个数
 	PublicOtherFolder                 string `yaml:"publicOtherFolder"`                 //存储一些公开文件，任何权限的人都可以访问
+	DefaultMaxQueryRangeRows          int    `yaml:"defaultMaxQueryRangeRows"`          //默认最大查询范围行数
 }
 
 var (

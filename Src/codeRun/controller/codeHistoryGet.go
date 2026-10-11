@@ -31,6 +31,10 @@ func StudentHistoryGet(ctx *gin.Context) {
 		util.ResponseNAK_MSG(ctx, "参数传递错误!", "")
 		return
 	}
+	if err := util.ValidateInclusiveRange(beg, end); err != nil {
+		util.ResponseNAK_MSG(ctx, err.Error(), nil)
+		return
+	}
 	//获取查寻的id(只有vip用户才会看其他学生的的历史记录)
 	id := userInfo["id"].(string)
 	if int(userInfo["vip"].(float64)) == userModel.VIP_SUPER {

@@ -425,3 +425,14 @@ func NewError(args ...interface{}) error {
 	}
 	return errors.New(final_err)
 }
+
+// ValidateInclusiveRange 校验控制器使用的闭区间 [beg, end]。
+func ValidateInclusiveRange(beg int, end int) error {
+	if beg < 0 || end < beg {
+		return errors.New("参数传递错误!")
+	}
+	if end-beg >= config.Conf.Other.DefaultMaxQueryRangeRows {
+		return fmt.Errorf("拉取范围太大，最多%d行!", config.Conf.Other.DefaultMaxQueryRangeRows)
+	}
+	return nil
+}

@@ -23,6 +23,10 @@ func FetchSubmitRecord(ctx *gin.Context) {
 		util.ResponseNAK_MSG(ctx, "参数传递错误!", "")
 		return
 	}
+	if err := util.ValidateInclusiveRange(beg, end); err != nil {
+		util.ResponseNAK_MSG(ctx, err.Error(), nil)
+		return
+	}
 	//
 	data, err := service.GetHistoryRangeById("", beg, end, model.Code_CommonSubmit, model.Code_ReRunSubmit)
 	if err != nil {

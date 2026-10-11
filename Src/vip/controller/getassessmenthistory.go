@@ -24,6 +24,10 @@ func GetAssessmentHistory(ctx *gin.Context) {
 		util.ResponseNAK_MSG(ctx, "参数传递错误!", "")
 		return
 	}
+	if err := util.ValidateInclusiveRange(beg, end); err != nil {
+		util.ResponseNAK_MSG(ctx, err.Error(), nil)
+		return
+	}
 	//获取查寻的id
 	student_id := ctx.Query("student_id")
 	//获取历史记录
