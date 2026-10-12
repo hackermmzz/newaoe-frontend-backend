@@ -7,8 +7,8 @@ import (
 
 // 定义verifyCode类型
 const (
-	VerifyCode_Class_Regist         = 1000 //注册验证码
-	VerifyCode_Class_PasswordForget = 2000 //忘记密码验证码
+	VerifyCode_Class_Regist         = 1 //注册验证码
+	VerifyCode_Class_PasswordForget = 2 //忘记密码验证码
 )
 
 // Define the VerifyCode struct
