@@ -56,8 +56,8 @@ func GetHistoryRangeById(id string, beg int, end int, class ...int) ([]SubmitRec
 		//获取文件大小的信息(如果无则标记为0)
 		headerInfo := fileInfos[history.Header]
 		sourceInfo := fileInfos[history.Source]
-		headerSize := int64(0)
-		sourceSize := int64(0)
+		headerSize := int64(-1)
+		sourceSize := int64(-1)
 		if headerInfo == nil || sourceInfo == nil {
 			unExpectedInfo = append(unExpectedInfo, util.NewError(" file not exist: "+history.Header+" or "+history.Source))
 		} else {

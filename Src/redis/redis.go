@@ -152,6 +152,15 @@ func RedisSet(ctx context.Context, key string, value any, expiration time.Durati
 	return true, nil
 }
 
+// setnx
+func RedisSetNX(ctx context.Context, key string, value any, expiration time.Duration) (bool, error) {
+	err := redisRDB.SetNX(ctx, key, value, expiration).Err()
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 // 自增
 func RedisIncrease(ctx context.Context, key string) (int, error) {
 	n, err := redisRDB.Incr(ctx, key).Result()

@@ -22,9 +22,9 @@ func CodeCommonSubmit(ctx *gin.Context) {
 		util.ResponseNAK_MSG(ctx, "服务器异常!", nil)
 		return
 	}
-	//生成pending的key，防止客户端恶意重复请求生成key
+	//生成pending的key(不存在才生成)，防止客户端恶意重复请求生成key
 	pendingKey := fmt.Sprintf("CodeCommonSubmitPending_%s", id)
-	ok, err := redis.RedisSet(context.Background(), pendingKey, key, time.Duration(3)*time.Minute)
+	ok, err := redis.RedisSetNX(context.Background(), pendingKey, key, time.Duration(3)*time.Minute)
 	if !ok || err != nil {
 		if err == nil {
 			err = errors.New("生成pending key失败!")
