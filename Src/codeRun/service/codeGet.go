@@ -9,6 +9,9 @@ import (
 	"newaoe/Src/oss"
 	"newaoe/Src/util"
 	"time"
+
+	"github.com/apache/rocketmq-clients/golang/v5"
+	v2 "github.com/apache/rocketmq-clients/golang/v5/protocol/v2"
 )
 
 func GetOneCodeTask() (*CodeRunTaskInfo, []string, error) {
@@ -34,6 +37,10 @@ func pullOneCodefunc() (info *CodeRunTaskInfo, urls []string, err error) {
 		5*time.Minute, // 消息不可见时间
 	)
 	if err != nil {
+		// 队列没有新消息时，SDK 返回 MESSAGE_NOT_FOUND，不当成失败
+		if rpcErr, ok := golang.AsErrRpcStatus(err); ok && rpcErr.GetCode() == int32(v2.Code_MESSAGE_NOT_FOUND) {
+			return nil, nil, nil
+		}
 		return nil, nil, err
 	}
 	if len(msgs) == 0 {
