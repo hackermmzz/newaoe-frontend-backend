@@ -123,31 +123,6 @@ func CodeRunUpdateStatusAsync(session *database.Session, indices int, status str
 	return true, nil
 }
 
-func CodeRunUpdateStatusSync(session *database.Session, indices int, status string) (ok bool, err error) {
-	defer func() {
-		if err == nil {
-			session.PostTransactionAdd(func() {
-				CodeRunCacheDelete(indices)
-				CodeRunCacheVersionIncrease()
-			})
-		}
-	}()
-	//
-	if session == nil {
-		session = database.NewSession()
-		defer session.Close()
-	}
-	//
-	var info model.CodeRunInfo
-	info.Status = status
-	_, err = session.Where("indices=?", indices).
-		Update(info)
-	if err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
 // CodeRunBatchUpdateStatusIfBetter 使用临时表批量更新运行状态和版本。
 // 事务由调用方控制，缓存应在事务提交成功后失效。
 func CodeRunBatchUpdateStatusIfBetter(session *database.Session, data []model.CodeRunInfo) (err error) {

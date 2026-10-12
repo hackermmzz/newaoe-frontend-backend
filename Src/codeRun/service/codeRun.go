@@ -52,6 +52,7 @@ func CodeRun(indices int, id string, class int, runType int) error {
 		Indices:    codeRunInfo.Indices,
 		SubmitTime: codeRunInfo.SubmitTime,
 		RunType:    runType,
+		Status:     model.Code_Status_Wait,
 	})
 	if err != nil {
 		return err

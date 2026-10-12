@@ -202,7 +202,7 @@ func CodeRunningBatchRemove(session *database.Session, indices []int) (ok bool, 
 	return true, nil
 }
 
-func CodeRunningGetExpireTime(session *database.Session, expireDuration time.Duration, number int) ([]model.CodeRunningInfo, error) {
+func CodeRunningGetExpireTime(session *database.Session, expireDuration time.Duration, number int, status ...int) ([]model.CodeRunningInfo, error) {
 	//
 	if session == nil {
 		session = database.NewSession()

@@ -11,6 +11,7 @@ var (
 	Code_Status_Unknown         = 0    //未知状态
 	Code_Status_Error           = 1000 //服务器异常
 	Code_Status_Wait            = 2000 //在等待队列里面
+	Code_Status_OJRecevied      = 2050 //OJ接收成功
 	Code_Status_Compile         = 3000 //编译中
 	Code_Status_Compile_Fail    = 4000 //编译错误
 	Code_Status_Compile_Success = 5000 //编译成功
@@ -94,6 +95,9 @@ func ProcessDataMessageByStatus(coderunStatus CodeRunStatusInfo) CodeRunStatusIn
 	case Code_Status_Wait:
 		ret.Data = "排队中..."
 		ret.Status = Code_Status_Wait
+	case Code_Status_OJRecevied:
+		ret.Data = "OJ接收成功"
+		ret.Status = Code_Status_OJRecevied
 	case Code_Status_Compile:
 		ret.Data = "编译中..."
 		ret.Status = Code_Status_Compile
