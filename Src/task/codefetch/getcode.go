@@ -22,12 +22,9 @@ func Task_GetStudentCode(ctx context.Context, server grpc_api.CodeClient) {
 		default:
 			func() {
 				//
-				bNeedSleep := true
 				defer func() {
-					if bNeedSleep {
-						sleepTime := time.Duration(config.Conf.JudgeSleepTimeWhenGetCodeFailed-rand.IntN(2)+1) * time.Second
-						time.Sleep(sleepTime)
-					}
+					sleepTime := time.Duration(config.Conf.JudgeSleepTimeWhenGetCodeFailed-rand.IntN(2)+1) * time.Second
+					time.Sleep(sleepTime)
 				}()
 				//如果阻塞了，那么就直接返回
 				if global.Profiler.DoTaskRefuseMoreTask() {
@@ -46,8 +43,16 @@ func Task_GetStudentCode(ctx context.Context, server grpc_api.CodeClient) {
 				//处理一下.cpp文件
 				err := fixCPP(res.Source)
 				if err != nil {
-					bNeedSleep = false
 					global.LogError(fmt.Sprintf("处理代码失败! %s", err.Error()))
+					return
+				}
+				//更新状态
+				_, err = global.PostCodeStatus(ctx, server, res.ID, res.Indices, global.Code_Status_OJRecevied, global.CodeRunStatusInfo{
+					Status: global.Code_Status_OJRecevied,
+					Data:   fmt.Sprintf("OJ接收成功"),
+				}.String())
+				if err != nil {
+					global.LogError(fmt.Sprintf("更新状态失败! %s", err.Error()))
 					return
 				}
 				//记录性能
@@ -59,7 +64,6 @@ func Task_GetStudentCode(ctx context.Context, server grpc_api.CodeClient) {
 				//将代码添加到编译队列
 				select {
 				case <-ctx.Done():
-					bNeedSleep = false
 					return
 				case global.CompileWaitQueue <- codecompile.ForCompileInfo{
 					StudentCode: res,

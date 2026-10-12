@@ -11,6 +11,10 @@ import (
 )
 
 func systemUpdate(info *global.OJSystemInfo) error {
+	//如果需要硬重启，那么就直接重启
+	if info.HardReboot {
+		os.Exit(0)
+	}
 	//切割版本号
 	currentVersionMajor, currentVersionMinor, currentVersionPatch, err := splitVersion(config.Conf.CurrentVersion)
 	if err != nil {

@@ -36,6 +36,7 @@ type Config struct {
 	CurrentVersion                  string `yaml:"CurrentVersion"`
 	ProcessLogPort                  int    `yaml:"ProcessLogPort"`
 	DockerContainerLabel            string `yaml:"DockerContainerLabel"`
+	AuthCertificatePath             string `yaml:"AuthCertificatePath"`
 }
 
 var Conf Config
@@ -114,6 +115,7 @@ func LoadConfig() error {
 		CurrentVersion:                  envOr(m, "CurrentVersion"),
 		ProcessLogPort:                  atoi(envOr(m, "ProcessLogPort"), 500119),
 		DockerContainerLabel:            envOr(m, "DockerContainerLabel"),
+		AuthCertificatePath:             envOr(m, "AuthCertificatePath"),
 	}
 	if Conf.GRPCPort == "" {
 		return errors.New("GRPCPort 不能为空")

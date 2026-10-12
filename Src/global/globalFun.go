@@ -96,8 +96,15 @@ func AuthString() string {
 }
 func UpdateAuth(v string) {
 	authMu.Lock()
-	GRPCAuth.Auth = v
-	authMu.Unlock()
+	defer authMu.Unlock()
+	if len(v) > 0 {
+		GRPCAuth.Certificate = v
+		//将证书写入文件
+		err := os.WriteFile(config.Conf.AuthCertificatePath, []byte(v), 0644)
+		if err != nil {
+			LogError("UpdateAuth error: %v", err)
+		}
+	}
 }
 
 // backOff 指数退避重试
@@ -147,7 +154,7 @@ func PostCodeStatus(
 		if e != nil {
 			return e
 		}
-		if resp.GetAuth() != "" {
+		if resp != nil {
 			UpdateAuth(resp.GetAuth())
 			statusUpdateReply = resp
 		}

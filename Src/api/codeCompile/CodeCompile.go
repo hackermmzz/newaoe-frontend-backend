@@ -26,7 +26,7 @@ func CodeCompile(
 ) CodeCompileResult {
 	//格式化编译脚本
 	script, e := util.FormatFile(util.JoinPath("assets", "bash", "codecompile.sh"), map[string]interface{}{
-		"DebugMode": runtype == int64(global.CodeRunTypeDebug),
+		"DebugMode": runtype == int64(global.CodeRunType_DebugRun),
 	})
 	if e != nil {
 		return CodeCompileResult{OK: false, Error: fmt.Errorf("format失败:%w", e)}

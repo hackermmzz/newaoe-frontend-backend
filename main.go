@@ -11,6 +11,7 @@ import (
 	"new-aoe-judge/Src/server"
 	"new-aoe-judge/Src/system"
 	"new-aoe-judge/Src/task"
+	"new-aoe-judge/Src/util"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -64,6 +65,15 @@ func cleanUp() {
 
 // getAuthAccount 获取认证账号
 func getAuthAccount() {
+	//如果证书不为空，就不用输入密码了
+	if util.FileExist(config.Conf.AuthCertificatePath) {
+		//读取证书
+		global.GRPCAuth.Certificate = util.ReadAnyText(config.Conf.AuthCertificatePath)
+	}
+	if global.GRPCAuth.Certificate != "" {
+		return
+	}
+	//
 	global.GRPCAuth.ID = os.Getenv("AUTH_ACCOUNT")
 	global.GRPCAuth.Password = os.Getenv("AUTH_PASSWORD")
 	if global.GRPCAuth.ID == "" {

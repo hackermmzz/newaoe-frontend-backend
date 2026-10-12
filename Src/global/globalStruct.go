@@ -8,14 +8,15 @@ type CodeRunType int64
 
 // ///////////////////////// OJSystemInfo OJ系统信息
 type OJSystemInfo struct {
-	Version string `json:"version"` //最新的版本号
+	Version    string `json:"version"`    //最新的版本号
+	HardReboot bool   `json:"hardreboot"` //是否需要硬重启，默认false
 }
 
 // //////////////////////// GRPCAuthInfo gRPC 认证信息
 type GRPCAuthInfo struct {
-	ID       string `json:"id"`
-	Password string `json:"password"`
-	Auth     string `json:"auth"`
+	ID          string `json:"id"`
+	Password    string `json:"password"`
+	Certificate string `json:"certificate"`
 }
 
 func (a GRPCAuthInfo) String() string {

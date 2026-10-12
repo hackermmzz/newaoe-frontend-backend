@@ -4,6 +4,9 @@ AuthAccount: ""
 #鉴权密码
 AuthPassword: ""
 
+#鉴权证书路径
+AuthCertificatePath: "assets/certificate/auth.json"
+
 # 服务器网址
 BaseIP: "114.66.62.156"
 
