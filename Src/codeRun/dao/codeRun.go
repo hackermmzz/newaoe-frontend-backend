@@ -98,31 +98,6 @@ func CodeRunExist(session *database.Session, indices int) (bool, error) {
 	return info != nil, nil
 }
 
-func CodeRunUpdate(session *database.Session, newInfo model.CodeRunInfo) (ok bool, err error) {
-	defer func() {
-		if err == nil {
-			session.PostTransactionAdd(func() {
-				CodeRunCacheDelete(newInfo.Indices)
-				CodeRunCacheVersionIncrease()
-			})
-		}
-	}()
-	//
-	if session == nil {
-		session = database.NewSession()
-		defer session.Close()
-	}
-	//
-	affected, err := session.
-		ID(newInfo.Indices).
-		AllCols().
-		Update(&newInfo)
-	if err != nil {
-		return false, err
-	}
-	return affected > 0, nil
-}
-
 func CodeRunUpdateStatusAsync(session *database.Session, indices int, status string) (ok bool, err error) {
 	defer func() {
 		if err == nil {

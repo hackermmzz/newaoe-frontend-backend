@@ -55,6 +55,14 @@ func (c CodeRunStatusInfo) IsFinish() bool {
 	return false
 }
 
+func (c CodeRunStatusInfo) StatusIsFinish(status int) bool {
+	pre := c.Status
+	c.Status = status
+	ret := c.IsFinish()
+	c.Status = pre
+	return ret
+}
+
 // 判断当前的status是否比oldStatus好
 func (p CodeRunStatusInfo) IsBetter(oldStatus CodeRunStatusInfo) bool {
 	if p.Status != oldStatus.Status {

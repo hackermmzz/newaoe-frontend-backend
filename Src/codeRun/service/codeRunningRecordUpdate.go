@@ -46,9 +46,10 @@ func UpdateCodeRunningRecord(dt []model.CodeRunInfo) error {
 
 func removeRecordFinish(session *database.Session, dt []model.CodeRunningInfo) error {
 	needRemove := make([]int, 0)
+	var runinfo model.CodeRunStatusInfo
 	for _, info := range dt {
-		if info.Status > model.Code_Status_Running {
-			//
+		//如果是已完成的记录，添加到删除列表
+		if runinfo.StatusIsFinish(info.Status) {
 			needRemove = append(needRemove, info.Indices)
 		}
 	}
