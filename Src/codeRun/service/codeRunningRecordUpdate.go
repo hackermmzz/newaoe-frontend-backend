@@ -47,7 +47,7 @@ func UpdateCodeRunningRecord(dt []model.CodeRunInfo) error {
 func removeRecordFinish(session *database.Session, dt []model.CodeRunningInfo) error {
 	needRemove := make([]int, 0)
 	for _, info := range dt {
-		if info.Status >= model.Code_Status_Running {
+		if info.Status > model.Code_Status_Running {
 			//
 			needRemove = append(needRemove, info.Indices)
 		}
