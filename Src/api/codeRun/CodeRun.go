@@ -53,12 +53,13 @@ func CodeRun(
 	recordFile *os.File,
 	resultFile *os.File,
 	debugFile *os.File,
+	stopSignal chan struct{},
 ) *CodeRunRetInfo {
 	workdir := "/tmp/project"
 	container := fmt.Sprintf("coderun_%s_%d_%s", id, indices, util.UUID())
 	// 挂载文件
 	mounts := map[string]string{
-		util.JoinPath(config.Conf.NewAOEFolder, "res.rcc"):     workdir + "/res.rcc",
+		util.JoinPath(config.Conf.NewAOEFolder, "res.rcc"):     workdir + "/res.rcc:ro",
 		util.JoinPath(config.Conf.NewAOEFolder, "config.json"): workdir + "/config.json:ro",
 		util.JoinPath(buildDir, "newAOE"):                      workdir + "/newAOE:ro",
 		util.JoinPath(buildDir, "UsrAI.h"):                     workdir + "/UsrAI.h:ro",
@@ -156,24 +157,40 @@ func CodeRun(
 		//判断是否是被OOM了
 		var info []map[string]interface{}
 		if e = json.Unmarshal(outBuf.Bytes(), &info); e != nil {
-			ret = CodeRunRetInfo{
-				Err: fmt.Errorf("CodeRun解析容器状态失败: %w", e),
+			global.LogError(fmt.Errorf("CodeRun解析容器状态失败: %w", e))
+			return
+		}
+		if len(info) > 0 {
+			v, exist := info[0]["State"]
+			if exist {
+				vv, ok := v.(map[string]interface{})
+				if ok {
+					oom, exist := vv["OOMKilled"]
+					if exist {
+						if v, ok := oom.(bool); ok && v {
+							exitCode = 137
+						}
+					}
+				}
 			}
 		}
-		oom := info[0]["State"].(map[string]interface{})["OOMKilled"]
-		if oom.(bool) {
-			exitCode = 137
-		}
 	}()
-	//移除容器
+	//销毁容器
 	defer func() {
 		//移除容器
-		if e = exec.Command("docker", "rm", container).Run(); e != nil {
+		if e = exec.Command("docker", "rm", "-f", container).Run(); e != nil {
 			global.LogError(fmt.Errorf("CodeRun移除容器失败: %w", e))
 		}
 	}()
 	//
 	select {
+	case <-stopSignal:
+		//返回停止
+		ret = CodeRunRetInfo{
+			ExitReason: "用户停止",
+			ExitCode:   130,
+		}
+
 	case <-dockerDone:
 		if dockerErr != nil {
 			ret = CodeRunRetInfo{
@@ -188,12 +205,6 @@ func CodeRun(
 			}
 		}
 	case <-time.After(time.Duration(config.Conf.RunTimeout) * time.Second):
-		//停止容器
-		if e = exec.Command("docker", "kill", container).Run(); e != nil {
-			ret = CodeRunRetInfo{
-				Err: fmt.Errorf("CodeRun停止容器失败: %w", e),
-			}
-		}
 		//返回超时
 		ret = CodeRunRetInfo{
 			Err: fmt.Errorf("CodeRun获取容器状态超时"),

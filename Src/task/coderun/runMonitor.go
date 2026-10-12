@@ -28,6 +28,7 @@ func runMonitor(
 	var streamErr error
 	codeRunDone := make(chan struct{}, 1)
 	allDone := make(chan struct{}, 1)
+	stopRunSignal := make(chan struct{}, 1)
 	var wg sync.WaitGroup
 	wg.Add(2)
 	//异步运行代码
@@ -44,6 +45,7 @@ func runMonitor(
 			recordFile,
 			resultFile,
 			debugFile,
+			stopRunSignal,
 		)
 		codeRunDone <- struct{}{}
 	}()
@@ -68,6 +70,9 @@ func runMonitor(
 			return nil, runRet
 		}
 	case <-ctx.Done():
+		stopRunSignal <- struct{}{}
+		//等待结束
+		<-allDone
 		return ctx.Err(), nil
 	}
 }

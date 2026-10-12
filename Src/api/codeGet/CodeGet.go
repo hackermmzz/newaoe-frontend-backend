@@ -31,36 +31,41 @@ func GetOneStudentCode(ctx context.Context, server grpc_api.CodeClient) StudentC
 	if !resp.GetOk() {
 		return StudentCode{Msg: resp.GetMsg()}
 	}
+	//获取到了记录
+	ret := StudentCode{
+		Error:   nil,
+		OK:      true,
+		Msg:     "获取代码成功!",
+		ID:      resp.GetId(),
+		Indices: resp.GetIndices(),
+		RunType: resp.GetRuntype(),
+	}
 	//创建运行目录和编译目录
 	runDir, buildDir, e := createRunDir(resp.GetId(), resp.GetIndices())
 	if e != nil {
-		return StudentCode{Error: fmt.Errorf("%s_%d_创建运行目录失败: %v", resp.GetId(), resp.GetIndices(), e)}
+		ret.Error = fmt.Errorf("%s_%d_创建运行目录失败: %v", resp.GetId(), resp.GetIndices(), e)
+		return ret
 	}
 	//下载头文件
 	headerPath := util.JoinPath(buildDir, "UsrAI.h")
 	_, e = global.DownloadFile(resp.GetHeaderUrl(), headerPath)
 	if e != nil {
-		return StudentCode{Error: fmt.Errorf("%s_%d_下载头文件失败: %v", resp.GetId(), resp.GetIndices(), e)}
+		ret.Error = fmt.Errorf("%s_%d_下载头文件失败: %v", resp.GetId(), resp.GetIndices(), e)
+		return ret
 	}
 	//下载源文件
 	sourcePath := util.JoinPath(buildDir, "UsrAI.cpp")
 	_, e = global.DownloadFile(resp.GetSourceUrl(), sourcePath)
 	if e != nil {
-		return StudentCode{Error: fmt.Errorf("%s_%d_下载源文件失败: %v", resp.GetId(), resp.GetIndices(), e)}
+		ret.Error = fmt.Errorf("%s_%d_下载源文件失败: %v", resp.GetId(), resp.GetIndices(), e)
+		return ret
 	}
 	global.UpdateAuth(resp.GetAuth())
-	return StudentCode{
-		Error:    nil,
-		OK:       true,
-		Msg:      "获取代码成功!",
-		Header:   headerPath,
-		Source:   sourcePath,
-		ID:       resp.GetId(),
-		Indices:  resp.GetIndices(),
-		RunType:  resp.GetRuntype(),
-		RunDir:   runDir,
-		BuildDir: buildDir,
-	}
+	ret.RunDir = runDir
+	ret.BuildDir = buildDir
+	ret.Header = headerPath
+	ret.Source = sourcePath
+	return ret
 }
 
 func createRunDir(id string, indices int64) (string, string, error) {

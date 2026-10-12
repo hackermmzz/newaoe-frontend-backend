@@ -39,7 +39,7 @@ func processCrash(
 		}.String(),
 	)
 	if err != nil {
-		return fmt.Errorf("processCrash:发送崩溃状态失败: %w %v", err, resp.Data)
+		return fmt.Errorf("processCrash:发送崩溃状态失败: %w", err)
 	}
 	//上传崩溃日志和debug日志
 	urls := make(map[string]string)

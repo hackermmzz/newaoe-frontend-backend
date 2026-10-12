@@ -32,27 +32,28 @@ func Task_GetStudentCode(ctx context.Context, server grpc_api.CodeClient) {
 				}
 				//获取代码
 				res := api_codeGet.GetOneStudentCode(ctx, server)
-
-				if res.Error != nil {
-					global.LogError(res.Error.Error())
-					return
-				}
-				if !res.OK {
-					return
-				}
-				//处理一下.cpp文件
-				err := fixCPP(res.Source)
-				if err != nil {
-					global.LogError(fmt.Sprintf("处理代码失败! %s", err.Error()))
+				if !res.OK { //没有获取到代码
 					return
 				}
 				//更新状态
-				_, err = global.PostCodeStatus(ctx, server, res.ID, res.Indices, global.Code_Status_OJRecevied, global.CodeRunStatusInfo{
+				_, err := global.PostCodeStatus(ctx, server, res.ID, res.Indices, global.Code_Status_OJRecevied, global.CodeRunStatusInfo{
 					Status: global.Code_Status_OJRecevied,
 					Data:   fmt.Sprintf("OJ接收成功"),
 				}.String())
 				if err != nil {
 					global.LogError(fmt.Sprintf("更新状态失败! %s", err.Error()))
+					return
+				}
+				//如果获取到的代码有错误，那么就直接返回了
+				if res.Error != nil {
+					global.LogError(res.Error.Error())
+					return
+				}
+				//已经获取到代码了，无论如何肯定是要回一条消息给服务的
+				//处理一下.cpp文件
+				err = fixCPP(res.Source)
+				if err != nil {
+					global.LogError(fmt.Sprintf("处理代码失败! %s", err.Error()))
 					return
 				}
 				//记录性能
