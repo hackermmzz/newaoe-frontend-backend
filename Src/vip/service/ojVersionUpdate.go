@@ -7,14 +7,15 @@ import (
 	"strings"
 )
 
-func OJVersionUpdate(version string) error {
+func OJVersionUpdate(version string, hardReboot bool) error {
 	//检查参数是否合法
 	if err := checkOJVersionAvaliable(version); err != nil {
 		return err
 	}
 	//
 	return service.SetOJSystemInfo(service.OJSystemInfo{
-		Version: version,
+		Version:    version,
+		HardReboot: hardReboot,
 	})
 }
 

@@ -12,7 +12,8 @@ import (
 )
 
 type OJSystemInfo struct {
-	Version string `json:"version"` //最新的版本号
+	Version    string `json:"version"`    //最新的版本号
+	HardReboot bool   `json:"hardreboot"` //是否需要硬重启，默认false
 }
 
 func GetOJSystemInfo() (*grpc_api.OJSystemInfoReply, error) {

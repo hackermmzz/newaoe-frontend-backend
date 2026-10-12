@@ -10,6 +10,7 @@ type CodeRunningInfo struct {
 	SubmitTime time.Time `json:"submittime" xorm:"submittime"` //提交日期
 	RunType    int       `json:"runtype" xorm:"runtype"`       //运行类型
 	Status     int       `json:"status" xorm:"status"`         //运行阶段
+	RetryCount uint8     `json:"retrycount" xorm:"retrycount"` //重试次数
 }
 
 func (CodeRunningInfo) TableName() string {

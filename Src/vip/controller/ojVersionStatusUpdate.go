@@ -9,8 +9,9 @@ import (
 
 func OJVersionStatusUpdate(ctx *gin.Context) {
 	latestVersion := ctx.Query("latestVersion")
+	hard_reboot := ctx.Query("hard_reboot")
 	//
-	err := service.OJVersionUpdate(latestVersion)
+	err := service.OJVersionUpdate(latestVersion, hard_reboot == "true")
 	if err != nil {
 		util.ResponseNAK_MSG(ctx, err.Error(), nil)
 		return
