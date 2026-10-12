@@ -9,22 +9,17 @@ let DownloadURLType_OSS     = 1 //oss下载
 let DownloadURLType_CDN     = 2 //cdn下载
 
 // 代码运行状态配置
-let Code_Status_Error           = 0 //服务器异常
-let Code_Status_Wait            = 1 //在等待队列里面
-let Code_Status_Compile         = 2 //编译中
-let Code_Status_Compile_Success = 3 //编译成功
-let Code_Status_Compile_Fail    = 4 //编译错误
-let Code_Status_Running         = 5 //正在运行出结果
-let Code_Status_Success         = 6 //运行胜利
-let Code_Status_Fail            = 7 //游戏失败
-let Code_Status_Crash           = 8 //游戏崩溃
+const Code_Status_Unknown         = 0    //未知状态
+const Code_Status_Error           = 1000 //服务器异常
+const Code_Status_Wait            = 2000 //在等待队列里面
+const Code_Status_Compile         = 3000 //编译中
+const Code_Status_Compile_Fail    = 4000 //编译错误
+const Code_Status_Compile_Success = 5000 //编译成功
+const Code_Status_Running         = 6000 //正在运行出结果
+const Code_Status_Crash           = 7000 //游戏崩溃
+const Code_Status_Fail            = 8000 //游戏失败
+const Code_Status_Success         = 9000 //运行胜利
 
-// 考核排行榜状态
-let AssessmenrRankStatus_Error       = -2 //考核错误
-let AssessmenrRankStatus_CompileFail = -1 //考核编译失败
-let AssessmenrRankStatus_Crash       = 0 //考核崩溃
-let AssessmenrRankStatus_Fail        = 1 //考核失败
-let AssessmenrRankStatus_Win         = 2 //考核胜利
 
 
 //特权配置
@@ -91,6 +86,7 @@ module.exports = {
     manager_assessment_history_url: manager_url + "/getassessmenthistory",
     manager_assessment_rank_url: manager_url + "/fetchassessmentrank",
     manager_run_all_assessment_submit_url: manager_url + "/runAllAssessmentSubmit",
+    manager_reset_assessment_submit_url: manager_url + "/resetassessmentsubmit",
     manager_rerun_anomal_record_url: manager_url + "/rerunAnomalRecord",
     manager_block_all_submit_url: manager_url + "/blockAllSubmit",
     manager_cancel_submit_block_url: manager_url + "/cancelSubmitBlock",
@@ -119,6 +115,7 @@ module.exports = {
     manager_upload_latest_aoe_package_url: manager_url + "/uploadLatestAOEPackage",
     download_latest_aoe_package_url: base_url + "/home/downloadLatestAOEPackage",
     HistoryRecordPerPage,
+    Code_Status_Unknown,
     Code_Status_Error,
     Code_Status_Wait,
     Code_Status_Compile,
@@ -128,9 +125,4 @@ module.exports = {
     Code_Status_Success,
     Code_Status_Fail,
     Code_Status_Crash,
-    AssessmenrRankStatus_Error,
-    AssessmenrRankStatus_CompileFail,
-    AssessmenrRankStatus_Crash,
-    AssessmenrRankStatus_Fail,
-    AssessmenrRankStatus_Win,
 };

@@ -20,10 +20,23 @@
           </option>
         </select>
       </label>
+      <div v-if="theme === 'custom'" class="custom-background-picker">
+        <button type="button" class="custom-background-picker__button" @click="selectCustomBackground">
+          选择图片
+        </button>
+        <input
+          ref="customBackgroundInput"
+          type="file"
+          accept="image/*"
+          class="custom-background-picker__input"
+          @change="changeCustomBackground"
+        >
+      </div>
     </div>
     <EffectTheme v-if="theme === 'effect'" :key="effect" :effect="effect" />
     <!-- 路由出口：所有匹配的路由组件会在这里渲染 -->
     <router-view />
+    <AnnouncementNotice />
     <FloatingBall />
   </div>
 </template>
@@ -32,7 +45,10 @@
 // 当使用路由后，不需要在这里直接导入页面组件
 import FloatingBall from '@/components/FloatingBall'
 import EffectTheme from '@/components/EffectTheme.vue';
+import AnnouncementNotice from '@/components/AnnouncementNotice.vue';
+import { ElMessage } from 'element-plus';
 import { applyTheme, getInitialTheme, THEME_MODES } from '@/utils/theme';
+import { getCustomBackground, saveCustomBackground } from '@/utils/customBackground';
 
 const EFFECT_STORAGE_KEY = 'aoe-effect';
 const EFFECT_MODES = [
@@ -47,30 +63,80 @@ const getInitialEffect = () => {
   return EFFECT_MODES.some(effect => effect.id === storedEffect) ? storedEffect : EFFECT_MODES[0].id;
 };
 
+const setCustomBackgroundImage = objectUrl => {
+  document.documentElement.style.setProperty(
+    '--custom-background-image',
+    objectUrl ? `url("${objectUrl}")` : 'none'
+  );
+};
+
 export default {
   name: 'App',
   components: {
     FloatingBall,
-    EffectTheme
+    EffectTheme,
+    AnnouncementNotice
   },
   data() {
     return {
       theme: getInitialTheme(),
       themeModes: THEME_MODES,
       effectModes: EFFECT_MODES,
-      effect: getInitialEffect()
+      effect: getInitialEffect(),
+      customBackgroundUrl: ''
     };
   },
   methods: {
     changeTheme(theme) {
       this.theme = applyTheme(theme);
+      if (theme === 'custom' && !this.customBackgroundUrl) {
+        this.$nextTick(() => this.selectCustomBackground());
+      }
     },
     changeEffect() {
       window.localStorage.setItem(EFFECT_STORAGE_KEY, this.effect);
+    },
+    selectCustomBackground() {
+      this.$refs.customBackgroundInput?.click();
+    },
+    async changeCustomBackground(event) {
+      const file = event.target.files?.[0];
+      event.target.value = '';
+      if (!file) return;
+      if (!file.type.startsWith('image/')) {
+        ElMessage.error('请选择图片文件');
+        return;
+      }
+
+      try {
+        await saveCustomBackground(file);
+        this.applyCustomBackground(file);
+        this.theme = applyTheme('custom');
+        ElMessage.success('自定义背景已保存');
+      } catch (error) {
+        ElMessage.error(error?.message || '保存自定义背景失败');
+      }
+    },
+    applyCustomBackground(file) {
+      if (this.customBackgroundUrl) URL.revokeObjectURL(this.customBackgroundUrl);
+      this.customBackgroundUrl = URL.createObjectURL(file);
+      setCustomBackgroundImage(this.customBackgroundUrl);
+    },
+    async loadCustomBackground() {
+      try {
+        const file = await getCustomBackground();
+        if (file instanceof Blob) this.applyCustomBackground(file);
+      } catch (error) {
+        console.error('读取自定义背景失败:', error);
+      }
     }
   },
   mounted() {
     this.theme = applyTheme(this.theme);
+    this.loadCustomBackground();
+  },
+  beforeUnmount() {
+    if (this.customBackgroundUrl) URL.revokeObjectURL(this.customBackgroundUrl);
   }
 }
 </script>
@@ -85,6 +151,15 @@ body {
 body {
   background: #f8fafc;
   transition: background-color 0.35s ease, color 0.35s ease;
+}
+
+html[data-theme='custom'] body {
+  background-color: #f8fafc;
+  background-image: var(--custom-background-image, none);
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
 }
 
 /* 全局背景透明度：调整特效模式下页面卡片对 WebGL 背景的遮挡程度。 */
@@ -177,6 +252,43 @@ html[data-theme='effect'] {
   background: transparent;
   cursor: pointer;
   font-size: 12px;
+}
+
+.custom-background-picker {
+  margin-left: 2px;
+  padding-left: 6px;
+  border-left: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.custom-background-picker__button {
+  border: 0;
+  padding: 5px 7px;
+  color: #2563eb;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.custom-background-picker__input {
+  display: none;
+}
+
+html[data-theme='custom'] .bg-white {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(5px);
+}
+
+html[data-theme='custom'] .bg-gray-50 {
+  background-color: rgba(248, 250, 252, 0.78) !important;
+  backdrop-filter: blur(5px);
+}
+
+html[data-theme='custom'] .login-container,
+html[data-theme='custom'] .register-container,
+html[data-theme='custom'] .password-forget-page {
+  background-color: transparent !important;
+  background-image: none !important;
 }
 
 /* 深色模式：保留现有 Tailwind 页面结构，只统一基础色。 */

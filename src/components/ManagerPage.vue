@@ -8,29 +8,62 @@
               <h1 class="text-2xl font-bold text-gray-800">管理平台</h1>
               <p class="mt-1 text-sm text-gray-500">查看学生信息和提交记录</p>
             </div>
-            <div class="flex flex-wrap items-center justify-end gap-3">
-              <button
-                type="button"
-                class="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
-                @click="openAnnouncementDialog"
+            <div>
+              <el-dropdown
+                trigger="click"
+                placement="bottom-end"
+                @command="runManagerAction"
+                @visible-change="actionMenuOpen = $event"
               >
-                发布公告
-              </button>
-              <button
-                type="button"
-                class="px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors"
-                @click="openOjVersionDialog"
-              >
-                OJ版本推送
-              </button>
-              <button
-                type="button"
-                class="px-4 py-2 rounded-lg bg-cyan-600 text-white hover:bg-cyan-700 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                :disabled="uploadingLatestPackage"
-                @click="openLatestPackageDialog"
-              >
-                {{ uploadingLatestPackage ? '发版中...' : '发版新版包' }}
-              </button>
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white shadow-sm transition-colors hover:bg-blue-700"
+                  aria-haspopup="menu"
+                  :aria-expanded="actionMenuOpen"
+                >
+                  管理操作
+                  <svg
+                    class="h-4 w-4 transition-transform"
+                    :class="{ 'rotate-180': actionMenuOpen }"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                  </svg>
+                </button>
+
+                <template #dropdown>
+                  <el-dropdown-menu class="w-72 max-w-[calc(100vw-2rem)]">
+                    <div class="px-4 pb-1 pt-2 text-xs font-semibold text-gray-400">内容与账户</div>
+                    <el-dropdown-item command="openAnnouncementDialog">发布公告</el-dropdown-item>
+                    <el-dropdown-item command="openOjVersionDialog">OJ版本推送</el-dropdown-item>
+                    <el-dropdown-item command="openLatestPackageDialog" :disabled="uploadingLatestPackage">
+                      {{ uploadingLatestPackage ? '发版中...' : '发版新版包' }}
+                    </el-dropdown-item>
+                    <el-dropdown-item command="openTeacherDialog">添加考核教师</el-dropdown-item>
+                    <el-dropdown-item command="openEnhanceVipDialog">提升管理员</el-dropdown-item>
+                    <el-dropdown-item command="openResetAssessmentDialog" :disabled="resettingAssessmentSubmit">
+                      重置用户考核提交记录
+                    </el-dropdown-item>
+                    <div class="my-1 border-t border-gray-100"></div>
+                    <div class="px-4 pb-1 pt-2 text-xs font-semibold text-gray-400">提交控制</div>
+                    <el-dropdown-item command="runAllAssessmentSubmit" :disabled="runningAllAssessmentSubmit">
+                      {{ runningAllAssessmentSubmit ? '运行中...' : '运行所有考核提交' }}
+                    </el-dropdown-item>
+                    <el-dropdown-item command="rerunAnomalRecord" :disabled="rerunningAnomalRecord">
+                      {{ rerunningAnomalRecord ? '重新运行中...' : '重新运行异常记录' }}
+                    </el-dropdown-item>
+                    <el-dropdown-item command="blockAllSubmit" :disabled="blockingAllSubmit">
+                      <span class="text-red-600">{{ blockingAllSubmit ? '阻塞中...' : '阻塞提交' }}</span>
+                    </el-dropdown-item>
+                    <el-dropdown-item command="cancelSubmitBlock" :disabled="cancellingSubmitBlock">
+                      <span class="text-green-600">{{ cancellingSubmitBlock ? '取消中...' : '取消阻塞' }}</span>
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+
               <input
                 ref="latestPackageInput"
                 type="file"
@@ -38,58 +71,6 @@
                 :disabled="uploadingLatestPackage"
                 @change="handleLatestPackageFileChange"
               >
-              <button
-                type="button"
-                class="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
-                @click="openTeacherDialog"
-              >
-                添加考核教师
-              </button>
-              <button
-                type="button"
-                class="px-4 py-2 rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition-colors"
-                @click="openEnhanceVipDialog"
-              >
-                提升管理员
-              </button>
-              <button
-                type="button"
-                class="px-4 py-2 rounded-lg bg-orange-600 text-white hover:bg-orange-700 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                :disabled="runningAllAssessmentSubmit"
-                @click="runAllAssessmentSubmit"
-              >
-                {{ runningAllAssessmentSubmit ? '运行中...' : '运行所有考核提交' }}
-              </button>
-              <button
-                type="button"
-                class="px-4 py-2 rounded-lg bg-orange-500 text-white hover:bg-orange-600 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                :disabled="rerunningAnomalRecord"
-                @click="rerunAnomalRecord"
-              >
-                {{ rerunningAnomalRecord ? '重新运行中...' : '重新运行异常记录' }}
-              </button>
-              <button
-                type="button"
-                class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                :disabled="blockingAllSubmit"
-                @click="blockAllSubmit"
-              >
-                {{ blockingAllSubmit ? '阻塞中...' : '阻塞提交' }}
-              </button>
-              <button
-                type="button"
-                class="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                :disabled="cancellingSubmitBlock"
-                @click="cancelSubmitBlock"
-              >
-                {{ cancellingSubmitBlock ? '取消中...' : '取消阻塞' }}
-              </button>
-              <router-link
-                to="/home/manager/student-statistics"
-                class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-              >
-                学生统计
-              </router-link>
             </div>
           </div>
 
@@ -493,6 +474,70 @@
           </div>
         </div>
 
+        <div
+          v-if="resetAssessmentDialogOpen"
+          class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          role="presentation"
+          @click.self="closeResetAssessmentDialog"
+        >
+          <div
+            class="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reset-assessment-title"
+          >
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <h2 id="reset-assessment-title" class="text-xl font-semibold text-gray-900">重置用户考核提交记录</h2>
+                <p class="mt-1 text-sm text-gray-500">请输入用户 ID 或邮箱。重置后该用户可以重新提交考核。</p>
+              </div>
+              <button
+                type="button"
+                class="text-2xl leading-none text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                aria-label="关闭"
+                :disabled="resettingAssessmentSubmit"
+                @click="closeResetAssessmentDialog"
+              >
+                &times;
+              </button>
+            </div>
+
+            <form class="mt-6 space-y-4" @submit.prevent="resetAssessmentSubmit">
+              <div>
+                <label for="reset-assessment-id-input" class="mb-1 block text-sm font-medium text-gray-700">用户 ID 或邮箱</label>
+                <input
+                  id="reset-assessment-id-input"
+                  v-model="resetAssessmentUserId"
+                  type="text"
+                  maxlength="100"
+                  required
+                  autocomplete="off"
+                  :disabled="resettingAssessmentSubmit"
+                  class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  placeholder="请输入用户 ID 或邮箱"
+                >
+              </div>
+              <div class="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  :disabled="resettingAssessmentSubmit"
+                  @click="closeResetAssessmentDialog"
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  :disabled="resettingAssessmentSubmit"
+                >
+                  {{ resettingAssessmentSubmit ? '重置中...' : '确认重置' }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
         <main class="flex-grow container mx-auto px-4 py-8">
           <router-view></router-view>
         </main>
@@ -522,6 +567,7 @@ export default {
   },
   data() {
     return {
+      actionMenuOpen: false,
       announcementDialogOpen: false,
       announcementTitle: '',
       announcementContent: '',
@@ -539,6 +585,9 @@ export default {
       enhanceVipDialogOpen: false,
       enhanceVipUserId: '',
       enhancingVip: false,
+      resetAssessmentDialogOpen: false,
+      resetAssessmentUserId: '',
+      resettingAssessmentSubmit: false,
       runningAllAssessmentSubmit: false,
       rerunningAnomalRecord: false,
       blockingAllSubmit: false,
@@ -546,6 +595,11 @@ export default {
     };
   },
   methods: {
+    runManagerAction(actionName) {
+      const action = this[actionName];
+      this.actionMenuOpen = false;
+      if (typeof action === 'function') action.call(this);
+    },
     openAnnouncementDialog() {
       this.announcementDialogOpen = true;
     },
@@ -625,6 +679,47 @@ export default {
     closeEnhanceVipDialog() {
       if (this.enhancingVip) return;
       this.enhanceVipDialogOpen = false;
+    },
+    openResetAssessmentDialog() {
+      this.resetAssessmentDialogOpen = true;
+    },
+    closeResetAssessmentDialog() {
+      if (this.resettingAssessmentSubmit) return;
+      this.resetAssessmentDialogOpen = false;
+    },
+    async resetAssessmentSubmit() {
+      const id = this.resetAssessmentUserId.trim();
+      if (!id || this.resettingAssessmentSubmit) {
+        ElMessage.warning('请输入用户 ID 或邮箱');
+        return;
+      }
+
+      this.resettingAssessmentSubmit = true;
+      try {
+        const requestUrl = new URL(config.manager_reset_assessment_submit_url);
+        requestUrl.searchParams.set('id', id);
+        const response = await fetch(requestUrl.toString(), {
+          method: 'GET',
+          credentials: 'include'
+        });
+        let result = {};
+        try {
+          result = await response.json();
+        } catch (error) {
+          if (!response.ok) throw new Error(`重置考核提交记录失败（HTTP ${response.status}）`);
+        }
+        if (!response.ok || result?.status === false) {
+          throw new Error(result?.msg || `重置考核提交记录失败（HTTP ${response.status}）`);
+        }
+
+        ElMessage.success(result?.msg || '考核提交记录已重置');
+        this.resetAssessmentUserId = '';
+        this.resetAssessmentDialogOpen = false;
+      } catch (error) {
+        ElMessage.error(error?.message || '重置考核提交记录失败');
+      } finally {
+        this.resettingAssessmentSubmit = false;
+      }
     },
     async enhanceVip() {
       const id = this.enhanceVipUserId.trim();

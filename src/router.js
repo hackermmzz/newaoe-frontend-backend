@@ -50,6 +50,7 @@ const routes = [
       {
         path: 'manager',
         component: ManagerPage,
+        meta: { hideAnnouncement: true },
         children: [
           {
             path: '',

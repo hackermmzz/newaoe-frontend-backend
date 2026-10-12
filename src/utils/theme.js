@@ -1,5 +1,6 @@
 export const THEME_MODES = [
   { id: 'white', label: '纯白' },
+  { id: 'custom', label: '自定义' },
   { id: 'dark', label: '深色' },
   { id: 'effect', label: '特效' }
 ];
@@ -16,7 +17,7 @@ export const applyTheme = theme => {
   const nextTheme = THEME_MODES.some(item => item.id === theme) ? theme : 'effect';
   if (typeof document !== 'undefined') {
     document.documentElement.dataset.theme = nextTheme;
-    document.documentElement.style.colorScheme = nextTheme === 'white' ? 'light' : 'dark';
+    document.documentElement.style.colorScheme = ['white', 'custom'].includes(nextTheme) ? 'light' : 'dark';
   }
   if (typeof window !== 'undefined') {
     window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);

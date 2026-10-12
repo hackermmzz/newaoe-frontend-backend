@@ -149,6 +149,32 @@ export default {
     const getMedalLabel = rank => rank === 1 ? '金牌' : rank === 2 ? '银牌' : rank === 3 ? '铜牌' : `第 ${rank} 名`;
     const getStars = rank => rank <= 10 ? '★★★' : rank <= 20 ? '★★' : rank <= 30 ? '★' : '';
 
+    const outcomeByStatusCode = new Map([
+      [config.Code_Status_Unknown, 'unknown'],
+      [config.Code_Status_Error, 'error'],
+      [config.Code_Status_Wait, 'wait'],
+      [config.Code_Status_Compile, 'compile'],
+      [config.Code_Status_Compile_Fail, 'compile-fail'],
+      [config.Code_Status_Compile_Success, 'compile-success'],
+      [config.Code_Status_Running, 'running'],
+      [config.Code_Status_Crash, 'crash'],
+      [config.Code_Status_Fail, 'fail'],
+      [config.Code_Status_Success, 'win']
+    ]);
+
+    const statusPresentations = {
+      unknown: { label: '未知', className: 'bg-gray-100 text-gray-700' },
+      error: { label: '服务器异常', className: 'bg-rose-100 text-rose-700' },
+      wait: { label: '等待中', className: 'bg-blue-100 text-blue-700' },
+      compile: { label: '编译中', className: 'bg-indigo-100 text-indigo-700' },
+      'compile-fail': { label: '编译错误', className: 'bg-orange-100 text-orange-700' },
+      'compile-success': { label: '编译成功', className: 'bg-teal-100 text-teal-700' },
+      running: { label: '运行中', className: 'bg-cyan-100 text-cyan-700' },
+      crash: { label: '游戏崩溃', className: 'bg-yellow-100 text-yellow-700' },
+      fail: { label: '失败', className: 'bg-red-100 text-red-700' },
+      win: { label: '胜利', className: 'bg-green-100 text-green-700' }
+    };
+
     const getStatusCode = value => {
       if (typeof value === 'number' && Number.isInteger(value)) return value;
       if (typeof value === 'string') {
@@ -172,17 +198,7 @@ export default {
       if (typeof rankInfo.id !== 'string' || !rankInfo.id.trim()) throw new Error('考核排行榜记录 id 格式不正确');
 
       const code = getStatusCode(rankInfo.status ?? item.status);
-      const outcome = code === config.AssessmenrRankStatus_Error
-        ? 'error'
-        : code === config.AssessmenrRankStatus_CompileFail
-          ? 'compile-fail'
-        : code === config.AssessmenrRankStatus_Crash
-          ? 'crash'
-          : code === config.AssessmenrRankStatus_Win
-            ? 'win'
-            : code === config.AssessmenrRankStatus_Fail
-              ? 'fail'
-              : null;
+      const outcome = outcomeByStatusCode.get(code);
       if (!outcome) throw new Error(`考核排行榜记录 ${rankInfo.id} 状态格式不正确`);
       if (!Number.isSafeInteger(rankInfo.score)) throw new Error('考核排行榜记录 score 格式不正确');
       if (!Number.isSafeInteger(rankInfo.frame) || rankInfo.frame < 0) throw new Error('考核排行榜记录 frame 格式不正确');
@@ -320,18 +336,8 @@ export default {
         isExporting.value = false;
       }
     };
-    const statusLabel = outcome => outcome === 'error'
-      ? '错误'
-      : outcome === 'compile-fail'
-        ? '编译失败'
-        : outcome === 'crash' ? '崩溃' : outcome === 'win' ? '胜利' : '失败';
-    const statusClass = outcome => outcome === 'error'
-      ? 'bg-gray-100 text-gray-700'
-      : outcome === 'compile-fail'
-        ? 'bg-orange-100 text-orange-700'
-        : outcome === 'crash'
-          ? 'bg-yellow-100 text-yellow-700'
-          : outcome === 'win' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700';
+    const statusLabel = outcome => statusPresentations[outcome]?.label || '未知';
+    const statusClass = outcome => statusPresentations[outcome]?.className || statusPresentations.unknown.className;
     const formatTime = value => {
       if (value === null || value === undefined || value === '') return '—';
       const date = new Date(value);
