@@ -125,15 +125,15 @@ func ProcessDataMessageByStatus(coderunStatus CodeRunStatusInfo) CodeRunStatusIn
 /********************************运行表*********************************/
 // 运行类型（Release运行或者重度Debug运行）
 var (
-	CodeRunType_ReleaseRun = 0 //release版本运行
-	CodeRunType_DebugRun   = 1 //重度调试模式运行
+	CodeRunType_ReleaseRun = 1000 //release版本运行
+	CodeRunType_DebugRun   = 2000 //重度调试模式运行
 )
 
 // 上传的代码类别
 var (
-	Code_CommonSubmit     = 1 //普通提交
-	Code_AssessmentSubmit = 2 //考核提交
-	Code_ReRunSubmit      = 3 //重新运行
+	Code_CommonSubmit     = 1000 //普通提交
+	Code_AssessmentSubmit = 2000 //考核提交
+	Code_ReRunSubmit      = 3000 //重新运行
 )
 
 // 这里我们采用分表的方式来进行

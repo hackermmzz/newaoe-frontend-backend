@@ -9,9 +9,9 @@ import (
 )
 
 var (
-	DownloadURLType_UnKnown = 0 //未知
-	DownloadURLType_OSS     = 1 //oss下载
-	DownloadURLType_CDN     = 2 //cdn下载
+	DownloadURLType_UnKnown = 0    //未知
+	DownloadURLType_OSS     = 2000 //oss下载
+	DownloadURLType_CDN     = 3000 //cdn下载
 )
 
 // 用户下载文件接口(返回下载链接),如果attachment为true表示需要当作附件下载
