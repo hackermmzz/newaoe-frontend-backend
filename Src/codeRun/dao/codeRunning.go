@@ -114,36 +114,60 @@ func CodeRunningUpdate(session *database.Session, info model.CodeRunningInfo) (o
 		defer session.Close()
 	}
 	//
-	affected, err := session.ID(info.Indices).Update(info)
+	affected, err := session.ID(info.Indices).AllCols().Update(info)
 	if err != nil {
 		return false, err
 	}
 	return affected > 0, err
 }
 
-func CodeRunningRemove(session *database.Session, indices int) (ok bool, err error) {
-	defer func() {
-		if err == nil {
-			session.PostTransactionAdd(func() {
-				deleteCodeRunningExistCache(indices)
-				incrCodeRunningCacheVersion()
-			})
-		}
-	}()
-	//
+// 批量更新状态
+func CodeRunningBatchUpdateIfBetter(session *database.Session, data []model.CodeRunningInfo) (better []model.CodeRunningInfo, err error) {
+	if len(data) == 0 {
+		return nil, nil
+	}
 	if session == nil {
 		session = database.NewSession()
 		defer session.Close()
 	}
+	//先获取之前的状态
+	indices := make([]int, 0)
+	for _, item := range data {
+		indices = append(indices, item.Indices)
+	}
+	oldStatus := make([]model.CodeRunningInfo, 0)
+	if err := session.In("indices", indices).ForUpdate().Find(&oldStatus); err != nil {
+		return nil, err
+	}
+	oldStatusMap := make(map[int]model.CodeRunningInfo)
+	for _, item := range oldStatus {
+		oldStatusMap[item.Indices] = item
+	}
+	//对比数据，只更新更好的数据
+	finalBetter := make([]model.CodeRunningInfo, 0)
+	for _, item := range data {
+		_, ok := oldStatusMap[item.Indices]
+		if ok && item.Status > oldStatusMap[item.Indices].Status {
+			finalBetter = append(finalBetter, item)
+		}
+	}
+	//更新数据
+	for _, item := range finalBetter {
+		_, err = session.Where("indices=?", item.Indices).Cols("status").Update(item)
+		if err != nil {
+			return nil, err
+		}
+	}
 	//
-	d := &model.CodeRunningInfo{
-		Indices: indices,
-	}
-	_, err = session.Delete(d)
-	if err != nil {
-		return false, err
-	}
-	return true, nil
+	session.PostTransactionAdd(func() {
+		for _, item := range finalBetter {
+			deleteCodeRunningExistCache(item.Indices)
+		}
+		if len(finalBetter) > 0 {
+			incrCodeRunningCacheVersion()
+		}
+	})
+	return finalBetter, nil
 }
 
 func CodeRunningBatchRemove(session *database.Session, indices []int) (ok bool, err error) {

@@ -177,7 +177,7 @@ func updateAssessmentSubmitRank(session *database.Session, dt []model.CodeRunInf
 		}.Marshal()
 		rankinfo.Score = codeRunStatusInfo.Score
 		rankinfo.Frame = codeRunStatusInfo.Frame
-		rankinfo.Status = mapCodeRunStatusToAssessmenrRankStatus(codeRunStatusInfo.Status)
+		rankinfo.Status = codeRunStatusInfo.Status
 		RankInfoArr = append(RankInfoArr, rankinfo)
 	}
 	//去重
@@ -201,20 +201,4 @@ func updateAssessmentSubmitRank(session *database.Session, dt []model.CodeRunInf
 		return err
 	}
 	return nil
-}
-
-func mapCodeRunStatusToAssessmenrRankStatus(status int) int {
-	if status == model.Code_Status_Compile_Fail {
-		return model.AssessmenrRankStatus_CompileFail
-	}
-	if status == model.Code_Status_Crash {
-		return model.AssessmenrRankStatus_Crash
-	}
-	if status == model.Code_Status_Success {
-		return model.AssessmenrRankStatus_Win
-	}
-	if status == model.Code_Status_Fail {
-		return model.AssessmenrRankStatus_Fail
-	}
-	return model.AssessmenrRankStatus_Error
 }

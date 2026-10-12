@@ -24,7 +24,6 @@ func BatchUpdateCodeRunStatus(indices []int) ([]model.CodeRunInfo, error) {
 	// 2. 从 Redis 获取数据
 	ctx := context.Background()
 	dataArr := make([]model.CodeRunInfo, 0)
-	version := util.UTC_Time().UnixNano()
 	for ind := range distinctIndices {
 		data, exist, err := redis.RedisGet(ctx, fmt.Sprintf("CodeRun:%v", ind))
 		if err != nil {
@@ -43,7 +42,6 @@ func BatchUpdateCodeRunStatus(indices []int) ([]model.CodeRunInfo, error) {
 		}
 		//处理一下
 		dt := *dbRet
-		dt.Version = version
 		if exist {
 			var v codeRunStatusInfoPushRedis
 			err := json.Unmarshal(data, &v)
@@ -71,14 +69,9 @@ func BatchUpdateCodeRunStatus(indices []int) ([]model.CodeRunInfo, error) {
 		util.DebugError("batchUpdateCodeRunStatus:" + err.Error())
 		return nil, err
 	}
-	if err = dao.CodeRunBatchUpdateStatus(session, dataArr); err != nil {
+	if err = dao.CodeRunBatchUpdateStatusIfBetter(session, dataArr); err != nil {
 		util.DebugError("CodeRunBatchUpdateStatus:", err)
 		session.Rollback()
-		return nil, err
-	}
-	//移除已经结束的记录
-	err = removeCodeRunRecordAlreadyFinish(session, dataArr)
-	if err != nil {
 		return nil, err
 	}
 	//提交事务
@@ -88,30 +81,4 @@ func BatchUpdateCodeRunStatus(indices []int) ([]model.CodeRunInfo, error) {
 		return nil, err
 	}
 	return dataArr, nil
-}
-
-func removeCodeRunRecordAlreadyFinish(session *database.Session, dt []model.CodeRunInfo) error {
-	needRemove := make([]int, 0)
-	for _, info := range dt {
-		ind := info.Indices
-		status := info.Status
-		//解析运行结果
-		var codeRunningStatus model.CodeRunStatusInfo
-		if err := codeRunningStatus.Unmarshal([]byte(status)); err != nil {
-			util.DebugError("status解析失败:", err)
-			continue
-		}
-		//运行状态表明程序没有结束
-		if !codeRunningStatus.IsFinish() {
-			continue
-		}
-		//
-		needRemove = append(needRemove, ind)
-	}
-	//批量删除
-	_, err := dao.CodeRunningBatchRemove(session, needRemove)
-	if err != nil {
-		return err
-	}
-	return nil
 }

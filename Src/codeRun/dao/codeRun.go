@@ -173,9 +173,9 @@ func CodeRunUpdateStatusSync(session *database.Session, indices int, status stri
 	return true, nil
 }
 
-// CodeRunBatchUpdateStatus 使用临时表批量更新运行状态和版本。
+// CodeRunBatchUpdateStatusIfBetter 使用临时表批量更新运行状态和版本。
 // 事务由调用方控制，缓存应在事务提交成功后失效。
-func CodeRunBatchUpdateStatus(session *database.Session, data []model.CodeRunInfo) (err error) {
+func CodeRunBatchUpdateStatusIfBetter(session *database.Session, data []model.CodeRunInfo) (err error) {
 	if len(data) == 0 {
 		return nil
 	}
@@ -183,52 +183,38 @@ func CodeRunBatchUpdateStatus(session *database.Session, data []model.CodeRunInf
 		session = database.NewSession()
 		defer session.Close()
 	}
-
-	tempTable := fmt.Sprintf("tmp_code_run_%d", util.UTC_Time().UnixNano())
-	_, err = session.Exec(fmt.Sprintf("CREATE TEMPORARY TABLE %s (indices INT, status TEXT, new_version BIGINT)", tempTable))
-	if err != nil {
-		return fmt.Errorf("create code run temp table: %w", err)
+	//先获取旧数据
+	indices := make([]int, 0)
+	for _, item := range data {
+		indices = append(indices, item.Indices)
 	}
-	defer func() {
-		_, dropErr := session.Exec(fmt.Sprintf("DROP TEMPORARY TABLE %s", tempTable))
-		if err == nil && dropErr != nil {
-			err = fmt.Errorf("drop code run temp table: %w", dropErr)
-		}
-	}()
-
-	type tempCodeRunInfo struct {
-		Indices    int    `xorm:"indices"`
-		Status     string `xorm:"text status"`
-		NewVersion int64  `xorm:"new_version"`
+	var oldStatus []model.CodeRunInfo
+	if err := session.In("indices", indices).ForUpdate().Find(&oldStatus); err != nil {
+		return err
 	}
-	tempData := make([]tempCodeRunInfo, len(data))
-	for i := range data {
-		tempData[i] = tempCodeRunInfo{
-			Indices:    data[i].Indices,
-			Status:     data[i].Status,
-			NewVersion: data[i].Version,
+	oldStatusMap := make(map[int]model.CodeRunInfo)
+	for _, item := range oldStatus {
+		oldStatusMap[item.Indices] = item
+	}
+	//对比数据，只更新更好的数据
+	finalBetter := make([]model.CodeRunInfo, 0)
+	for _, item := range data {
+		_, ok := oldStatusMap[item.Indices]
+		if ok && statusIsBetter(item.Status, oldStatusMap[item.Indices].Status) {
+			finalBetter = append(finalBetter, item)
 		}
 	}
-	if _, err = session.Table(tempTable).Insert(tempData); err != nil {
-		return fmt.Errorf("insert code run temp data: %w", err)
+	//更新数据
+	for _, item := range finalBetter {
+		_, err = session.Where("indices=?", item.Indices).Cols("status").Update(item)
+		if err != nil {
+			return err
+		}
 	}
-
-	cmd := fmt.Sprintf(`
-UPDATE %s c
-JOIN %s t ON c.indices = t.indices
-SET c.status = t.status, c.version = t.new_version
-WHERE c.version < t.new_version
-`, model.CodeRunInfo{}.TableName(), tempTable)
-	if _, err = session.Exec(cmd); err != nil {
-		return fmt.Errorf("batch update code run status: %w", err)
-	}
-	cacheIndices := make([]int, len(data))
-	for i := range data {
-		cacheIndices[i] = data[i].Indices
-	}
+	// 删除缓存
 	session.PostTransactionAdd(func() {
-		for _, index := range cacheIndices {
-			CodeRunCacheDelete(index)
+		for _, item := range finalBetter {
+			CodeRunCacheDelete(item.Indices)
 		}
 		CodeRunCacheVersionIncrease()
 	})
@@ -487,4 +473,20 @@ func getExtraClassInCondition(session *database.Session, class ...int) *database
 	}
 	session.And(cond, args...)
 	return session
+}
+
+// 比对数据，只更新更好的数据
+func statusIsBetter(newStatus string, oldStatus string) bool {
+	//序列化
+	newStatusInfo := model.CodeRunStatusInfo{}
+	err := newStatusInfo.Unmarshal([]byte(newStatus))
+	if err != nil {
+		return false
+	}
+	oldStatusInfo := model.CodeRunStatusInfo{}
+	err = oldStatusInfo.Unmarshal([]byte(oldStatus))
+	if err != nil {
+		return true
+	}
+	return newStatusInfo.IsBetter(oldStatusInfo)
 }

@@ -101,10 +101,17 @@ func codeRunStatusUpdateQueueProcess() {
 	CodeRunStatusUpdateQueue := make([]int, 0, config.Conf.Code.CodeRunStatusUpdateQueueSizeThreshold)
 	// 批量更新函数
 	fn := func() error {
+		//更新运行记录
 		infos, err := BatchUpdateCodeRunStatus(CodeRunStatusUpdateQueue)
 		if err != nil {
 			return util.NewError("BatchUpdateCodeRunStatus:", err)
 		}
+		//更新运行记录表
+		err = UpdateCodeRunningRecord(infos)
+		if err != nil {
+			return util.NewError("UpdateCodeRunningRecord:", err)
+		}
+		//更新排名
 		err = UpdateRank(infos)
 		if err != nil {
 			return util.NewError("UpdateRank:", err)

@@ -75,7 +75,7 @@ func AssessmentRankGetByRange(session *database.Session, beg int, end int) (ret 
 	for l <= r {
 		mid := (l + r) / 2
 		status := ranks[mid].Status
-		if status >= model.AssessmenrRankStatus_Win {
+		if status >= model.Code_Status_Success {
 			l = mid + 1
 		} else {
 			r = mid - 1
@@ -126,7 +126,7 @@ func AssessmentRankBatchUpdateOrInsertIfBetter(session *database.Session, ranks 
 	// 2. 一次性查询数据库中已有的数据
 	var existRanks []model.AssessmentRankInfo
 
-	err = session.In("id", ids).ForUpdate().Find(&existRanks)
+	err = session.In("id", ids).MustCols("status").ForUpdate().Find(&existRanks)
 	if err != nil {
 		return err
 	}
@@ -179,21 +179,17 @@ func AssessmentRankBatchUpdateOrInsertIfBetter(session *database.Session, ranks 
 }
 
 func AssessmentRankIsBetter(newRank *model.AssessmentRankInfo, oldRank *model.AssessmentRankInfo) bool {
-	// win 优先：true > false
-	if newRank.Status != oldRank.Status {
-		return newRank.Status > oldRank.Status
+	//序列化
+	var newinfo, oldinfo model.AssessmentRankMsgInfo
+	err := json.Unmarshal([]byte(newRank.Msg), &newinfo)
+	if err != nil {
+		util.DebugError("AssessmentRankIsBetter newRank.Msg unmarshal:", err)
+		return false
 	}
-	if newRank.Status == model.AssessmenrRankStatus_Win {
-		// frame 越小越好
-		if newRank.Frame != oldRank.Frame {
-			return newRank.Frame < oldRank.Frame
-		}
-		return newRank.Score > oldRank.Score
-	} else {
-		// score 越大越好
-		if newRank.Score != oldRank.Score {
-			return newRank.Score > oldRank.Score
-		}
-		return newRank.Frame < oldRank.Frame
+	err = json.Unmarshal([]byte(oldRank.Msg), &oldinfo)
+	if err != nil {
+		util.DebugError("AssessmentRankIsBetter oldRank.Msg unmarshal:", err)
+		return true
 	}
+	return newinfo.Status.IsBetter(oldinfo.Status)
 }

@@ -182,18 +182,17 @@ func RankBatchUpdateOrInsertIfBetter(session *database.Session, ranks []model.Ra
 }
 
 func RankIsBetter(newRank *model.RankInfo, oldRank *model.RankInfo) bool {
-	// win 优先：true > false
-	if newRank.Win != oldRank.Win {
-		return newRank.Win
+	//反序列化
+	var newinfo, oldinfo model.RankMsgInfo
+	err := json.Unmarshal([]byte(newRank.Msg), &newinfo)
+	if err != nil {
+		util.DebugError("RankIsBetter newRank.Msg unmarshal:", err)
+		return false
 	}
-	// win 相同，frame 越小越好
-	if newRank.Frame != oldRank.Frame {
-		return newRank.Frame < oldRank.Frame
+	err = json.Unmarshal([]byte(oldRank.Msg), &oldinfo)
+	if err != nil {
+		util.DebugError("RankIsBetter oldRank.Msg unmarshal:", err)
+		return true
 	}
-	// frame相同，score 越大越好
-	if newRank.Score != oldRank.Score {
-		return newRank.Score > oldRank.Score
-	}
-	// 完全一样，不更新
-	return false
+	return newinfo.Status.IsBetter(oldinfo.Status)
 }

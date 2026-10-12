@@ -138,6 +138,9 @@ return value`
 func RedisExist(ctx context.Context, key string) (bool, error) {
 	count, err := redisRDB.Exists(ctx, key).Result()
 	if err != nil {
+		if err == redis.Nil {
+			return false, nil
+		}
 		return false, err
 	}
 	return count > 0, nil

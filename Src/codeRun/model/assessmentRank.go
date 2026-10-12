@@ -5,14 +5,6 @@ import (
 	"time"
 )
 
-const (
-	AssessmenrRankStatus_Error       = -2
-	AssessmenrRankStatus_CompileFail = -1
-	AssessmenrRankStatus_Crash       = 0
-	AssessmenrRankStatus_Fail        = 1
-	AssessmenrRankStatus_Win         = 2
-)
-
 type AssessmentRankMsgInfo struct {
 	Status CodeRunStatusInfo `json:"status"`
 }
