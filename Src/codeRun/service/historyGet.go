@@ -53,19 +53,23 @@ func GetHistoryRangeById(id string, beg int, end int, class ...int) ([]SubmitRec
 	for _, v := range historyRecords {
 		record := SubmitRecord{}
 		history := v
-		//
+		//获取文件大小的信息(如果无则标记为0)
 		headerInfo := fileInfos[history.Header]
 		sourceInfo := fileInfos[history.Source]
+		headerSize := int64(0)
+		sourceSize := int64(0)
 		if headerInfo == nil || sourceInfo == nil {
 			unExpectedInfo = append(unExpectedInfo, util.NewError(" file not exist: "+history.Header+" or "+history.Source))
-			continue //跳过这个记录
+		} else {
+			headerSize = headerInfo.Size
+			sourceSize = sourceInfo.Size
 		}
-		//
+		//编辑数据
 		record.ID = history.ID
 		record.Header = history.Header
 		record.Source = history.Source
-		record.HeaderSize = headerInfo.Size
-		record.SourceSize = sourceInfo.Size
+		record.HeaderSize = headerSize
+		record.SourceSize = sourceSize
 		record.Indices = history.Indices
 		record.Description = history.Description
 		record.SubmitTime = history.SubmitTime

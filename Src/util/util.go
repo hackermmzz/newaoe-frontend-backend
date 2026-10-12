@@ -285,9 +285,8 @@ func JsonString(data string, addr interface{}) bool {
 
 // 获取json格式的数据
 func JsonCtx(ctx *gin.Context, addr interface{}) bool {
-	const maxJSONBodySize int64 = 10 * 1024 * 1024
+	const maxJSONBodySize int64 = 10 * 1024 * 1024 //默认后端不会走io，所以数据量不能超过10MB
 	ctx.Request.Body = http.MaxBytesReader(ctx.Writer, ctx.Request.Body, maxJSONBodySize)
-
 	data_bytes, err := ctx.GetRawData()
 	if err != nil {
 		DebugError("JsonCtx:读取请求体失败:", err)
