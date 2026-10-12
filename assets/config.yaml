@@ -73,7 +73,7 @@ user:
   userOtherFolder: "other"          #存放一些其他文件
 # Cookie 配置
 cookie:
-  expireTime: 18000                 # Cookie过期时间 单位：秒（5小时）
+  expireTime: 86400                 # Cookie过期时间 单位：秒（24小时）
   tokenName: "nxd_tooken"           # Token名称（用于定位SessionID）
 
 # OSS配置

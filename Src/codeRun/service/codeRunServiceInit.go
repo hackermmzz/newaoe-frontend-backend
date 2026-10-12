@@ -100,7 +100,19 @@ func codeRunStatusUpdateQueueProcess() {
 	//初始化Queue
 	CodeRunStatusUpdateQueue := make([]int, 0, config.Conf.Code.CodeRunStatusUpdateQueueSizeThreshold)
 	// 批量更新函数
-	fn := func() error {
+	fn := func() (err error) {
+		defer func() {
+			if err == nil {
+				return
+			}
+			//如果失败，那么重新加入消息队列
+			for _, indices := range CodeRunStatusUpdateQueue {
+				if err := pushCodeRunStatusNeedUpdateToQueue(int64(indices), 3); err != nil {
+					//如果重新push失败，那么直接重新加入到本地队列
+					CodeRunStatusUpdateQueue = append(CodeRunStatusUpdateQueue, indices)
+				}
+			}
+		}()
 		//更新运行记录
 		infos, err := BatchUpdateCodeRunStatus(CodeRunStatusUpdateQueue)
 		if err != nil {

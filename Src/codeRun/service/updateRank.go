@@ -32,7 +32,8 @@ func UpdateRank(dt []model.CodeRunInfo) error {
 		case model.Code_CommonSubmit, model.Code_ReRunSubmit:
 			commonRank = append(commonRank, v)
 		default:
-			return util.NewError("UpdateRank未知类型", v)
+			util.DebugError("UpdateRank未知类型:", v)
+			continue //丢弃这条数据
 		}
 	}
 	//更新普通提交排行榜
@@ -75,7 +76,8 @@ func updateCommonSubmitRank(session *database.Session, dt []model.CodeRunInfo) e
 		var codeRunStatusInfo model.CodeRunStatusInfo
 		err = codeRunStatusInfo.Unmarshal([]byte(status)) //redis的数据肯定对
 		if err != nil {
-			return errors.New("Why codeRunStatusInfo.Unmarshal([]byte(status)) fail?")
+			util.DebugError("UpdateCommonSubmitRank: Unmarshal failed:", err)
+			continue //丢弃这条数据
 		}
 		//检测状态码，如果不是在运行就不管
 		if codeRunStatusInfo.Status < model.Code_Status_Running {
@@ -88,7 +90,8 @@ func updateCommonSubmitRank(session *database.Session, dt []model.CodeRunInfo) e
 			continue //读取失败，跳过
 		}
 		if infoPtr == nil {
-			return errors.New("为什么这里是空指针!")
+			util.DebugError("为什么这里是空指针!")
+			continue //丢弃这条数据
 		}
 		info = *infoPtr
 		//最终数据
