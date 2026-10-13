@@ -96,11 +96,11 @@ func ForumAnnouncement(ctx *gin.Context) {
 		return
 	}
 	//生成文件urls
-	fileUrls := upload.UploadPostPolicyFiles(announcement.Files, util.NewArray(len(announcement.Files), time.Minute*30), 0, config.Conf.Server.MaxFilsSizeUserUpload)
+	fileUrls := upload.UploadPostPolicyFiles(filePaths, util.NewArray(len(announcement.Files), time.Minute*30), 0, config.Conf.Server.MaxFilsSizeUserUpload)
 	//生成视频url
-	videoUrls := upload.UploadPostPolicyFiles(announcement.Videos, util.NewArray(len(announcement.Videos), time.Minute*60), 0, 100*1024*1024) //视频最大100MB
+	videoUrls := upload.UploadPostPolicyFiles(videoPaths, util.NewArray(len(announcement.Videos), time.Minute*60), 0, 100*1024*1024) //视频最大100MB
 	//生成图片url
-	imageUrls := upload.UploadPostPolicyFiles(announcement.Images, util.NewArray(len(announcement.Images), time.Minute*30), 0, config.Conf.Server.MaxFilsSizeUserUpload)
+	imageUrls := upload.UploadPostPolicyFiles(imagePaths, util.NewArray(len(announcement.Images), time.Minute*30), 0, config.Conf.Server.MaxFilsSizeUserUpload)
 	//检查是否生成成功
 	if len(fileUrls) != len(announcement.Files) || len(videoUrls) != len(announcement.Videos) || len(imageUrls) != len(announcement.Images) {
 		util.ResponseNAK_MSG(ctx, "生成上传链接失败!", nil)
