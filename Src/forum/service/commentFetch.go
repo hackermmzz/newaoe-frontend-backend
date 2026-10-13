@@ -21,7 +21,7 @@ func ForumCommentFetch(beg int, end int) ([]ForumCommentInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	ret := make([]ForumCommentInfo, 0, len(res))
+	ret := make([]ForumCommentInfo, len(res))
 	for i, v := range res {
 		//获取用户头像
 		avatar, err := userDao.UserGetAvatar(nil, v.ID)
