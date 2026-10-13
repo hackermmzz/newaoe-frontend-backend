@@ -69,7 +69,7 @@ func ForumAnnouncement(ctx *gin.Context) {
 		return
 	}
 	//生成存储路径
-	baseDir := filepath.Join(config.Conf.OSS.PublicBaseFolder, config.Conf.Other.PublicOtherFolder, "forum", id, fmt.Sprintf("%v_%v", util.GetTimeNanoStr()), util.UUID())
+	baseDir := filepath.Join(config.Conf.OSS.PublicBaseFolder, config.Conf.Other.PublicOtherFolder, "forum", id, fmt.Sprintf("%v_%v", util.GetTimeNanoStr(), util.UUID()))
 	contentPath := filepath.Join(baseDir, "content.html")
 	filePaths := make([]string, len(announcement.Files))
 	videoPaths := make([]string, len(announcement.Videos))
