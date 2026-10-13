@@ -10,7 +10,7 @@ import (
 )
 
 func ForumCommentFetch(ctx *gin.Context) {
-	//
+	//获取范围
 	range_ := ctx.Query("range")
 	parts := strings.Split(range_, ":")
 	if len(parts) != 2 {
@@ -23,9 +23,15 @@ func ForumCommentFetch(ctx *gin.Context) {
 		util.ResponseNAK_MSG(ctx, "参数传递错误!", "")
 		return
 	}
-
+	//获取帖子索引
+	indicesStr := ctx.Query("indices")
+	indices, err := strconv.ParseInt(indicesStr, 10, 64)
+	if err != nil {
+		util.ResponseNAK_MSG(ctx, "参数传递错误!", "")
+		return
+	}
 	// 获取数据
-	res, err := service.ForumCommentFetch(beg, end+1)
+	res, err := service.ForumCommentFetch(indices, beg, end+1)
 	if err != nil {
 		util.ResponseNAK_MSG(ctx, err.Error(), nil)
 		return

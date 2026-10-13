@@ -43,8 +43,11 @@ func ForumCommentInsert(session *database.Session, comment *model.ForumComment) 
 	return comment.Indices, nil
 }
 
-// ForumCommentGetByRange 按索引倒序查询评论，不包含 end。
-func ForumCommentGetByRange(session *database.Session, beg int, end int) (ret []model.ForumComment, err error) {
+// ForumCommentGetByRange 按索引倒序查询指定公告的评论，不包含 end。
+func ForumCommentGetByRange(session *database.Session, indices int64, beg int, end int) (ret []model.ForumComment, err error) {
+	if indices <= 0 {
+		return nil, util.NewError("indices<=0!")
+	}
 	if beg < 0 || beg >= end {
 		return nil, util.NewError("beg<0 or beg>=end!")
 	}
@@ -56,7 +59,7 @@ func ForumCommentGetByRange(session *database.Session, beg int, end int) (ret []
 		if cacheErr != nil {
 			return nil, cacheErr
 		}
-		key = fmt.Sprintf("ForumCommentGetByRange:%d:%d:%d", version, beg, end)
+		key = fmt.Sprintf("ForumCommentGetByRange:%d:%d:%d:%d", version, indices, beg, end)
 		data, exist, cacheErr := redis.RedisGet(context.Background(), key)
 		if cacheErr != nil {
 			return nil, cacheErr
@@ -90,7 +93,10 @@ func ForumCommentGetByRange(session *database.Session, beg int, end int) (ret []
 		})
 	}()
 
-	err = session.Desc("indices").Limit(end-beg, beg).Find(&ret)
+	err = session.Where("indicesForForumAnnoucement = ?", indices).
+		Desc("indices").
+		Limit(end-beg, beg).
+		Find(&ret)
 	if err != nil {
 		return nil, err
 	}

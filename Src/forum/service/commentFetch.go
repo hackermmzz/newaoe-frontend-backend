@@ -12,12 +12,12 @@ type ForumCommentInfo struct {
 	Avatar string `json:"avatar"`
 }
 
-func ForumCommentFetch(beg int, end int) ([]ForumCommentInfo, error) {
+func ForumCommentFetch(indices int64, beg int, end int) ([]ForumCommentInfo, error) {
 	// 校验范围
 	if e := util.ValidateInclusiveRange(beg, end); e != nil {
 		return nil, e
 	}
-	res, err := dao.ForumCommentGetByRange(nil, beg, end)
+	res, err := dao.ForumCommentGetByRange(nil, indices, beg, end)
 	if err != nil {
 		return nil, err
 	}
