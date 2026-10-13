@@ -18,23 +18,23 @@ import (
 	"golang.org/x/net/html/atom"
 )
 
-func SafeUploadContent(contentPath string, content string, fileMap, imageMap, videoMap map[string]string) error {
+func SafeUploadContent(contentPath string, content string, fileMap, imageMap, videoMap map[string]string) (string, error) {
 	//检查是否为空
 	if strings.TrimSpace(content) == "" {
-		return fmt.Errorf("内容不能为空")
+		return "", fmt.Errorf("内容不能为空")
 	}
 	//安全过滤前端上传的html，并把图片、视频、文件链接换成真实路径
 	safeHTML, err := sanitizeForumContent(content, fileMap, imageMap, videoMap)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if strings.TrimSpace(safeHTML) == "" {
-		return fmt.Errorf("内容不能为空")
+		return "", fmt.Errorf("内容不能为空")
 	}
 	if !upload.UploadData(contentPath, []byte(safeHTML), "text/html; charset=utf-8") {
-		return fmt.Errorf("内容上传失败")
+		return "", fmt.Errorf("内容上传失败")
 	}
-	return nil
+	return safeHTML, nil
 }
 
 var (

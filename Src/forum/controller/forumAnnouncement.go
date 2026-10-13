@@ -2,7 +2,6 @@ package controller
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"newaoe/Src/common/upload"
 	"newaoe/Src/config"
@@ -12,8 +11,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"newaoe/Src/forum/dao"
-	"newaoe/Src/forum/model"
 	"newaoe/Src/forum/service"
 
 	"github.com/gin-gonic/gin"
@@ -96,7 +93,7 @@ func ForumAnnouncement(ctx *gin.Context) {
 		imageMap[v] = imagePaths[i]
 	}
 	//过滤前端上传过来的文件并且后端直接上传
-	err := service.SafeUploadContent(contentPath, announcement.Content, fileMap, imageMap, videoMap)
+	safeHTML, err := service.SafeUploadContent(contentPath, announcement.Content, fileMap, imageMap, videoMap)
 	if err != nil {
 		util.ResponseNAK_MSG(ctx, "内容上传失败!", nil)
 		return
@@ -119,6 +116,7 @@ func ForumAnnouncement(ctx *gin.Context) {
 		"title":       announcement.Title,
 		"contentPath": contentPath,
 		"id":          id,
+		"content":     safeHTML,
 	})
 	ok, err := redis.RedisSetNX(ctx, key, cacheBytes, time.Minute*30)
 	if !ok || err != nil {
@@ -169,21 +167,14 @@ func ForumAnnouncementACK(ctx *gin.Context) {
 	title, ok0 := dataCache["title"]
 	id, ok1 := dataCache["id"]
 	contentPath, ok2 := dataCache["contentPath"]
-	if !ok0 || !ok1 || !ok2 {
+	content, ok3 := dataCache["content"]
+	if !ok0 || !ok1 || !ok2 || !ok3 {
 		util.ResponseNAK_MSG(ctx, "数据格式错误!", nil)
 		return
 	}
-	//写入数据库
-	indices, err := dao.ForumAnnouncementInsert(nil, &model.ForumAnnouncement{
-		ID:          id.(string),
-		Title:       title.(string),
-		ContentPath: contentPath.(string),
-		SubmitTime:  util.UTC_Time(),
-	})
-	if err != nil || indices == 0 {
-		if err == nil {
-			err = errors.New("写入数据库失败!")
-		}
+	//写入记录
+	err = service.ForumAnnouncementAdd(id.(string), title.(string), contentPath.(string), content.(string))
+	if err != nil {
 		util.ResponseNAK_MSG(ctx, err.Error(), nil)
 		return
 	}
