@@ -115,7 +115,7 @@ func ForumAnnouncement(ctx *gin.Context) {
 		"id":          id,
 	}, time.Minute*30)
 	if !ok || err != nil {
-		util.ResponseNAK_MSG(ctx, "缓存上传失败!", nil)
+		util.ResponseNAK_MSG(ctx, err.Error(), nil)
 		return
 	}
 	//返回成功
