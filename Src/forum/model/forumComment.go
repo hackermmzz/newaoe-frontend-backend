@@ -7,7 +7,7 @@ type ForumComment struct {
 	IndicesForForumAnnoucement int64     `json:"indicesForForumAnnoucement" xorm:"notnull 'indicesForForumAnnoucement'"`
 	ID                         string    `json:"id" xorm:"varchar(50) notnull 'id'"`
 	Content                    string    `json:"content" xorm:"text 'content'"`
-	SubmitTime                 time.Time `json:"submittime"`
+	SubmitTime                 time.Time `json:"submittime" xorm:"notnull 'submitTime'"`
 }
 
 func (p ForumComment) TableName() string {
