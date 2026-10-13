@@ -15,8 +15,8 @@ var (
 )
 
 // 用户下载文件接口(返回下载链接),如果attachment为true表示需要当作附件下载
-func DownloadFile(filePath string, expireDuration time.Duration, attachment bool) (string, int) {
-	if config.Conf.CDN.CDNSwitch {
+func DownloadFile(filePath string, expireDuration time.Duration, attachment bool, forceCDN bool) (string, int) {
+	if config.Conf.CDN.CDNSwitch || forceCDN {
 		//走cdn
 		url, err := url.JoinPath(config.Conf.CDN.Host, filePath)
 		if err != nil {

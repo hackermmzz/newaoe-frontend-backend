@@ -23,9 +23,11 @@ func RouterConfig(Engine *gin.Engine) {
 		subrouter.VIPGroup_Init(api_gorup)
 		//下载路由
 		subrouter.DownloadGroup_Init(api_gorup)
+		//论坛路由
+		subrouter.ForumGroup_Init(api_gorup)
 	}
 }
 
 func configApiRouter(group *gin.RouterGroup) {
-	group.GET("checkLoginStatus",filter.FilterCookieCheck())
+	group.GET("checkLoginStatus", filter.FilterCookieCheck())
 }

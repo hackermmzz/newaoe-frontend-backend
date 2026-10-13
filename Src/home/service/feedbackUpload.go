@@ -64,9 +64,9 @@ func FeedbackGetUploadUrls(id string, images []string, files []string, videos []
 	}
 	//生成上传链接
 	expire_time := time.Duration(60) * time.Minute
-	imagesurl := upload.UploadFiles(imagespath, util.NewArray(len(images), expire_time), 0, config.Conf.Server.MaxFilsSizeUserUpload)
-	filesurl := upload.UploadFiles(filespath, util.NewArray(len(files), expire_time), 0, config.Conf.Server.MaxFilsSizeUserUpload)
-	videosurl := upload.UploadFiles(videospath, util.NewArray(len(videos), expire_time), 0, 100*1024*1024) //视频大小限制100MB
+	imagesurl := upload.UploadPostPolicyFiles(imagespath, util.NewArray(len(images), expire_time), 0, config.Conf.Server.MaxFilsSizeUserUpload)
+	filesurl := upload.UploadPostPolicyFiles(filespath, util.NewArray(len(files), expire_time), 0, config.Conf.Server.MaxFilsSizeUserUpload)
+	videosurl := upload.UploadPostPolicyFiles(videospath, util.NewArray(len(videos), expire_time), 0, 100*1024*1024) //视频大小限制100MB
 	//生成下载链接
 	downloadExpireTime := time.Duration(7*24) * time.Hour
 	imagesDownloadurls := oss.OssGetDownloadFileUrls(imagespath, downloadExpireTime, false)

@@ -6,6 +6,6 @@ import (
 )
 
 // 下载公共资源
-func PublicFileDownload(filepath string, id string, attachment bool) (string, int) {
-	return DownloadFile(filepath, time.Duration(config.Conf.Other.PublicFileDownloadUrlExpireTime)*time.Minute, attachment)
+func PublicFileDownload(filepath string, attachment bool, forceCDN bool) (string, int) {
+	return DownloadFile(filepath, time.Duration(config.Conf.Other.PublicFileDownloadUrlExpireTime)*time.Minute, attachment, forceCDN)
 }

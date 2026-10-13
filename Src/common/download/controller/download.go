@@ -39,13 +39,13 @@ func FileDownload(ctx *gin.Context) {
 	switch category {
 	//公共文件下载
 	case config.Conf.OSS.PublicBaseFolder:
-		url, download_type = service.PublicFileDownload(filePath, id, attachment)
+		url, download_type = service.PublicFileDownload(filePath, attachment, false)
 	//私人文件下载
 	case config.Conf.OSS.PrivateBaseFolder:
-		url, download_type = service.PrivateFileDownload(filePath, id, attachment)
+		url, download_type = service.PrivateFileDownload(filePath, attachment, false)
 	//其他文件
 	default:
-		url, download_type = service.PublicFileDownload(filePath, id, attachment)
+		url, download_type = service.PublicFileDownload(filePath, attachment, false)
 	}
 	//返回下载链接
 	if url == "" {

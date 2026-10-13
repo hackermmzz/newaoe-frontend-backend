@@ -35,7 +35,7 @@ func UploadPostPolicyFile(filePath string, expireDuration time.Duration, minSize
 }
 
 // 文件上传接口(返回上传链接)
-func UploadFiles(filePath []string, expireDuration []time.Duration, minSize int64, maxSize int64) []*oss.UploadPolicyResult {
+func UploadPostPolicyFiles(filePath []string, expireDuration []time.Duration, minSize int64, maxSize int64) []*oss.UploadPolicyResult {
 	urls := oss.GetUploadPostPolicyUrls(filePath, expireDuration, minSize, maxSize)
 	if urls == nil {
 		util.DebugError("UploadFiles:生成上传链接失败")
