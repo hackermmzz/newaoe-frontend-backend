@@ -15,6 +15,6 @@ func ForumGroup_Init(router *gin.RouterGroup) {
 	forumGroup.POST("/announcement", filter.FilterForumAnnouncement(), controller.ForumAnnouncement)
 	forumGroup.POST("/announcementACK", controller.ForumAnnouncementACK)
 	forumGroup.GET("/forumFetch", controller.ForumFetch)
-	forumGroup.POST("/comment", controller.ForumComment)
+	forumGroup.POST("/comment", filter.FilterForumComment(), controller.ForumComment)
 	forumGroup.GET("/commentFetch", controller.ForumCommentFetch)
 }

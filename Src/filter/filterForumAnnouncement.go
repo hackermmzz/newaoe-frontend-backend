@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"newaoe/Src/redis"
+	"newaoe/Src/user/dao"
+	"newaoe/Src/user/model"
 	"newaoe/Src/util"
 
 	"github.com/gin-gonic/gin"
@@ -29,7 +31,14 @@ func FilterForumAnnouncement() gin.HandlerFunc {
 			ctx.Abort()
 			return
 		}
-		id := userInfo["id"]
+		id := userInfo["id"].(string)
+		//判断是否是VIP用户，如果是则不拦截
+		user, err := dao.UserGet(nil, id)
+		if err == nil && user != nil && user.Vip >= model.VIP_SUPER {
+			ctx.Next()
+			return
+		}
+		//
 		key := fmt.Sprintf("forum_announcement:%s", id)
 		expireSeconds := int64(3 * 60)
 		ttl, err := redis.RedisLua(
