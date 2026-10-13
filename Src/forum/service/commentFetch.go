@@ -27,6 +27,7 @@ func ForumCommentFetch(beg int, end int) ([]ForumCommentInfo, error) {
 		avatar, err := userDao.UserGetAvatar(nil, v.ID)
 		if err != nil {
 			avatar = ""
+			util.DebugError("为什么获取用户头像失败了呢?", err)
 		}
 		ret[i] = ForumCommentInfo{
 			ForumComment: v,
