@@ -24,7 +24,7 @@ func ForumFetch(beg int, end int) ([]ForumAnnouncementInfo, error) {
 		return nil, err
 	}
 	// 处理数据
-	ret := make([]ForumAnnouncementInfo, 0, len(res))
+	ret := make([]ForumAnnouncementInfo, len(res))
 	for i, v := range res {
 		//获取用户头像
 		avatar, err := userDao.UserGetAvatar(nil, v.ID)
