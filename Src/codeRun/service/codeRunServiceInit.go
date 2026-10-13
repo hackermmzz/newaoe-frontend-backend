@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/binary"
 	"errors"
+	"newaoe/Src/codeRun/model"
 	"newaoe/Src/config"
 	"newaoe/Src/mq"
 	"newaoe/Src/util"
@@ -100,21 +101,22 @@ func codeRunStatusUpdateQueueProcess() {
 	//初始化Queue
 	CodeRunStatusUpdateQueue := make([]int, 0, config.Conf.Code.CodeRunStatusUpdateQueueSizeThreshold)
 	// 批量更新函数
-	fn := func() (err error) {
+	fn := func(indices []int) (err error) {
+		var infos []model.CodeRunInfo
 		defer func() {
 			if err == nil {
 				return
 			}
 			//如果失败，那么重新加入消息队列
-			for _, indices := range CodeRunStatusUpdateQueue {
-				if err := pushCodeRunStatusNeedUpdateToQueue(int64(indices), 3); err != nil {
+			for _, info := range infos {
+				if err := pushCodeRunStatusNeedUpdateToQueue(int64(info.Indices), 3); err != nil {
 					//如果重新push失败，那么直接重新加入到本地队列
-					CodeRunStatusUpdateQueue = append(CodeRunStatusUpdateQueue, indices)
+					CodeRunStatusUpdateQueue = append(CodeRunStatusUpdateQueue, info.Indices)
 				}
 			}
 		}()
 		//更新运行记录
-		infos, err := BatchUpdateCodeRunStatus(CodeRunStatusUpdateQueue)
+		infos, err = BatchUpdateCodeRunStatus(indices)
 		if err != nil {
 			return util.NewError("BatchUpdateCodeRunStatus:", err)
 		}
@@ -137,15 +139,19 @@ func codeRunStatusUpdateQueueProcess() {
 		case d := <-CodeRunStatusUpdateChannel:
 			CodeRunStatusUpdateQueue = append(CodeRunStatusUpdateQueue, d)
 			if len(CodeRunStatusUpdateQueue) >= config.Conf.Code.CodeRunStatusUpdateQueueSizeThreshold {
-				err = fn()
+				data := make([]int, len(CodeRunStatusUpdateQueue))
+				copy(data, CodeRunStatusUpdateQueue)
 				CodeRunStatusUpdateQueue = CodeRunStatusUpdateQueue[:0]
+				err = fn(data)
 				timer.Reset(duration)
 			}
 
 		case <-timer.C:
 			if len(CodeRunStatusUpdateQueue) > 0 {
-				err = fn()
+				data := make([]int, len(CodeRunStatusUpdateQueue))
+				copy(data, CodeRunStatusUpdateQueue)
 				CodeRunStatusUpdateQueue = CodeRunStatusUpdateQueue[:0]
+				err = fn(data)
 			}
 		}
 		// 处理错误
