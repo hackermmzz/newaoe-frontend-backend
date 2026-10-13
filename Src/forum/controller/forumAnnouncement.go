@@ -109,11 +109,12 @@ func ForumAnnouncement(ctx *gin.Context) {
 	//生成唯一key
 	key := fmt.Sprintf("ForumAnnouncementController:%s", id)
 	//上传缓存
-	ok, err := redis.RedisSetNX(ctx, key, map[string]interface{}{
+	cacheBytes, _ := json.Marshal(map[string]interface{}{
 		"title":       announcement.Title,
 		"contentPath": contentPath,
 		"id":          id,
-	}, time.Minute*30)
+	})
+	ok, err := redis.RedisSetNX(ctx, key, cacheBytes, time.Minute*30)
 	if !ok || err != nil {
 		util.ResponseNAK_MSG(ctx, err.Error(), nil)
 		return
