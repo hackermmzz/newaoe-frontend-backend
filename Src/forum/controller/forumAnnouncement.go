@@ -76,7 +76,6 @@ func ForumAnnouncement(ctx *gin.Context) {
 		id,
 		fmt.Sprintf("%v_%v", util.GetTimeNanoStr(), util.UUID()),
 	)
-	fmt.Println(baseDir)
 	contentPath := filepath.Join(baseDir, "content.html")
 	filePaths := make([]string, len(announcement.Files))
 	videoPaths := make([]string, len(announcement.Videos))
@@ -114,7 +113,7 @@ func ForumAnnouncement(ctx *gin.Context) {
 		return
 	}
 	//生成唯一key
-	key := fmt.Sprintf("ForumAnnouncementController:%s", id)
+	key := fmt.Sprintf("ForumAnnouncementController:%s_%v", id, util.UUID())
 	//上传缓存
 	cacheBytes, _ := json.Marshal(map[string]interface{}{
 		"title":       announcement.Title,
