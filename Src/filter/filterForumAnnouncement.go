@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"newaoe/Src/redis"
-	"newaoe/Src/user/dao"
 	"newaoe/Src/user/model"
 	"newaoe/Src/util"
 
@@ -33,8 +32,8 @@ func FilterForumAnnouncement() gin.HandlerFunc {
 		}
 		id := userInfo["id"].(string)
 		//判断是否是VIP用户，如果是则不拦截
-		user, err := dao.UserGet(nil, id)
-		if err == nil && user != nil && user.Vip >= model.VIP_SUPER {
+		vip := int(userInfo["vip"].(float64))
+		if vip >= model.VIP_SUPER {
 			ctx.Next()
 			return
 		}

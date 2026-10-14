@@ -13,6 +13,15 @@ import (
 
 const forumAnnouncementCacheVersionKey = "ForumAnnouncementCacheVersion"
 
+type forumAnnouncementPublisherCache struct {
+	Exist bool   `json:"exist"`
+	ID    string `json:"id"`
+}
+
+func forumAnnouncementPublisherCacheKey(indices int64) string {
+	return fmt.Sprintf("ForumAnnouncementPublisher:%d", indices)
+}
+
 func getForumAnnouncementCacheVersion() (int, error) {
 	return redis.RedisGetVersion(context.Background(), forumAnnouncementCacheVersionKey)
 }
@@ -20,6 +29,12 @@ func getForumAnnouncementCacheVersion() (int, error) {
 func incrForumAnnouncementCacheVersion() {
 	if _, err := redis.RedisIncrVersion(context.Background(), forumAnnouncementCacheVersionKey); err != nil {
 		util.DebugError("ForumAnnouncement cache incrVersion:", err)
+	}
+}
+
+func deleteForumAnnouncementPublisherCache(indices int64) {
+	if _, err := redis.RedisDel(context.Background(), forumAnnouncementPublisherCacheKey(indices)); err != nil {
+		util.DebugError("ForumAnnouncement publisher cache del:", err)
 	}
 }
 
@@ -33,7 +48,10 @@ func ForumAnnouncementInsert(session *database.Session, announcement *model.Foru
 		if err != nil {
 			return
 		}
-		session.PostTransactionAdd(incrForumAnnouncementCacheVersion)
+		session.PostTransactionAdd(func() {
+			deleteForumAnnouncementPublisherCache(indices)
+			incrForumAnnouncementCacheVersion()
+		})
 	}()
 
 	_, err = session.Insert(announcement)
@@ -95,4 +113,74 @@ func ForumAnnouncementGetByRange(session *database.Session, beg int, end int) (r
 		return nil, err
 	}
 	return ret, nil
+}
+
+func ForumAnnouncementIsPublisher(session *database.Session, indices int64, id string) (ret bool, err error) {
+	useCache := database.CacheAvailable(session)
+	key := forumAnnouncementPublisherCacheKey(indices)
+	var publisher forumAnnouncementPublisherCache
+	if useCache {
+		data, exist, cacheErr := redis.RedisGet(context.Background(), key)
+		if cacheErr != nil {
+			return false, cacheErr
+		}
+		if exist {
+			if err := json.Unmarshal(data, &publisher); err != nil {
+				return false, err
+			}
+			return publisher.Exist && publisher.ID == id, nil
+		}
+	}
+
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
+
+	defer func() {
+		if err != nil || !useCache {
+			return
+		}
+		session.PostTransactionAdd(func() {
+			data, marshalErr := json.Marshal(publisher)
+			if marshalErr != nil {
+				util.DebugError("ForumAnnouncementIsPublisher cache marshal:", marshalErr)
+				return
+			}
+			if _, cacheErr := redis.RedisSet(context.Background(), key, data, 5*time.Minute); cacheErr != nil {
+				util.DebugError("ForumAnnouncementIsPublisher cache set:", cacheErr)
+			}
+		})
+	}()
+
+	var announcement model.ForumAnnouncement
+	publisher.Exist, err = session.ID(indices).Cols("id").Get(&announcement)
+	if err != nil {
+		return false, err
+	}
+	publisher.ID = announcement.ID
+	return publisher.Exist && publisher.ID == id, nil
+}
+
+func ForumAnnouncementRemove(session *database.Session, indices int64) (removed bool, err error) {
+	if session == nil {
+		session = database.NewSession()
+		defer session.Close()
+	}
+
+	defer func() {
+		if err != nil || !removed {
+			return
+		}
+		session.PostTransactionAdd(func() {
+			deleteForumAnnouncementPublisherCache(indices)
+			incrForumAnnouncementCacheVersion()
+		})
+	}()
+
+	affected, err := session.ID(indices).Delete(&model.ForumAnnouncement{})
+	if err != nil {
+		return false, err
+	}
+	return affected > 0, nil
 }

@@ -3,6 +3,7 @@ package filter
 import (
 	"encoding/json"
 	"newaoe/Src/config"
+	"newaoe/Src/user/dao"
 	UserModel "newaoe/Src/user/model"
 	"newaoe/Src/util"
 
@@ -33,6 +34,21 @@ func FilterCookieCheck() gin.HandlerFunc {
 		//验证cookie是否合法
 		expire_time, ok := data["expire_time"].(string)
 		if !ok || !util.CheckTokenLegal(expire_time) {
+			util.Response401_NotAuth(c, "cookie过期或者错误!")
+			c.Abort()
+			return
+		}
+		//判断vip是否还对应的上(如果对不上说明cookie过期了)
+		user, err := dao.UserGet(nil, student.ID)
+		if err != nil || user == nil {
+			util.DebugError("FilterCookieCheck查询用户失败:", err)
+			util.Response401_NotAuth(c, "cookie过期或者错误!")
+			c.Abort()
+			return
+		}
+		real_vip := user.Vip
+		cookie_vip := student.Vip
+		if real_vip != cookie_vip {
 			util.Response401_NotAuth(c, "cookie过期或者错误!")
 			c.Abort()
 			return

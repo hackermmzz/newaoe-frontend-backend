@@ -3,7 +3,6 @@ package controller
 import (
 	"net/http"
 	"newaoe/Src/common/download/service"
-	"newaoe/Src/user/dao"
 	"newaoe/Src/util"
 	"strings"
 
@@ -22,15 +21,9 @@ func DownloadAuth(ctx *gin.Context) {
 
 	//不用管id和vip是否有，如果是公开资源不需要都可以访问
 	id, _ := userInfo["id"].(string)
-	user, err := dao.UserGet(nil, id)
-	if err != nil || user == nil {
-		util.DebugError("查询用户失败:", err)
-		ctx.AbortWithStatus(http.StatusForbidden)
-		return
-	}
-	vip := user.Vip
+	vip := int(userInfo["vip"].(float64))
 	//鉴权
-	ok, err := service.DownloadAuth(id, int(vip), filePath)
+	ok, err := service.DownloadAuth(id, vip, filePath)
 	if err != nil {
 		util.DebugError("DownloadAuth", err)
 		util.ResponseNAK_MSG(ctx, "鉴权失败!", nil)
