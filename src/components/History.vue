@@ -492,8 +492,10 @@ onBeforeUnmount(() => {
 
 // 后端 CodeRunStatusInfo.Status 的可读文案。Data 仅在特定状态下作为附加信息使用。
 const statusLabels = {
+  [config.Code_Status_Unknown]: '未知状态',
   [config.Code_Status_Error]: '服务器异常',
   [config.Code_Status_Wait]: '等待中',
+  [config.Code_Status_OJRecevied]: 'OJ 已接收',
   [config.Code_Status_Compile]: '编译中',
   [config.Code_Status_Compile_Success]: '编译成功',
   [config.Code_Status_Compile_Fail]: '编译失败',

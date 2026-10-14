@@ -180,7 +180,7 @@ export default {
       studentId: '', // 账号将通过网络请求获取
       email: '', // 邮箱将通过网络请求获取
       registDate: '',// 注册日期将通过网络请求获取,
-      vip: 0,
+      vip: config.VIP_NONE,
     });
     
     // 反馈内容、附件和提交状态
@@ -244,7 +244,9 @@ export default {
         if (data.data.id) userInfo.studentId= data.data.id;
         if (data.data.email) userInfo.email = data.data.email;
         if(data.data.registDate) userInfo.registDate = data.data.registDate;
-        if(data.data.vip) userInfo.vip=data.data.vip;
+        const receivedVip = Number(data.data?.vip);
+        const validVipLevels = [config.VIP_TOURIST, config.VIP_NONE, config.VIP_SUPER];
+        userInfo.vip = validVipLevels.includes(receivedVip) ? receivedVip : config.VIP_NONE;
       } catch (error) {
         ElMessage.error(error.message)
         // 可以在这里添加错误提示给用户

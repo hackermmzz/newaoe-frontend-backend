@@ -1,17 +1,18 @@
 
 // 运行类型（Release运行或者重度Debug运行）
-let	Code_ReleaseRun = 0 //release版本运行
-let	Code_DebugRun   = 1 //重度调试模式运行
+const Code_ReleaseRun = 1000 //release版本运行
+const Code_DebugRun   = 2000 //重度调试模式运行
 
 //下载链接类型
-let DownloadURLType_UnKnown = 0 //未知
-let DownloadURLType_OSS     = 1 //oss下载
-let DownloadURLType_CDN     = 2 //cdn下载
+const DownloadURLType_UnKnown = 0 //未知
+const DownloadURLType_OSS     = 2000 //oss下载
+const DownloadURLType_CDN     = 3000 //cdn下载
 
 // 代码运行状态配置
 const Code_Status_Unknown         = 0    //未知状态
 const Code_Status_Error           = 1000 //服务器异常
 const Code_Status_Wait            = 2000 //在等待队列里面
+const Code_Status_OJRecevied      = 2050 //OJ接收成功
 const Code_Status_Compile         = 3000 //编译中
 const Code_Status_Compile_Fail    = 4000 //编译错误
 const Code_Status_Compile_Success = 5000 //编译成功
@@ -23,14 +24,14 @@ const Code_Status_Success         = 9000 //运行胜利
 
 
 //特权配置
-let VIP_TOURIST = -1 //游客用户(只看查看，不可提交)
-let VIP_NONE  = 0 //没有特权
-let VIP_SUPER = 1 //特权用户
+const VIP_TOURIST = 1000
+const VIP_NONE    = 2000
+const VIP_SUPER   = 3000
 
 // 上传的代码类别
-let Code_CommonSubmit     = 1 //普通提交
-let Code_AssessmentSubmit = 2 //考核提交
-let Code_ReRunSubmit= 3      //重新运行提交
+const Code_CommonSubmit     = 1000 //普通提交
+const Code_AssessmentSubmit = 2000 //考核提交
+const Code_ReRunSubmit      = 3000 //重新运行提交
 
 //api配置
 let base_url = "your domain here"; // 默认值
@@ -47,6 +48,8 @@ let teacherFetch_url="your teacherFetch domain here"
 let teacherAdd_url="your teacherAdd domain here"
 const isTestMode =false;
 const HistoryRecordPerPage=10;
+const ForumRecordPerPage=10;
+const ForumCommentRecordPerPage=10;
 // 如果不是测试模式，则使用生产环境的base_url
 if (isTestMode) {
     base_url = "http://localhost:8080/api";
@@ -114,7 +117,15 @@ module.exports = {
     manager_oj_version_update_url: manager_url + "/ojVersionUpdate",
     manager_upload_latest_aoe_package_url: manager_url + "/uploadLatestAOEPackage",
     download_latest_aoe_package_url: base_url + "/home/downloadLatestAOEPackage",
+    forum_announcement_url: base_url + "/forum/announcement",
+    forum_announcement_ack_url: base_url + "/forum/announcementACK",
+    forum_fetch_url: base_url + "/forum/forumFetch",
+    forum_comment_url: base_url + "/forum/comment",
+    forum_comment_fetch_url: base_url + "/forum/commentFetch",
+    forum_remove_announcement_url: base_url + "/forum/removeForumAnnouncement",
     HistoryRecordPerPage,
+    ForumRecordPerPage,
+    ForumCommentRecordPerPage,
     Code_Status_Unknown,
     Code_Status_Error,
     Code_Status_Wait,
@@ -124,5 +135,6 @@ module.exports = {
     Code_Status_Running,
     Code_Status_Success,
     Code_Status_Fail,
+    Code_Status_OJRecevied,
     Code_Status_Crash,
 };

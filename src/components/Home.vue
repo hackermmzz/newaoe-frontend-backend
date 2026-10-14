@@ -76,6 +76,11 @@ export default {
           path: '/home/ranking'
         },
         {
+          name: '论坛',
+          description: '浏览帖子、分享内容与参与讨论',
+          path: '/home/forum'
+        },
+        {
           name: '管理平台',
           description: '查看学生信息、提交历史及反馈记录',
           path: '/home/manager',
@@ -91,18 +96,18 @@ export default {
   },
   computed: {
     isVipUser() {
-      return Number(this.userVip) >= Number(config.VIP_SUPER);
+      return Number(this.userVip) === Number(config.VIP_SUPER);
     },
-    isTouristOrLower() {
+    isTourist() {
       return this.userVip !== null
-        && Number(this.userVip) <= Number(config.VIP_TOURIST);
+        && Number(this.userVip) === Number(config.VIP_TOURIST);
     },
     visibleMenuItems() {
       if (this.userVip === null) return [];
       return this.menuItems.filter(item => {
         if (item.requiresVip && !this.isVipUser) return false;
-        if (this.isTouristOrLower) {
-          return ['/home/student-home', '/home/ranking', '/home/settings'].includes(item.path);
+        if (this.isTourist) {
+          return ['/home/student-home', '/home/ranking', '/home/forum', '/home/settings'].includes(item.path);
         }
         return true;
       });
@@ -140,13 +145,15 @@ export default {
         });
         const data = await response.json();
         if (response.ok && data?.status) {
-          this.userVip = data?.data?.vip ?? data?.user?.vip ?? 0;
+          const receivedVip = Number(data?.data?.vip ?? data?.user?.vip);
+          const validVipLevels = [config.VIP_TOURIST, config.VIP_NONE, config.VIP_SUPER];
+          this.userVip = validVipLevels.includes(receivedVip) ? receivedVip : config.VIP_NONE;
         } else {
-          this.userVip = 0;
+          this.userVip = config.VIP_NONE;
         }
         this.ensureAllowedRoute();
       } catch (error) {
-        this.userVip = 0;
+        this.userVip = config.VIP_NONE;
         this.ensureAllowedRoute();
       }
     }

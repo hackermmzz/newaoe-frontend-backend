@@ -12,6 +12,9 @@ import AssessmentSubmission from './components/AssessmentSubmission.vue'
 import SystemBoard from './components/SystemBoard.vue'
 import Ranking from './components/Ranking.vue'
 import AssessmentRank from './components/AssessmentRank.vue'
+import Forum from './components/Forum.vue'
+import ForumEditor from './components/ForumEditor.vue'
+import ForumPost from './components/ForumPost.vue'
 import ManagerPage from './components/ManagerPage.vue'
 import config from './config'
 // 可以先导入一个空组件作为其他页面的占位
@@ -46,6 +49,9 @@ const routes = [
       { path: 'history', component: History }, // 历史记录
       { path: 'assessment', component: AssessmentSubmission }, // 学生考核
       { path: 'ranking', component: Ranking }, // 排行榜
+      { path: 'forum', component: Forum }, // 论坛
+      { path: 'forum/new', component: ForumEditor }, // 发布论坛帖子
+      { path: 'forum/post/:indices', component: ForumPost }, // 论坛帖子详情
       { path: 'settings', component: SystemBoard }, // 系统设置
       {
         path: 'manager',

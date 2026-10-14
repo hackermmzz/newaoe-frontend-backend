@@ -12,6 +12,43 @@
     <img src="@/assets/Expert_lou.jpg" class="ball-avatar" alt="AI Avatar" />
     </div>
 
+    <transition name="menu-fade">
+      <div
+        v-if="showMenu"
+        class="feature-menu"
+        :style="menuStyle"
+        role="menu"
+        aria-label="悬浮球功能"
+      >
+        <button class="feature-option" type="button" role="menuitem" @click="openChat">
+          <span class="option-icon option-icon-ai" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
+              <path d="M8 10h.01M12 10h.01M16 10h.01" />
+            </svg>
+          </span>
+          <span class="option-copy">
+            <strong>AI问答</strong>
+            <small>向娄老师提问</small>
+          </span>
+          <span class="option-arrow" aria-hidden="true">›</span>
+        </button>
+
+        <button class="feature-option" type="button" role="menuitem" @click="openDonation">
+          <span class="option-icon option-icon-donation" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z" />
+            </svg>
+          </span>
+          <span class="option-copy">
+            <strong>慈善捐助</strong>
+            <small>为公益贡献一份力量</small>
+          </span>
+          <span class="option-arrow" aria-hidden="true">›</span>
+        </button>
+      </div>
+    </transition>
+
     <transition name="chat-fade">
       <div 
         v-if="showChat" 
@@ -56,6 +93,26 @@
         </div>
       </div>
     </transition>
+
+    <transition name="dialog-fade">
+      <div v-if="showDonation" class="dialog-backdrop" @click.self="showDonation = false">
+        <section class="donation-dialog" role="dialog" aria-modal="true" aria-labelledby="donation-title">
+          <button class="dialog-close" type="button" aria-label="关闭" @click="showDonation = false">×</button>
+          <div class="donation-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z" />
+            </svg>
+          </div>
+          <h2 id="donation-title">慈善捐助</h2>
+          <p>每一份善意，都能让世界多一点温暖。</p>
+          <div class="donation-placeholder">
+            <span>捐助通道正在筹备中</span>
+            <small>当前仅为功能展示，暂不会发起支付或提交任何信息。</small>
+          </div>
+          <button class="dialog-confirm" type="button" @click="showDonation = false">我知道了</button>
+        </section>
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -63,6 +120,8 @@
 import { ref, reactive, computed, nextTick } from 'vue';
 
 const showChat = ref(false);
+const showMenu = ref(false);
+const showDonation = ref(false);
 const isAtSide = ref(false);
 const input = ref('');
 const chatBody = ref(null);
@@ -159,6 +218,40 @@ const chatStyle = computed(() => {
   return style;
 });
 
+const menuStyle = computed(() => {
+  const ballSize = 56;
+  const menuWidth = 240;
+  const menuHeight = 150;
+  const gap = 12;
+  const edge = 12;
+  const style = {};
+
+  if (pos.x + ballSize / 2 > window.innerWidth / 2) {
+    style.left = `${Math.max(edge, pos.x - menuWidth - gap)}px`;
+  } else {
+    style.left = `${Math.min(window.innerWidth - menuWidth - edge, pos.x + ballSize + gap)}px`;
+  }
+
+  style.top = `${Math.min(
+    Math.max(edge, pos.y),
+    window.innerHeight - menuHeight - edge
+  )}px`;
+
+  return style;
+});
+
+const openChat = () => {
+  showMenu.value = false;
+  showDonation.value = false;
+  showChat.value = true;
+};
+
+const openDonation = () => {
+  showMenu.value = false;
+  showChat.value = false;
+  showDonation.value = true;
+};
+
 // --- 修改后的拖拽逻辑 ---
 let isDragging = false;
 let startPos = { x: 0, y: 0 };
@@ -229,7 +322,14 @@ const handleStart = (e) => {
   document.addEventListener('touchend', onEnd);
 };
 
-const handleClick = () => { if (!isDragging) showChat.value = !showChat.value; };
+const handleClick = () => {
+  if (isDragging) return;
+  showMenu.value = !showMenu.value;
+  if (showMenu.value) {
+    showChat.value = false;
+    showDonation.value = false;
+  }
+};
 </script>
 
 <style scoped>
@@ -252,6 +352,57 @@ const handleClick = () => { if (!isDragging) showChat.value = !showChat.value; }
 }
 .ball-avatar { width: 100%; height: 100%; object-fit: cover; }
 .floating-ball:active { cursor: grabbing; }
+
+.feature-menu {
+  position: fixed;
+  width: 240px;
+  padding: 8px;
+  background: rgba(28, 28, 30, 0.94);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+  z-index: 10000;
+}
+
+.feature-option {
+  width: 100%;
+  min-height: 66px;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #fff;
+  background: transparent;
+  border: 0;
+  border-radius: 13px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s, transform 0.2s;
+}
+.feature-option:hover {
+  background: rgba(255, 255, 255, 0.09);
+  transform: translateX(2px);
+}
+.feature-option:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: -2px;
+}
+.option-icon {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+}
+.option-icon svg { width: 21px; height: 21px; }
+.option-icon-ai { color: #93c5fd; background: rgba(59, 130, 246, 0.18); }
+.option-icon-donation { color: #fda4af; background: rgba(244, 63, 94, 0.17); }
+.option-copy { display: flex; flex: 1; flex-direction: column; gap: 3px; }
+.option-copy strong { font-size: 14px; font-weight: 600; }
+.option-copy small { color: rgba(255, 255, 255, 0.52); font-size: 12px; }
+.option-arrow { color: rgba(255, 255, 255, 0.4); font-size: 24px; line-height: 1; }
 
 .chat-panel {
   position: fixed;
@@ -389,9 +540,93 @@ const handleClick = () => { if (!isDragging) showChat.value = !showChat.value; }
 }
 .send-btn:disabled { background: #555; cursor: not-allowed; }
 
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(7, 10, 18, 0.58);
+  backdrop-filter: blur(6px);
+}
+.donation-dialog {
+  position: relative;
+  box-sizing: border-box;
+  width: min(420px, 100%);
+  padding: 34px 30px 28px;
+  color: #f8fafc;
+  text-align: center;
+  background: linear-gradient(145deg, rgba(42, 31, 45, 0.98), rgba(24, 24, 29, 0.98));
+  border: 1px solid rgba(253, 164, 175, 0.22);
+  border-radius: 24px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+}
+.dialog-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  width: 34px;
+  height: 34px;
+  color: rgba(255, 255, 255, 0.65);
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  font-size: 24px;
+  cursor: pointer;
+}
+.dialog-close:hover { color: #fff; background: rgba(255, 255, 255, 0.08); }
+.donation-mark {
+  width: 68px;
+  height: 68px;
+  margin: 0 auto 18px;
+  display: grid;
+  place-items: center;
+  color: #fda4af;
+  background: rgba(244, 63, 94, 0.13);
+  border-radius: 22px;
+}
+.donation-mark svg { width: 34px; height: 34px; }
+.donation-dialog h2 { margin: 0 0 10px; font-size: 24px; }
+.donation-dialog > p { margin: 0 0 22px; color: rgba(255, 255, 255, 0.68); font-size: 14px; }
+.donation-placeholder {
+  margin-bottom: 22px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px dashed rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+}
+.donation-placeholder span { font-size: 14px; font-weight: 600; }
+.donation-placeholder small { color: rgba(255, 255, 255, 0.48); font-size: 12px; line-height: 1.6; }
+.dialog-confirm {
+  width: 100%;
+  padding: 11px 18px;
+  color: #fff;
+  background: linear-gradient(135deg, #f43f5e, #e11d48);
+  border: 0;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(225, 29, 72, 0.25);
+}
+.dialog-confirm:hover { filter: brightness(1.08); }
+
 .chat-fade-enter-active, .chat-fade-leave-active { transition: all 0.3s ease; }
 .chat-fade-enter-from, .chat-fade-leave-to { 
   opacity: 0; 
   transform: translateY(10px) scale(0.95); 
   }
+.menu-fade-enter-active, .menu-fade-leave-active { transition: all 0.2s ease; }
+.menu-fade-enter-from, .menu-fade-leave-to {
+  opacity: 0;
+  transform: translateY(6px) scale(0.97);
+}
+.dialog-fade-enter-active, .dialog-fade-leave-active { transition: opacity 0.22s ease; }
+.dialog-fade-enter-active .donation-dialog, .dialog-fade-leave-active .donation-dialog { transition: transform 0.22s ease; }
+.dialog-fade-enter-from, .dialog-fade-leave-to { opacity: 0; }
+.dialog-fade-enter-from .donation-dialog, .dialog-fade-leave-to .donation-dialog { transform: translateY(12px) scale(0.97); }
 </style>

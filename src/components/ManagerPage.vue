@@ -230,6 +230,18 @@
                   placeholder="请输入最新版本编号"
                 >
               </div>
+              <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+                <input
+                  v-model="hardRebootAllOj"
+                  type="checkbox"
+                  :disabled="updatingOjVersion"
+                  class="mt-0.5 h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                >
+                <span>
+                  <span class="block text-sm font-medium text-red-800">硬重启所有 OJ</span>
+                  <span class="mt-1 block text-xs text-red-600">勾选后，推送新版本时将同时对所有 OJ 执行硬重启。</span>
+                </span>
+              </label>
               <div class="flex justify-end gap-3 pt-2">
                 <button
                   type="button"
@@ -574,6 +586,7 @@ export default {
       publishingAnnouncement: false,
       ojVersionDialogOpen: false,
       latestVersion: '',
+      hardRebootAllOj: false,
       updatingOjVersion: false,
       uploadingLatestPackage: false,
       latestPackageDialogOpen: false,
@@ -608,6 +621,7 @@ export default {
       this.announcementDialogOpen = false;
     },
     openOjVersionDialog() {
+      this.hardRebootAllOj = false;
       this.ojVersionDialogOpen = true;
     },
     closeOjVersionDialog() {
@@ -898,6 +912,7 @@ export default {
       try {
         const requestUrl = new URL(config.manager_oj_version_update_url);
         requestUrl.searchParams.set('latestVersion', latestVersion);
+        requestUrl.searchParams.set('hard_reboot', String(this.hardRebootAllOj));
         const response = await fetch(requestUrl.toString(), {
           method: 'GET',
           credentials: 'include'
@@ -914,6 +929,7 @@ export default {
 
         ElMessage.success('OJ版本推送成功');
         this.latestVersion = '';
+        this.hardRebootAllOj = false;
         this.ojVersionDialogOpen = false;
       } catch (error) {
         ElMessage.error(error?.message || 'OJ版本推送失败');

@@ -99,7 +99,31 @@ export const downloadFile = async (fileIdentifier, options = {}) => {
   return { url, fileName };
 };
 
+/**
+ * 通过统一下载接口取得文件内容，供 HTML、日志等需要在页面内展示的文本文件使用。
+ * 与 downloadFile 相同，先解析 ContentPath 对应的真实下载地址，再下载文件；
+ * 区别是这里返回文件内容，而不是触发浏览器“另存为”。
+ */
+export const downloadTextFile = async (fileIdentifier, { signal } = {}) => {
+  const result = await getDownloadUrl(fileIdentifier, { signal });
+  const response = await fetch(result.url, {
+    method: 'GET',
+    signal,
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    throw new Error(`下载文件失败（HTTP ${response.status}）`);
+  }
+  const fileBlob = await response.blob();
+  return {
+    content: await fileBlob.text(),
+    url: result.url,
+    contentType: fileBlob.type
+  };
+};
+
 export default {
   getDownloadUrl,
-  downloadFile
+  downloadFile,
+  downloadTextFile
 };

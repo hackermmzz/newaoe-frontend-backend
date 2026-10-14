@@ -50,10 +50,11 @@ export default {
         ?? fetchedUserInfo.value?.vip
         ?? config.VIP_NONE;
       const numericValue = Number(value);
-      return Number.isFinite(numericValue) ? numericValue : config.VIP_NONE;
+      const validVipLevels = [config.VIP_TOURIST, config.VIP_NONE, config.VIP_SUPER];
+      return validVipLevels.includes(numericValue) ? numericValue : config.VIP_NONE;
     });
 
-    const hasAccess = computed(() => vipLevel.value >= config.VIP_SUPER);
+    const hasAccess = computed(() => vipLevel.value === config.VIP_SUPER);
 
     const loadUserInfo = async () => {
       isLoading.value = true;
